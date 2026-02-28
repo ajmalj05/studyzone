@@ -1,0 +1,12 @@
+**/bin
+**/obj
+.env
+.git
+**/.vs
+**/.vscode
+**/*.user
+**/*.suo
+**/launchSettings.json
+**/.idea
+*.md
+*.log

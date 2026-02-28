@@ -14,6 +14,11 @@ if (File.Exists(envPath))
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Coolify (and similar PaaS) set PORT; listen on 0.0.0.0 so the container accepts external requests
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port) && int.TryParse(port, out var portNum))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portNum}");
+
 var conn = builder.Configuration["ConnectionStrings:DefaultConnection"];
 if (string.IsNullOrWhiteSpace(conn))
     throw new InvalidOperationException("Missing required configuration: ConnectionStrings:DefaultConnection (set ConnectionStrings__DefaultConnection env var).");
