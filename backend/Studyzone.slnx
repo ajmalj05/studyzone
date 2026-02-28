@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Studyzone.Api/Studyzone.Api.csproj" />
+  <Project Path="Studyzone.Application/Studyzone.Application.csproj" />
+  <Project Path="Studyzone.Domain/Studyzone.Domain.csproj" />
+  <Project Path="Studyzone.Infrastructure/Studyzone.Infrastructure.csproj" />
+</Solution>

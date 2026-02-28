@@ -1,0 +1,14 @@
+namespace Studyzone.Application.Fees;
+
+public interface IFeeService
+{
+    Task<FeeStructureDto?> GetStructureByIdAsync(string id, CancellationToken ct = default);
+    Task<IReadOnlyList<FeeStructureDto>> GetStructuresByClassAsync(string classId, CancellationToken ct = default);
+    Task<IReadOnlyList<FeeStructureDto>> GetAllStructuresAsync(CancellationToken ct = default);
+    Task<FeeStructureDto> CreateStructureAsync(CreateFeeStructureRequest request, CancellationToken ct = default);
+    Task AddChargeAsync(AddChargeRequest request, CancellationToken ct = default);
+    Task<FeeLedgerDto> GetLedgerAsync(string studentId, string? periodFrom, string? periodTo, CancellationToken ct = default);
+    Task<PaymentDto> RecordPaymentAsync(RecordPaymentRequest request, CancellationToken ct = default);
+    Task<IReadOnlyList<PaymentDto>> GetPaymentsByStudentAsync(string studentId, DateTime? from, DateTime? to, CancellationToken ct = default);
+    Task<IReadOnlyList<FeeLedgerDto>> GetOutstandingByClassAsync(string? classId, CancellationToken ct = default);
+}

@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Main Background: #F0F9FF -> 204 100% 97% */
+    --background: 204 100% 97%;
+    /* Text Color: #1F2937 -> 215 28% 17% */
+    --foreground: 215 28% 17%;
+
+    /* Card Background: #FFFFFF -> 0 0% 100% */
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+
+    /* Primary Button: #06B6D4 -> 189 95% 43% */
+    --primary: 189 95% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Optional secondary colors mapped closely if needed */
+    --secondary: 201 94% 86%; /* using Hover Color #BAE6FD */
+    --secondary-foreground: 215 28% 17%;
+
+    /* Secondary Text: #64748B -> 215 16% 47% */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Hover Color: #BAE6FD -> 201 94% 86% */
+    --accent: 201 94% 86%;
+    --accent-foreground: 215 28% 17%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border Color: #E0F2FE -> 204 100% 94% */
+    --border: 204 100% 94%;
+    --input: 204 100% 94%;
+    /* Focus Ring: Primary Button #06B6D4 -> 189 95% 43% */
+    --ring: 189 95% 43%;
+
+    --radius: 0.5rem; /* 8px - traditional school management look */
+
+    /* Sidebar Accent: #155E75 -> 194 70% 27% */
+    --sidebar-background: 194 70% 27%;
+    --sidebar-foreground: 0 0% 100%; /* #FFFFFF */
+    --sidebar-primary: 189 95% 43%; /* #06B6D4 */
+    --sidebar-primary-foreground: 0 0% 100%; 
+    --sidebar-accent: 201 94% 86%; /* Hover #BAE6FD */
+    --sidebar-accent-foreground: 194 70% 27%;
+    --sidebar-border: 194 65% 35%; /* slightly lighter than sidebar primary */
+    --sidebar-ring: 189 95% 43%;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(189, 95%, 43%), hsl(193, 76%, 36%));
+    --gradient-hero: linear-gradient(135deg, hsl(189, 95%, 43%), hsl(193, 76%, 36%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(194, 70%, 27%), hsl(194, 75%, 22%));
+    /* Soft shadow for elevation */
+    --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 12px 32px rgba(6, 182, 212, 0.12); /* using primary soft glow */
+    --shadow-glow: 0 0 20px hsl(189 95% 43% / 0.3);
+
+    /* Status colors */
+    --success: 142 72% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-sidebar {
+    background: var(--gradient-sidebar);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .card-hover {
+    @apply transition-colors duration-150;
+  }
+
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-count-up {
+    animation: count-up 0.3s ease-out forwards;
+  }
+
+  /* Sidebar scrollbar: thin, themed to match teal sidebar */
+  .sidebar-nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(0 0% 100% / 0.35) transparent;
+  }
+
+  .sidebar-nav-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-nav-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-nav-scroll::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 100% / 0.35);
+    border-radius: 3px;
+  }
+
+  .sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 0% 100% / 0.5);
+  }
+
+  .sidebar-nav-scroll::-webkit-scrollbar-button {
+    display: none;
+  }
+}

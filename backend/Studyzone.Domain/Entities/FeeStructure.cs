@@ -1,0 +1,13 @@
+namespace Studyzone.Domain.Entities;
+
+public class FeeStructure
+{
+    public Guid Id { get; set; }
+    public Guid ClassId { get; set; }
+    public string Name { get; set; } = string.Empty; // e.g. Tuition, Lab
+    public decimal Amount { get; set; }
+    public string Frequency { get; set; } = "Monthly"; // Monthly, Quarterly, HalfYearly, Yearly
+    public DateTime EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

@@ -1,0 +1,67 @@
+namespace Studyzone.Application.Students;
+
+public class StudentDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string AdmissionNumber { get; set; } = string.Empty;
+    public string? UserId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? ClassId { get; set; }
+    public string? ClassName { get; set; }
+    public string? BatchId { get; set; }
+    public string? BatchName { get; set; }
+    public string? Section { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? GuardianName { get; set; }
+    public string? GuardianPhone { get; set; }
+    public string? GuardianEmail { get; set; }
+    public string? Address { get; set; }
+    public DateTime? JoinedAt { get; set; }
+    public DateTime? LeftAt { get; set; }
+    public string? SiblingGroupId { get; set; }
+    public Dictionary<string, string>? CustomFields { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateStudentRequest
+{
+    public string AdmissionNumber { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DateTime? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? ClassId { get; set; }
+    public string? BatchId { get; set; }
+    public string? Section { get; set; }
+    public string? GuardianName { get; set; }
+    public string? GuardianPhone { get; set; }
+    public string? GuardianEmail { get; set; }
+    public string? Address { get; set; }
+    public string? SiblingGroupId { get; set; }
+    public Dictionary<string, string>? CustomFields { get; set; }
+}
+
+public class UpdateStudentRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? ClassId { get; set; }
+    public string? BatchId { get; set; }
+    public string? Section { get; set; }
+    public string? GuardianName { get; set; }
+    public string? GuardianPhone { get; set; }
+    public string? GuardianEmail { get; set; }
+    public string? Address { get; set; }
+    public string? SiblingGroupId { get; set; }
+    public Dictionary<string, string>? CustomFields { get; set; }
+}
+
+public class BulkPromoteRequest
+{
+    public IReadOnlyList<string> StudentIds { get; set; } = Array.Empty<string>();
+    public string TargetClassId { get; set; } = string.Empty;
+    public string? TargetBatchId { get; set; }
+    public string? TargetSection { get; set; }
+}
