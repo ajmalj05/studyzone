@@ -28,3 +28,4 @@ C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Application\obj\Debug\net10.
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Application\obj\Debug\net10.0\refint\Studyzone.Application.dll
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Application\obj\Debug\net10.0\Studyzone.Application.pdb
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Application\obj\Debug\net10.0\ref\Studyzone.Application.dll
+C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Application\obj\Debug\net10.0\Studyzone.Application.sourcelink.json

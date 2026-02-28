@@ -128,3 +128,4 @@ C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Infrastructure\obj\Debug\net
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Infrastructure\obj\Debug\net10.0\Studyzone.Infrastructure.pdb
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Infrastructure\obj\Debug\net10.0\Studyzone.Infrastructure.genruntimeconfig.cache
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Infrastructure\obj\Debug\net10.0\ref\Studyzone.Infrastructure.dll
+C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Infrastructure\obj\Debug\net10.0\Studyzone.Infrastructure.sourcelink.json

@@ -41,6 +41,10 @@ public class UserManagementService : IUserManagementService
             Name = request.Name,
             Role = request.Role,
             IsActive = true,
+            Phone = request.Phone,
+            Email = request.Email,
+            Subject = request.Subject,
+            ClassesAssigned = request.ClassesAssigned,
             CreatedAt = DateTime.UtcNow
         };
         var added = await _userRepo.AddAsync(user, ct);
@@ -64,6 +68,10 @@ public class UserManagementService : IUserManagementService
         user.Name = request.Name;
         user.Role = request.Role;
         user.IsActive = request.IsActive;
+        user.Phone = request.Phone;
+        user.Email = request.Email;
+        user.Subject = request.Subject;
+        user.ClassesAssigned = request.ClassesAssigned;
         user.UpdatedAt = DateTime.UtcNow;
         await _userRepo.UpdateAsync(user, ct);
         await _auditRepo.AddAsync(new AuditLog
@@ -95,6 +103,10 @@ public class UserManagementService : IUserManagementService
         Name = u.Name,
         Role = u.Role,
         IsActive = u.IsActive,
+        Phone = u.Phone,
+        Email = u.Email,
+        Subject = u.Subject,
+        ClassesAssigned = u.ClassesAssigned,
         CreatedAt = u.CreatedAt
     };
 }

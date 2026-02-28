@@ -93,13 +93,15 @@ const VerifyProfile = () => {
                             transition={{ delay: 0.3 }}
                             className="space-y-2"
                         >
-                            <label className="text-sm font-medium text-foreground">Register Number</label>
+                            <label className="text-sm font-medium text-foreground">
+                                    {role === "student" ? "Admission Number" : "Register Number"}
+                                </label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={registerNumber}
                                     onChange={(e) => setRegisterNumber(e.target.value)}
-                                    placeholder="Enter your Register Number"
+                                    placeholder={role === "student" ? "Enter your Admission Number" : "Enter your Register Number"}
                                     className="pl-10 rounded-xl h-12"
                                 />
                             </div>

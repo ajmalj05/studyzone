@@ -394,3 +394,4 @@ C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Api\obj\Debug\net10.0\refint
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Api\obj\Debug\net10.0\Studyzone.Api.pdb
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Api\obj\Debug\net10.0\Studyzone.Api.genruntimeconfig.cache
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Api\obj\Debug\net10.0\ref\Studyzone.Api.dll
+C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Api\obj\Debug\net10.0\Studyzone.Api.sourcelink.json

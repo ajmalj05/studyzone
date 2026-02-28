@@ -66,8 +66,8 @@ const SetupAccount = () => {
 
             toast.success("Account setup complete! Welcome.");
 
-            if (role === "teacher") navigate("/teacher");
-            else navigate("/student");
+            if (role === "teacher") navigate("/teacher/dashboard");
+            else navigate("/student/dashboard");
 
         } catch (error: any) {
             toast.error(error.message || "Failed to setup account");

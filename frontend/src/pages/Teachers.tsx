@@ -57,7 +57,7 @@ export default function Teachers() {
 
   const openEdit = (t: any) => {
     setEditTeacher(t);
-    setForm({ name: t.name, subject: t.subject || "", classesAssigned: t.classesAssigned || "", phone: t.phone || "", registerNumber: t.registerNumber || "" });
+    setForm({ name: t.name, subject: t.subject || "", classesAssigned: t.classesAssigned || "", phone: t.phone || "", registerNumber: t.registerNumber || t.userId || "" });
     setShowModal(true);
   };
 
@@ -76,13 +76,28 @@ export default function Teachers() {
       if (editTeacher) {
         await fetchApi(`/Users/${editTeacher.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ name: form.name, role: "teacher", isActive: editTeacher.isActive ?? true })
+          body: JSON.stringify({
+            name: form.name,
+            role: "teacher",
+            isActive: editTeacher.isActive ?? true,
+            phone: form.phone || undefined,
+            subject: form.subject || undefined,
+            classesAssigned: form.classesAssigned || undefined,
+          })
         });
         toast({ title: "Teacher Updated", description: `${form.name} has been updated.` });
       } else {
         await fetchApi('/Users', {
           method: 'POST',
-          body: JSON.stringify({ ...form, role: "teacher", userId: form.registerNumber, password: form.registerNumber })
+          body: JSON.stringify({
+            userId: form.registerNumber,
+            password: form.registerNumber,
+            name: form.name,
+            role: "teacher",
+            phone: form.phone || undefined,
+            subject: form.subject || undefined,
+            classesAssigned: form.classesAssigned || undefined,
+          })
         });
         toast({ title: "Teacher Added", description: `${form.name} has been added.` });
       }
@@ -202,7 +217,7 @@ export default function Teachers() {
                 filteredTeachers.map((t, i) => (
                   <motion.tr key={t.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }} className="border-b border-border last:border-0 hover:bg-muted/50">
                     <td className="px-6 py-4 font-medium text-foreground">{t.name}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{t.registerNumber}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{t.registerNumber ?? t.userId}</td>
                     <td className="px-6 py-4 text-muted-foreground">{t.subject}</td>
                     <td className="px-6 py-4 text-muted-foreground">{t.classesAssigned}</td>
 
@@ -289,7 +304,7 @@ export default function Teachers() {
         </DialogContent>
       </Dialog>
 
-      <DownloadModal open={showDownload} onClose={() => setShowDownload(false)} title="Teacher List" previewData={{ headers: ["Name", "Reg No", "Subject", "Classes", "Phone"], rows: filteredTeachers.map(t => [t.name, t.registerNumber, t.subject, t.classesAssigned, t.phone]) }} />
+      <DownloadModal open={showDownload} onClose={() => setShowDownload(false)} title="Teacher List" previewData={{ headers: ["Name", "Reg No", "Subject", "Classes", "Phone"], rows: filteredTeachers.map(t => [t.name, t.registerNumber ?? t.userId, t.subject, t.classesAssigned, t.phone]) }} />
     </div>
   );
 }
