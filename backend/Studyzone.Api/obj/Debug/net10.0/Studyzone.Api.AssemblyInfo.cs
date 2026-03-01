@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Studyzone.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc1aae3b75849f972af4e8f5a05c3014bb0db95b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d05f8adaf9d934ed2c909eacf570e110903bb83")]
 [assembly: System.Reflection.AssemblyProductAttribute("Studyzone.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Studyzone.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

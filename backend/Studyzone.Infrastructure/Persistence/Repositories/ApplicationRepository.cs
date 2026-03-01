@@ -19,19 +19,27 @@ public class ApplicationRepository : IApplicationRepository
         return await _db.Applications.FindAsync(new object[] { id }, ct);
     }
 
-    public async Task<IReadOnlyList<Domain.Entities.Application>> GetAllAsync(string? statusFilter, int skip, int take, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Domain.Entities.Application>> GetAllAsync(string? statusFilter, string? classId, string? batchId, int skip, int take, CancellationToken ct = default)
     {
         var query = _db.Applications.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(statusFilter))
             query = query.Where(x => x.Status == statusFilter);
+        if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var cid))
+            query = query.Where(x => x.ClassId == cid);
+        if (!string.IsNullOrWhiteSpace(batchId) && Guid.TryParse(batchId, out var bid))
+            query = query.Where(x => x.BatchId == bid);
         return await query.OrderByDescending(x => x.CreatedAt).Skip(skip).Take(take).ToListAsync(ct);
     }
 
-    public async Task<int> CountAsync(string? statusFilter, CancellationToken ct = default)
+    public async Task<int> CountAsync(string? statusFilter, string? classId, string? batchId, CancellationToken ct = default)
     {
         var query = _db.Applications.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(statusFilter))
             query = query.Where(x => x.Status == statusFilter);
+        if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var cid))
+            query = query.Where(x => x.ClassId == cid);
+        if (!string.IsNullOrWhiteSpace(batchId) && Guid.TryParse(batchId, out var bid))
+            query = query.Where(x => x.BatchId == bid);
         return await query.CountAsync(ct);
     }
 

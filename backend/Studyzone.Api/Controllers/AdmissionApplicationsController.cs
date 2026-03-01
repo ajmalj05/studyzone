@@ -18,9 +18,9 @@ public class AdmissionApplicationsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApplicationListResponse>> GetAll([FromQuery] string? status, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+    public async Task<ActionResult<ApplicationListResponse>> GetAll([FromQuery] string? status, [FromQuery] string? classId, [FromQuery] string? batchId, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
     {
-        var (items, total) = await _service.GetAllAsync(status, skip, take, ct);
+        var (items, total) = await _service.GetAllAsync(status, classId, batchId, skip, take, ct);
         return Ok(new ApplicationListResponse { Items = items, Total = total });
     }
 
@@ -81,6 +81,18 @@ public class AdmissionApplicationsController : ControllerBase
         }
         catch (InvalidOperationException) { return BadRequest(); }
         catch (ArgumentException) { return BadRequest(); }
+    }
+
+    [HttpPost("{id}/submit-and-enroll")]
+    public async Task<ActionResult<ApplicationDto>> SubmitAndEnroll(string id, CancellationToken ct = default)
+    {
+        try
+        {
+            var dto = await _service.SubmitAndEnrollAsync(id, ct);
+            return Ok(dto);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
     }
 }
 

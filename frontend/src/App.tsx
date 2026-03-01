@@ -19,6 +19,7 @@ import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import Settings from "./pages/Settings";
 import Admission from "./pages/Admission";
+import ApplicationFormPage from "./pages/ApplicationFormPage";
 import Classes from "./pages/Classes";
 import Timetable from "./pages/Timetable";
 import Reports from "./pages/Reports";
@@ -105,6 +106,8 @@ const App = () => (
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
                 <Route path="admission" element={<Admission />} />
+                <Route path="admission/application/new" element={<ApplicationFormPage />} />
+                <Route path="admission/application/:id" element={<ApplicationFormPage />} />
                 <Route path="classes" element={<Classes />} />
                 <Route path="timetable" element={<Timetable />} />
                 <Route path="parents" element={<AdminParentManagement />} />
