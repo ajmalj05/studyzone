@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Studyzone.Application.Common.Interfaces;
 using Studyzone.Application.Auth;
@@ -25,8 +26,12 @@ namespace Studyzone.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, IConfiguration? configuration = null)
     {
+        var useMinio = configuration != null
+            && !string.IsNullOrWhiteSpace(configuration["MinIO:Endpoint"])
+            && !string.IsNullOrWhiteSpace(configuration["MinIO:AccessKey"])
+            && !string.IsNullOrWhiteSpace(configuration["MinIO:SecretKey"]);
         services.AddDbContext<ApplicationDbContext>(o =>
         {
             o.UseNpgsql(connectionString);
@@ -49,7 +54,10 @@ public static class DependencyInjection
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IAdmissionApprovalRepository, AdmissionApprovalRepository>();
-        services.AddScoped<IFileStorageService, FileStorageService>();
+        if (useMinio)
+            services.AddScoped<IFileStorageService, MinioStorageService>();
+        else
+            services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddScoped<AdmissionNumberSequenceRepository>();
         services.AddScoped<IAdmissionNumberGenerator, AdmissionNumberGenerator>();
         services.AddScoped<IEnquiryService, EnquiryService>();

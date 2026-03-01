@@ -50,4 +50,9 @@ public class FileStorageService : IFileStorageService
             return Task.FromResult(false);
         }
     }
+
+    public Task<string?> GetAccessUrlAsync(string path, TimeSpan? expiry = null, CancellationToken ct = default)
+    {
+        return Task.FromResult<string?>(null);
+    }
 }

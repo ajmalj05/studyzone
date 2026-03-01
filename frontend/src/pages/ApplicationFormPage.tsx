@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, API_URL } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Save, UserPlus, Printer } from "lucide-react";
+import { ArrowLeft, Save, UserPlus, Printer, Upload, Loader2 } from "lucide-react";
 
 const SPORTS = [
   "Football",
@@ -108,9 +108,13 @@ function buildPrintDocumentHtml(
   const printCss = `
     body { margin: 0; padding: 0; font-size: 11pt; }
     .print-form-document { max-width: 210mm; margin: 0 auto; padding: 10mm 8mm; padding-top: 10mm; }
-    .print-form-header { display: flex; flex-direction: row; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #000; }
+    .print-form-header { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #000; }
+    .print-form-header-left { display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0; }
     .print-form-logo-wrap { flex-shrink: 0; }
     .print-form-logo { height: 64px; width: 64px; object-fit: contain; display: block; }
+    .print-form-photo-wrap { flex-shrink: 0; width: 90px; height: 110px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fafafa; }
+    .print-form-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .print-form-photo-placeholder { font-size: 0.65rem; color: #888; text-align: center; padding: 4px; }
     .print-form-logo-placeholder { width: 64px; height: 64px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #999; }
     .print-form-school-name { margin: 0; font-size: 1.25rem; font-weight: bold; }
     .print-form-title { margin: 0.25rem 0 0 0; font-size: 0.95rem; font-weight: bold; letter-spacing: 0.02em; }
@@ -137,14 +141,22 @@ function buildPrintDocumentHtml(
       ? siblingsFiltered.map((row) => `<tr><td class="print-value">${esc(row?.name ?? "—")}</td><td class="print-value">${esc(row?.class ?? "—")}</td></tr>`).join("")
       : "<tr><td class=\"print-value\">—</td><td class=\"print-value\">—</td></tr>";
 
+  const passportPhotoUrlVal = (form.passportPhotoUrl as string) || "";
+  const photoBox = passportPhotoUrlVal
+    ? `<div class="print-form-photo-wrap"><img src="${esc(passportPhotoUrlVal)}" alt="Passport" /></div>`
+    : `<div class="print-form-photo-wrap"></div>`;
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Admission Application Form</title><style>${printCss}</style></head><body>
 <div class="print-form-document">
   <div class="print-form-header">
-    <div class="print-form-logo-wrap"><img src="${esc(logoUrl)}" alt="School" class="print-form-logo" /></div>
-    <div>
-      <h1 class="print-form-school-name">${esc(schoolName)}</h1>
-      <p class="print-form-title">ADMISSION APPLICATION FORM</p>
+    <div class="print-form-header-left">
+      <div class="print-form-logo-wrap"><img src="${esc(logoUrl)}" alt="School" class="print-form-logo" /></div>
+      <div>
+        <h1 class="print-form-school-name">${esc(schoolName)}</h1>
+        <p class="print-form-title">ADMISSION APPLICATION FORM</p>
+      </div>
     </div>
+    ${photoBox}
   </div>
   <div class="print-section">
     <h2 class="print-section-title">Details of the Student</h2>
@@ -165,7 +177,6 @@ function buildPrintDocumentHtml(
       <tr><td class="print-label">Date of Issue (Residence Visa):</td><td class="print-value">${v("residenceVisaDateOfIssue")}</td><td class="print-label">Date of Expiry (Residence Visa):</td><td class="print-value">${v("residenceVisaDateOfExpiry")}</td></tr>
       <tr><td class="print-label">Emirates ID No:</td><td class="print-value">${v("emiratesIdNo")}</td><td class="print-label">Date of Expiry (Emirates ID):</td><td class="print-value">${v("emiratesIdDateOfExpiry")}</td></tr>
       <tr><td class="print-label">Any Special Needs:</td><td class="print-value">${esc(specialNeedsVal)}</td><td class="print-label">If Yes, Please mention:</td><td class="print-value">${esc(specialNeedsDetail)}</td></tr>
-      <tr><td class="print-label">Passport Size Photo URL:</td><td class="print-value" colspan="3">${v("passportPhotoUrl")}</td></tr>
     </tbody></table>
   </div>
   <div class="print-section">
@@ -247,6 +258,7 @@ export default function ApplicationFormPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileDto | null>(null);
@@ -628,6 +640,39 @@ export default function ApplicationFormPage() {
     }
   };
 
+  const handlePassportPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image (e.g. JPG, PNG).", variant: "destructive" });
+      return;
+    }
+    setUploadingPhoto(true);
+    e.target.value = "";
+    try {
+      const formData = new FormData();
+      if (id && id !== "new") formData.append("applicationId", id);
+      formData.append("documentType", "PassportPhoto");
+      formData.append("file", file);
+      const token = localStorage.getItem("token");
+      const url = `${API_URL}${API_URL.endsWith("/") ? "" : "/"}Documents/upload`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = (await res.json()) as { url?: string; Url?: string; message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Upload failed");
+      const photoUrl = data.url ?? data.Url ?? "";
+      if (photoUrl) update("passportPhotoUrl", photoUrl);
+      toast({ title: "Success", description: "Passport photo uploaded." });
+    } catch (err) {
+      toast({ title: "Upload failed", description: (err as Error).message ?? "Could not upload photo.", variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -664,12 +709,19 @@ export default function ApplicationFormPage() {
       {/* Print-only: exact admission form document (hidden on screen) */}
       <div ref={printRef} className="hidden print:block print-form-document">
         <div className="print-form-header">
-          <div className="print-form-logo-wrap">
-            <img src={schoolProfile?.logoUrl || "/logo.png"} alt="School" className="print-form-logo" />
+          <div className="print-form-header-left flex items-center gap-4 flex-1 min-w-0">
+            <div className="print-form-logo-wrap">
+              <img src={schoolProfile?.logoUrl || "/logo.png"} alt="School" className="print-form-logo" />
+            </div>
+            <div>
+              <h1 className="print-form-school-name">{schoolProfile?.name || "Studyzone Private Institute"}</h1>
+              <p className="print-form-title">ADMISSION APPLICATION FORM</p>
+            </div>
           </div>
-          <div>
-            <h1 className="print-form-school-name">{schoolProfile?.name || "Studyzone Private Institute"}</h1>
-            <p className="print-form-title">ADMISSION APPLICATION FORM</p>
+          <div className="print-form-photo-wrap w-[90px] h-[110px] border border-border flex items-center justify-center overflow-hidden bg-muted flex-shrink-0">
+            {form.passportPhotoUrl ? (
+              <img src={form.passportPhotoUrl} alt="Passport" className="w-full h-full object-cover" />
+            ) : null}
           </div>
         </div>
 
@@ -729,7 +781,6 @@ export default function ApplicationFormPage() {
                 <td className="print-label">Any Special Needs:</td><td className="print-value">{form.anySpecialNeeds ? "Yes" : "No"}{form.anySpecialNeeds && form.specialNeedsDetails ? ` – ${form.specialNeedsDetails}` : ""}</td>
                 <td className="print-label">If Yes, Please mention:</td><td className="print-value">{form.anySpecialNeeds ? (form.specialNeedsDetails || "—") : "—"}</td>
               </tr>
-              <tr><td className="print-label">Passport Size Photo URL:</td><td className="print-value" colSpan={3}>{form.passportPhotoUrl || "—"}</td></tr>
             </tbody>
           </table>
         </div>
@@ -834,9 +885,34 @@ export default function ApplicationFormPage() {
       <div className="space-y-6 print:hidden">
         {/* Section A: Details of the Student */}
         <Card>
-          <CardHeader>
-            <CardTitle>Details of the Student</CardTitle>
-            <CardDescription>To be filled in by the parent (block letters)</CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle>Details of the Student</CardTitle>
+              <CardDescription>To be filled in by the parent (block letters)</CardDescription>
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <Label className="text-sm font-medium">Passport Size Photo</Label>
+              {form.passportPhotoUrl ? (
+                <div className="w-28 h-32 rounded border bg-muted overflow-hidden flex-shrink-0">
+                  <img src={form.passportPhotoUrl} alt="Passport" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                </div>
+              ) : (
+                <div className="w-28 h-32 rounded border border-dashed bg-muted flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs text-muted-foreground text-center px-1">No photo</span>
+                </div>
+              )}
+              <label className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:bg-accent/50">
+                {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                <span>{uploadingPhoto ? "Uploading…" : "Upload image"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={uploadingPhoto}
+                  onChange={handlePassportPhotoUpload}
+                />
+              </label>
+            </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -952,10 +1028,6 @@ export default function ApplicationFormPage() {
                 <Input value={form.specialNeedsDetails} onChange={(e) => update("specialNeedsDetails", e.target.value)} />
               </div>
             )}
-            <div className="space-y-2">
-              <Label>Passport Size Photo URL</Label>
-              <Input value={form.passportPhotoUrl} onChange={(e) => update("passportPhotoUrl", e.target.value)} placeholder="https://..." />
-            </div>
           </CardContent>
         </Card>
 
@@ -1174,9 +1246,12 @@ export default function ApplicationFormPage() {
           aside.fixed.left-0 { display: none !important; }
           main { margin-left: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }
           .print-form-document { display: block !important; max-width: 210mm; margin: 0 auto; padding: 10mm 8mm; padding-top: 10mm; font-size: 11pt; overflow: visible !important; }
-          .print-form-header { display: flex !important; flex-direction: row !important; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #000; }
+          .print-form-header { display: flex !important; flex-direction: row !important; align-items: flex-start !important; justify-content: space-between !important; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #000; }
+          .print-form-header-left { display: flex !important; align-items: center; gap: 1rem; flex: 1; min-width: 0; }
           .print-form-logo-wrap { flex-shrink: 0; }
           .print-form-logo { height: 64px; width: 64px; object-fit: contain; display: block; }
+          .print-form-photo-wrap { flex-shrink: 0; width: 90px; height: 110px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fafafa; }
+          .print-form-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
           .print-form-logo-placeholder { width: 64px; height: 64px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #999; }
           .print-form-school-name { margin: 0; font-size: 1.25rem; font-weight: bold; }
           .print-form-title { margin: 0.25rem 0 0 0; font-size: 0.95rem; font-weight: bold; letter-spacing: 0.02em; }
