@@ -38,8 +38,8 @@ public class AcademicYearService : IAcademicYearService
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
+            StartDate = ToUtc(request.StartDate),
+            EndDate = ToUtc(request.EndDate),
             IsCurrent = false,
             IsArchived = false,
             CreatedAt = DateTime.UtcNow
@@ -54,8 +54,8 @@ public class AcademicYearService : IAcademicYearService
             throw new ArgumentException("Invalid id.", nameof(id));
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Academic year not found.");
         entity.Name = request.Name;
-        entity.StartDate = request.StartDate;
-        entity.EndDate = request.EndDate;
+        entity.StartDate = ToUtc(request.StartDate);
+        entity.EndDate = ToUtc(request.EndDate);
         entity.IsArchived = request.IsArchived;
         await _repo.UpdateAsync(entity, ct);
         return Map(entity);
@@ -66,6 +66,13 @@ public class AcademicYearService : IAcademicYearService
         if (!Guid.TryParse(id, out var guid))
             throw new ArgumentException("Invalid id.", nameof(id));
         await _repo.SetCurrentAsync(guid, ct);
+    }
+
+    private static DateTime ToUtc(DateTime value)
+    {
+        return value.Kind == DateTimeKind.Utc
+            ? value
+            : DateTime.SpecifyKind(value.Date, DateTimeKind.Utc);
     }
 
     private static AcademicYearDto Map(AcademicYear e) => new()
