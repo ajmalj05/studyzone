@@ -50,6 +50,7 @@ public class AdmissionApplicationService : IApplicationService
 
     public async Task<ApplicationDto> CreateAsync(CreateApplicationRequest request, CancellationToken ct = default)
     {
+        // Direct admission: EnquiryId is optional; we never create an enquiry here.
         var entity = MapToEntity(request);
         entity.Id = Guid.NewGuid();
         entity.Status = "Draft";

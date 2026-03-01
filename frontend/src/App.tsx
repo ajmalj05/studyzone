@@ -18,7 +18,9 @@ import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import Settings from "./pages/Settings";
+import AcademicYearPage from "./pages/AcademicYearPage";
 import Admission from "./pages/Admission";
+import Enquiry from "./pages/Enquiry";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
 import Classes from "./pages/Classes";
 import Timetable from "./pages/Timetable";
@@ -105,6 +107,7 @@ const App = () => (
                 <Route path="requests/teacher" element={<AdminTeacherRequests />} />
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
+                <Route path="enquiry" element={<Enquiry />} />
                 <Route path="admission" element={<Admission />} />
                 <Route path="admission/application/new" element={<ApplicationFormPage />} />
                 <Route path="admission/application/:id" element={<ApplicationFormPage />} />
@@ -113,6 +116,7 @@ const App = () => (
                 <Route path="parents" element={<AdminParentManagement />} />
                 <Route path="communication" element={<Communication />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="academic-year" element={<AcademicYearPage />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
             </Route>

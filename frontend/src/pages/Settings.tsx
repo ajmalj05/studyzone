@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,15 +32,6 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { Calendar, Building2, Users, Shield, History } from "lucide-react";
-
-interface AcademicYearDto {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  isCurrent: boolean;
-  isArchived: boolean;
-}
 
 interface SchoolProfileDto {
   id: string;
@@ -78,8 +70,7 @@ interface AuditLogEntryDto {
 }
 
 export default function Settings() {
-  const [academicYears, setAcademicYears] = useState<AcademicYearDto[]>([]);
-  const [currentYear, setCurrentYear] = useState<AcademicYearDto | null>(null);
+  const navigate = useNavigate();
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileDto | null>(null);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
@@ -89,29 +80,9 @@ export default function Settings() {
 
   // School form
   const [schoolForm, setSchoolForm] = useState({ name: "", address: "", logoUrl: "", phone: "", email: "" });
-  // New academic year form
-  const [newYearForm, setNewYearForm] = useState({ name: "", startDate: "", endDate: "" });
   // User form
   const [userForm, setUserForm] = useState({ userId: "", password: "", name: "", role: "teacher" });
   const [showUserForm, setShowUserForm] = useState(false);
-
-  const loadAcademicYears = async () => {
-    try {
-      const list = await fetchApi("/AcademicYears?includeArchived=true") as AcademicYearDto[];
-      setAcademicYears(list.map((y: Record<string, unknown>) => ({
-        id: y.id as string,
-        name: y.name as string,
-        startDate: (y.startDate as string).split("T")[0],
-        endDate: (y.endDate as string).split("T")[0],
-        isCurrent: y.isCurrent as boolean,
-        isArchived: y.isArchived as boolean,
-      })));
-      const current = await fetchApi("/AcademicYears/current") as AcademicYearDto | null;
-      if (current) setCurrentYear({ ...current, startDate: (current.startDate as string).split("T")[0], endDate: (current.endDate as string).split("T")[0] });
-    } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message || "Failed to load academic years", variant: "destructive" });
-    }
-  };
 
   const loadSchoolProfile = async () => {
     try {
@@ -183,46 +154,10 @@ export default function Settings() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadAcademicYears(), loadSchoolProfile(), loadUsers(), loadRoles(), loadAuditLog()]);
+      await Promise.all([loadSchoolProfile(), loadUsers(), loadRoles(), loadAuditLog()]);
       setLoading(false);
     })();
   }, []);
-
-  const handleSetCurrentYear = async (id: string) => {
-    try {
-      await fetchApi(`/AcademicYears/${id}/set-current`, { method: "POST" });
-      toast({ title: "Success", description: "Current academic year updated." });
-      await loadAcademicYears();
-      const current = await fetchApi("/AcademicYears/current") as AcademicYearDto | null;
-      if (current) setCurrentYear({ ...current, startDate: (current.startDate as string).split("T")[0], endDate: (current.endDate as string).split("T")[0] });
-    } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message || "Failed to set current year", variant: "destructive" });
-    }
-  };
-
-  const handleCreateAcademicYear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newYearForm.name || !newYearForm.startDate || !newYearForm.endDate) {
-      toast({ title: "Validation", description: "Name, start date and end date are required.", variant: "destructive" });
-      return;
-    }
-    try {
-      await fetchApi("/AcademicYears", {
-        method: "POST",
-        body: JSON.stringify({
-          name: newYearForm.name,
-          startDate: newYearForm.startDate,
-          endDate: newYearForm.endDate,
-        }),
-      });
-      toast({ title: "Success", description: "Academic year created." });
-      setNewYearForm({ name: "", startDate: "", endDate: "" });
-      setAcademicYearModalOpen(false);
-      await loadAcademicYears();
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed to create", variant: "destructive" });
-    }
-  };
 
   const handleSaveSchoolProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,11 +218,23 @@ export default function Settings() {
     <div className="space-y-4">
       <DashboardHeader title="Settings" />
         <div className="space-y-4">
-          <Tabs defaultValue="academic-year" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-              <TabsTrigger value="academic-year" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" /> Academic Year
-              </TabsTrigger>
+          <Card className="border-dashed">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Academic Year</p>
+                  <p className="text-sm text-muted-foreground">Add and set the current academic year (e.g. 2024-2025).</p>
+                </div>
+              </div>
+              <Button variant="outline" onClick={() => navigate("/admin/academic-year")}>
+                Manage academic years
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Tabs defaultValue="school" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
               <TabsTrigger value="school" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" /> School
               </TabsTrigger>
@@ -301,61 +248,6 @@ export default function Settings() {
                 <History className="h-4 w-4" /> Audit Log
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="academic-year" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Current Academic Year</CardTitle>
-                  <CardDescription>Select which year is active for the institution.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {currentYear && (
-                    <p className="text-sm text-muted-foreground">
-                      Current: <strong>{currentYear.name}</strong> ({currentYear.startDate} – {currentYear.endDate})
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    {academicYears.filter(y => !y.isArchived).map((y) => (
-                      <div key={y.id} className="flex items-center justify-between rounded-lg border p-3">
-                        <span>{y.name} ({y.startDate} – {y.endDate}) {y.isCurrent && "(Current)"}</span>
-                        {!y.isCurrent && (
-                          <Button size="sm" variant="outline" onClick={() => handleSetCurrentYear(y.id)}>
-                            Set as current
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Button onClick={() => setAcademicYearModalOpen(true)}>Add academic year</Button>
-              <Dialog open={academicYearModalOpen} onOpenChange={setAcademicYearModalOpen}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Add academic year</DialogTitle>
-                    <DialogDescription>Create a new academic year.</DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateAcademicYear} className="space-y-3">
-                    <div className="space-y-1">
-                      <Label>Name</Label>
-                      <Input value={newYearForm.name} onChange={(e) => setNewYearForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. 2024-25" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Start date</Label>
-                      <Input type="date" value={newYearForm.startDate} onChange={(e) => setNewYearForm((f) => ({ ...f, startDate: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>End date</Label>
-                      <Input type="date" value={newYearForm.endDate} onChange={(e) => setNewYearForm((f) => ({ ...f, endDate: e.target.value }))} />
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setAcademicYearModalOpen(false)}>Cancel</Button>
-                      <Button type="submit">Create</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </TabsContent>
 
             <TabsContent value="school" className="space-y-4">
               <Card>

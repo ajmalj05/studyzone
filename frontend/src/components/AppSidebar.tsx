@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, CalendarDays, BookOpen,
+  ClipboardList, CalendarDays, BookOpen, Calendar,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -18,7 +18,9 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
+  { title: "Enquiry", icon: MessageSquare, path: "/admin/enquiry" },
   { title: "Admission", icon: ClipboardList, path: "/admin/admission" },
+  { title: "Academic Year", icon: Calendar, path: "/admin/academic-year" },
   { title: "Students", icon: Users, path: "/admin/students" },
   { title: "Classes", icon: BookOpen, path: "/admin/classes" },
   { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },

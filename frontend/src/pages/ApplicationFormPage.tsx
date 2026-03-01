@@ -261,6 +261,7 @@ export default function ApplicationFormPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileDto | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -342,18 +343,31 @@ export default function ApplicationFormPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [classesRes, batchesRes] = await Promise.all([
+        const [classesRes, batchesRes, yearsRes, currentYearRes] = await Promise.all([
           fetchApi("/Classes"),
           fetchApi("/Batches"),
+          fetchApi("/AcademicYears").catch(() => []),
+          fetchApi("/AcademicYears/current").catch(() => null),
         ]);
         setClasses((classesRes as ClassDto[]) ?? []);
         setBatches((batchesRes as BatchDto[]) ?? []);
+        const yearsList = (yearsRes as Array<{ id: string; name: string; isArchived?: boolean }>) ?? [];
+        setAcademicYears(
+          yearsList.filter((y) => !y.isArchived).map((y) => ({ id: y.id, name: y.name }))
+        );
+        if (isNew && currentYearRes && typeof currentYearRes === "object" && "name" in currentYearRes) {
+          const currentName = (currentYearRes as { name: string }).name;
+          if (currentName) {
+            setForm((prev) => ({ ...prev, academicYear: currentName }));
+          }
+        }
       } catch {
         setClasses([]);
         setBatches([]);
+        setAcademicYears([]);
       }
     })();
-  }, []);
+  }, [isNew]);
 
   useEffect(() => {
     if (!isNew && id) {
@@ -487,6 +501,7 @@ export default function ApplicationFormPage() {
     }));
   };
 
+  // Direct admission: do not send enquiryId when opening from "Add application"; no enquiry is created.
   const buildPayload = () => ({
     enquiryId: isNew ? enquiryId : undefined,
     academicYear: form.academicYear || undefined,
@@ -917,7 +932,24 @@ export default function ApplicationFormPage() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Academic Year *</Label>
-              <Input value={form.academicYear} onChange={(e) => update("academicYear", e.target.value)} placeholder="e.g. 2024-25" />
+              <Select
+                value={form.academicYear || undefined}
+                onValueChange={(v) => update("academicYear", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((y) => (
+                    <SelectItem key={y.id} value={y.name}>
+                      {y.name}
+                    </SelectItem>
+                  ))}
+                  {form.academicYear && !academicYears.some((y) => y.name === form.academicYear) && (
+                    <SelectItem value={form.academicYear}>{form.academicYear}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Name of the Student (as in Emirates ID) *</Label>
