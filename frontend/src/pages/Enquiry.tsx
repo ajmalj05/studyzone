@@ -72,6 +72,7 @@ export default function Enquiry() {
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
   const [enquiryStatusFilter, setEnquiryStatusFilter] = useState<string>("");
   const [enquiryClassFilter, setEnquiryClassFilter] = useState<string>("");
+  const initialLoadDone = useRef(false);
 
   const loadClasses = async () => {
     try {
