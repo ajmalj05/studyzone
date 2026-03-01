@@ -1,0 +1,6 @@
+# Environment and secrets (do not commit)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
