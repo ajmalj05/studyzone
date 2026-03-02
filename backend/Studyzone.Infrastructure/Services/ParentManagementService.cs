@@ -10,17 +10,20 @@ public class ParentManagementService : IParentManagementService
     private readonly IUserManagementService _userService;
     private readonly IStudentParentRepository _studentParentRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
     private readonly IClassRepository _classRepo;
 
     public ParentManagementService(
         IUserManagementService userService,
         IStudentParentRepository studentParentRepo,
         IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
         IClassRepository classRepo)
     {
         _userService = userService;
         _studentParentRepo = studentParentRepo;
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
         _classRepo = classRepo;
     }
 
@@ -37,9 +40,10 @@ public class ParentManagementService : IParentManagementService
             {
                 var student = await _studentRepo.GetByIdAsync(link.StudentId, ct);
                 if (student == null) continue;
+                var enr = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
                 string? className = null;
-                if (student.ClassId.HasValue)
-                    className = (await _classRepo.GetByIdAsync(student.ClassId.Value, ct))?.Name;
+                if (enr?.ClassId.HasValue == true)
+                    className = (await _classRepo.GetByIdAsync(enr.ClassId.Value, ct))?.Name;
                 linkedStudents.Add(new LinkedStudentDto
                 {
                     StudentId = student.Id.ToString(),

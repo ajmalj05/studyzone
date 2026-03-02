@@ -12,6 +12,8 @@ public class FeeService : IFeeService
     private readonly IPaymentRepository _paymentRepo;
     private readonly IReceiptSequenceRepository _receiptSeqRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
     private readonly IClassRepository _classRepo;
     private readonly INotificationService _notificationService;
 
@@ -21,6 +23,8 @@ public class FeeService : IFeeService
         IPaymentRepository paymentRepo,
         IReceiptSequenceRepository receiptSeqRepo,
         IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
+        IAcademicYearRepository academicYearRepo,
         IClassRepository classRepo,
         INotificationService notificationService)
     {
@@ -29,6 +33,8 @@ public class FeeService : IFeeService
         _paymentRepo = paymentRepo;
         _receiptSeqRepo = receiptSeqRepo;
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
+        _academicYearRepo = academicYearRepo;
         _classRepo = classRepo;
         _notificationService = notificationService;
     }
@@ -150,10 +156,11 @@ public class FeeService : IFeeService
         var student = await _studentRepo.GetByIdAsync(sid, ct);
         if (student == null)
             throw new InvalidOperationException("Student not found.");
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(sid, ct);
         string? className = null;
-        if (student.ClassId.HasValue)
+        if (enr?.ClassId.HasValue == true)
         {
-            var c = await _classRepo.GetByIdAsync(student.ClassId.Value, ct);
+            var c = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
             className = c?.Name;
         }
         var charges = await _chargeRepo.GetByStudentIdAsync(sid, null, ct);
@@ -242,12 +249,14 @@ public class FeeService : IFeeService
 
     public async Task<IReadOnlyList<FeeLedgerDto>> GetOutstandingByClassAsync(string? classId, CancellationToken ct = default)
     {
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null) return new List<FeeLedgerDto>();
         Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var g) ? null : g;
-        var students = await _studentRepo.GetAllAsync(cid, null, "Active", 0, 500, ct);
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 500, ct);
         var result = new List<FeeLedgerDto>();
-        foreach (var s in students)
+        foreach (var enr in enrollments)
         {
-            var ledger = await GetLedgerAsync(s.Id.ToString(), null, null, ct);
+            var ledger = await GetLedgerAsync(enr.StudentId.ToString(), null, null, ct);
             if (ledger.Balance > 0)
                 result.Add(ledger);
         }

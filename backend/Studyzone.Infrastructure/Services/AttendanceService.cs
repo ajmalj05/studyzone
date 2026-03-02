@@ -8,13 +8,15 @@ namespace Studyzone.Infrastructure.Services;
 public class AttendanceService : IAttendanceService
 {
     private readonly IAttendanceRepository _attRepo;
-    private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
     private readonly IUserManagementService _userService;
 
-    public AttendanceService(IAttendanceRepository attRepo, IStudentRepository studentRepo, IUserManagementService userService)
+    public AttendanceService(IAttendanceRepository attRepo, IStudentEnrollmentRepository enrollmentRepo, IAcademicYearRepository academicYearRepo, IUserManagementService userService)
     {
         _attRepo = attRepo;
-        _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
+        _academicYearRepo = academicYearRepo;
         _userService = userService;
     }
 
@@ -37,8 +39,10 @@ public class AttendanceService : IAttendanceService
     public async Task<IReadOnlyList<AttendanceRecordDto>> GetByClassAndDateAsync(string classId, DateTime date, CancellationToken ct = default)
     {
         if (!Guid.TryParse(classId, out var cid)) return Array.Empty<AttendanceRecordDto>();
-        var students = await _studentRepo.GetAllAsync(cid, null, "Active", 0, 1000, ct);
-        var studentIds = students.Select(s => s.Id).ToList();
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null) return Array.Empty<AttendanceRecordDto>();
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 1000, ct);
+        var studentIds = enrollments.Select(e => e.StudentId).ToList();
         var list = await _attRepo.GetByStudentIdsAndDateAsync(studentIds, date, ct);
         return list.Select(x => new AttendanceRecordDto
         {
@@ -71,13 +75,17 @@ public class AttendanceService : IAttendanceService
 
     public async Task<IReadOnlyList<MonthlyAttendanceReportDto>> GetMonthlyReportAsync(string? classId, int year, int month, CancellationToken ct = default)
     {
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null) return new List<MonthlyAttendanceReportDto>();
         Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var g) ? null : g;
-        var students = await _studentRepo.GetAllAsync(cid, null, "Active", 0, 1000, ct);
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 1000, ct);
         var from = new DateTime(year, month, 1);
         var to = from.AddMonths(1).AddDays(-1);
         var result = new List<MonthlyAttendanceReportDto>();
-        foreach (var s in students)
+        foreach (var enr in enrollments)
         {
+            var s = enr.Student;
+            if (s == null) continue;
             var records = await _attRepo.GetByStudentAndDateRangeAsync(s.Id, from, to, ct);
             var present = records.Count(x => x.Status == "Present");
             var absent = records.Count(x => x.Status == "Absent");

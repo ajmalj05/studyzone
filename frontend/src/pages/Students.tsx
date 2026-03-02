@@ -38,6 +38,8 @@ interface StudentDto {
   name: string;
   dateOfBirth?: string;
   gender?: string;
+  academicYearId?: string;
+  academicYearName?: string;
   classId?: string;
   className?: string;
   batchId?: string;
@@ -48,6 +50,11 @@ interface StudentDto {
   guardianPhone?: string;
   guardianEmail?: string;
   createdAt: string;
+}
+
+interface AcademicYearOption {
+  id: string;
+  name: string;
 }
 
 interface ClassDto {
@@ -72,6 +79,8 @@ export default function Students() {
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [classFilter, setClassFilter] = useState<string>("");
@@ -84,6 +93,7 @@ export default function Students() {
     name: "",
     dateOfBirth: "",
     gender: "",
+    academicYearId: "",
     classId: "",
     batchId: "",
     section: "",
@@ -93,6 +103,7 @@ export default function Students() {
     address: "",
   });
   const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
+  const [promoteTargetAcademicYearId, setPromoteTargetAcademicYearId] = useState("");
   const [promoteTargetClassId, setPromoteTargetClassId] = useState("");
   const [promoteTargetBatchId, setPromoteTargetBatchId] = useState("");
   const [newClassName, setNewClassName] = useState("");
@@ -124,9 +135,19 @@ export default function Students() {
     }
   };
 
+  const loadAcademicYears = async () => {
+    try {
+      const list = (await fetchApi("/AcademicYears?includeArchived=true")) as { id: string; name: string }[];
+      setAcademicYears(Array.isArray(list) ? list : []);
+    } catch {
+      setAcademicYears([]);
+    }
+  };
+
   const loadStudents = async () => {
     try {
       const params = new URLSearchParams();
+      if (academicYearFilter) params.set("academicYearId", academicYearFilter);
       if (classFilter) params.set("classId", classFilter);
       if (batchFilter) params.set("batchId", batchFilter);
       if (statusFilter) params.set("status", statusFilter);
@@ -142,20 +163,28 @@ export default function Students() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadClasses(), loadBatches(), loadStudents()]);
+      await Promise.all([loadClasses(), loadBatches(), loadAcademicYears()]);
+      const current = (await fetchApi("/AcademicYears/current").catch(() => null)) as { id: string } | null;
+      if (current?.id) setAcademicYearFilter(current.id);
       setLoading(false);
     })();
-  }, [classFilter, batchFilter, statusFilter]);
+  }, []);
+
+  useEffect(() => {
+    loadStudents();
+  }, [academicYearFilter, classFilter, batchFilter, statusFilter]);
 
   const batchesForClass = classFilter ? batches.filter((b) => b.classId === classFilter) : batches;
 
   const openAdd = () => {
     setEditingId(null);
+    const defaultYearId = academicYearFilter || (academicYears.length > 0 ? academicYears[0].id : "");
     setForm({
       admissionNumber: "",
       name: "",
       dateOfBirth: "",
       gender: "",
+      academicYearId: defaultYearId,
       classId: "",
       batchId: "",
       section: "",
@@ -174,6 +203,7 @@ export default function Students() {
       name: s.name,
       dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
       gender: s.gender ?? "",
+      academicYearId: s.academicYearId ?? academicYearFilter ?? "",
       classId: s.classId ?? "",
       batchId: s.batchId ?? "",
       section: s.section ?? "",
@@ -199,6 +229,7 @@ export default function Students() {
             name: form.name,
             dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
             gender: form.gender || undefined,
+            academicYearId: form.academicYearId || undefined,
             classId: form.classId || undefined,
             batchId: form.batchId || undefined,
             section: form.section || undefined,
@@ -221,6 +252,7 @@ export default function Students() {
             name: form.name,
             dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
             gender: form.gender || undefined,
+            academicYearId: form.academicYearId || undefined,
             classId: form.classId || undefined,
             batchId: form.batchId || undefined,
             section: form.section || undefined,
@@ -260,12 +292,14 @@ export default function Students() {
         method: "POST",
         body: JSON.stringify({
           studentIds: promoteStudentIds,
+          targetAcademicYearId: promoteTargetAcademicYearId || undefined,
           targetClassId: promoteTargetClassId,
           targetBatchId: promoteTargetBatchId || undefined,
         }),
       });
       toast({ title: "Success", description: "Students promoted." });
       setPromoteStudentIds([]);
+      setPromoteTargetAcademicYearId("");
       setPromoteTargetClassId("");
       setPromoteTargetBatchId("");
       await loadStudents();
@@ -384,6 +418,10 @@ export default function Students() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-2">
+                    <Select value={academicYearFilter || "all"} onValueChange={(v) => setAcademicYearFilter(v === "all" ? "" : v)}>
+                      <SelectTrigger className="w-[160px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
+                      <SelectContent><SelectItem value="all">All years</SelectItem>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                    </Select>
                     <Select value={classFilter || "all"} onValueChange={(v) => { setClassFilter(v === "all" ? "" : v); setBatchFilter(""); }}>
                       <SelectTrigger className="w-[140px]"><SelectValue placeholder="Class" /></SelectTrigger>
                       <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
@@ -408,6 +446,7 @@ export default function Students() {
                         {!editingId && (
                           <div className="space-y-1"><Label>Admission number *</Label><Input value={form.admissionNumber} onChange={(e) => setForm((f) => ({ ...f, admissionNumber: e.target.value }))} required /></div>
                         )}
+                        <div className="space-y-1"><Label>Academic year</Label><Select value={form.academicYearId || "all"} onValueChange={(v) => setForm((f) => ({ ...f, academicYearId: v === "all" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger><SelectContent><SelectItem value="all">—</SelectItem>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent></Select></div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required /></div>
                           <div className="space-y-1"><Label>DOB</Label><Input type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} /></div>
@@ -460,6 +499,13 @@ export default function Students() {
                 <CardContent>
                   <form onSubmit={handleBulkPromote} className="space-y-4">
                     <div className="flex flex-wrap gap-4">
+                      <div className="space-y-1">
+                        <Label>Target academic year</Label>
+                        <Select value={promoteTargetAcademicYearId} onValueChange={setPromoteTargetAcademicYearId}>
+                          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Year" /></SelectTrigger>
+                          <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-1">
                         <Label>Target class</Label>
                         <Select value={promoteTargetClassId} onValueChange={(v) => { setPromoteTargetClassId(v); setPromoteTargetBatchId(""); }}>

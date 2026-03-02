@@ -11,6 +11,8 @@ public class ReportsService : IReportsService
     private readonly IClassRepository _classRepo;
     private readonly IBatchRepository _batchRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
     private readonly IPaymentRepository _paymentRepo;
     private readonly IFeeService _feeService;
     private readonly IAttendanceRepository _attendanceRepo;
@@ -26,6 +28,8 @@ public class ReportsService : IReportsService
         IClassRepository classRepo,
         IBatchRepository batchRepo,
         IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
+        IAcademicYearRepository academicYearRepo,
         IPaymentRepository paymentRepo,
         IFeeService feeService,
         IAttendanceRepository attendanceRepo,
@@ -38,6 +42,8 @@ public class ReportsService : IReportsService
         _classRepo = classRepo;
         _batchRepo = batchRepo;
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
+        _academicYearRepo = academicYearRepo;
         _paymentRepo = paymentRepo;
         _feeService = feeService;
         _attendanceRepo = attendanceRepo;
@@ -50,13 +56,16 @@ public class ReportsService : IReportsService
 
     public async Task<IReadOnlyList<EnrollmentReportDto>> GetEnrollmentByClassAsync(string? classId, CancellationToken ct = default)
     {
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null)
+            return new List<EnrollmentReportDto>();
         var classes = await _classRepo.GetAllAsync(ct);
         if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var cid))
             classes = classes.Where(c => c.Id == cid).ToList();
         var result = new List<EnrollmentReportDto>();
         foreach (var c in classes)
         {
-            var count = await _studentRepo.CountAsync(c.Id, null, "Active", ct);
+            var count = await _enrollmentRepo.CountByAcademicYearAsync(currentYear.Id, c.Id, null, "Active", ct);
             result.Add(new EnrollmentReportDto
             {
                 ClassId = c.Id.ToString(),
@@ -69,6 +78,9 @@ public class ReportsService : IReportsService
 
     public async Task<IReadOnlyList<BatchStrengthReportDto>> GetBatchStrengthAsync(string? classId, CancellationToken ct = default)
     {
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null)
+            return new List<BatchStrengthReportDto>();
         var batches = await _batchRepo.GetAllAsync(ct);
         if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var cid))
             batches = batches.Where(b => b.ClassId == cid).ToList();
@@ -76,7 +88,7 @@ public class ReportsService : IReportsService
         var result = new List<BatchStrengthReportDto>();
         foreach (var b in batches)
         {
-            var count = await _studentRepo.CountAsync(b.ClassId, b.Id, "Active", ct);
+            var count = await _enrollmentRepo.CountByAcademicYearAsync(currentYear.Id, b.ClassId, b.Id, "Active", ct);
             result.Add(new BatchStrengthReportDto
             {
                 ClassName = classes.GetValueOrDefault(b.ClassId)?.Name ?? "",
@@ -108,37 +120,36 @@ public class ReportsService : IReportsService
 
     public async Task<AttendanceReportDto> GetAttendanceReportAsync(string? classId, DateTime from, DateTime to, CancellationToken ct = default)
     {
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null)
+            return new AttendanceReportDto { From = from, To = to, ClassId = classId, Rows = new List<AttendanceReportRowDto>() };
         Guid? cid = null;
         if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var parsed))
             cid = parsed;
-        var students = await _studentRepo.GetAllAsync(cid, null, "Active", 0, 5000, ct);
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 5000, ct);
         var rows = new List<AttendanceReportRowDto>();
-        foreach (var s in students)
+        var classDict = (await _classRepo.GetAllAsync(ct)).ToDictionary(c => c.Id);
+        foreach (var enr in enrollments)
         {
+            var s = enr.Student;
+            if (s == null) continue;
             var records = await _attendanceRepo.GetByStudentAndDateRangeAsync(s.Id, from, to, ct);
             var presentDays = records.Count(r => r.Status == "Present" || r.Status == "Late");
             var absentDays = records.Count(r => r.Status == "Absent");
             var totalDays = presentDays + absentDays;
             var percentage = totalDays > 0 ? Math.Round(presentDays * 100.0 / totalDays, 2) : 0;
+            var className = enr.ClassId.HasValue ? classDict.GetValueOrDefault(enr.ClassId.Value)?.Name : null;
             rows.Add(new AttendanceReportRowDto
             {
                 StudentId = s.Id.ToString(),
                 StudentName = s.Name,
-                ClassName = s.ClassId.HasValue ? null : null, // we'll fill from class repo if needed
+                ClassName = className,
                 PresentDays = presentDays,
                 AbsentDays = absentDays,
                 TotalDays = totalDays,
                 Percentage = percentage,
                 ChronicAbsentee = percentage < ChronicAbsenteeThresholdPercent && totalDays >= 5
             });
-        }
-        var classDict = (await _classRepo.GetAllAsync(ct)).ToDictionary(c => c.Id);
-        foreach (var r in rows)
-        {
-            var sid = Guid.Parse(r.StudentId);
-            var stu = students.FirstOrDefault(s => s.Id == sid);
-            if (stu?.ClassId != null)
-                r.ClassName = classDict.GetValueOrDefault(stu.ClassId.Value)?.Name;
         }
         return new AttendanceReportDto { From = from, To = to, ClassId = classId, Rows = rows.OrderBy(x => x.ClassName).ThenBy(x => x.StudentName).ToList() };
     }

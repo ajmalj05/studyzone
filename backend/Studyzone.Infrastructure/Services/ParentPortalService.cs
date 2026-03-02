@@ -14,6 +14,7 @@ public class ParentPortalService : IParentPortalService
 {
     private readonly IStudentParentRepository _studentParentRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
     private readonly IClassRepository _classRepo;
     private readonly IBatchRepository _batchRepo;
     private readonly IAttendanceService _attendanceService;
@@ -27,6 +28,7 @@ public class ParentPortalService : IParentPortalService
     public ParentPortalService(
         IStudentParentRepository studentParentRepo,
         IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
         IClassRepository classRepo,
         IBatchRepository batchRepo,
         IAttendanceService attendanceService,
@@ -39,6 +41,7 @@ public class ParentPortalService : IParentPortalService
     {
         _studentParentRepo = studentParentRepo;
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
         _classRepo = classRepo;
         _batchRepo = batchRepo;
         _attendanceService = attendanceService;
@@ -81,19 +84,20 @@ public class ParentPortalService : IParentPortalService
         {
             var student = await _studentRepo.GetByIdAsync(link.StudentId, ct);
             if (student == null) continue;
+            var enr = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
             string? className = null, batchName = null;
-            if (student.ClassId.HasValue)
-                className = (await _classRepo.GetByIdAsync(student.ClassId.Value, ct))?.Name;
-            if (student.BatchId.HasValue)
-                batchName = (await _batchRepo.GetByIdAsync(student.BatchId.Value, ct))?.Name;
+            if (enr?.ClassId.HasValue == true)
+                className = (await _classRepo.GetByIdAsync(enr.ClassId.Value, ct))?.Name;
+            if (enr?.BatchId.HasValue == true)
+                batchName = (await _batchRepo.GetByIdAsync(enr.BatchId.Value, ct))?.Name;
             result.Add(new ParentChildDto
             {
                 StudentId = student.Id.ToString(),
                 Name = student.Name,
-                AdmissionNumber = student.AdmissionNumber,
+                AdmissionNumber = enr?.AdmissionNumber ?? student.AdmissionNumber,
                 ClassName = className,
                 BatchName = batchName,
-                Section = student.Section
+                Section = enr?.Section
             });
         }
         return result;
@@ -126,8 +130,10 @@ public class ParentPortalService : IParentPortalService
         if (!await CanAccessStudentAsync(parentUserGuid, studentId, ct))
             return Array.Empty<StudentExamResultDto>();
         var student = await _studentRepo.GetByIdAsync(Guid.Parse(studentId), ct);
-        if (student?.ClassId == null) return Array.Empty<StudentExamResultDto>();
-        var exams = await _examRepo.GetAllAsync(student.ClassId, ct);
+        if (student == null) return Array.Empty<StudentExamResultDto>();
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
+        if (enr?.ClassId == null) return Array.Empty<StudentExamResultDto>();
+        var exams = await _examRepo.GetAllAsync(enr.ClassId, ct);
         var list = new List<StudentExamResultDto>();
         foreach (var exam in exams)
         {
@@ -143,8 +149,10 @@ public class ParentPortalService : IParentPortalService
         if (!await CanAccessStudentAsync(parentUserGuid, studentId, ct))
             return Array.Empty<TimetableSlotDto>();
         var student = await _studentRepo.GetByIdAsync(Guid.Parse(studentId), ct);
-        if (student?.BatchId == null) return Array.Empty<TimetableSlotDto>();
-        return await _timetableService.GetSlotsByBatchAsync(student.BatchId.Value.ToString(), ct);
+        if (student == null) return Array.Empty<TimetableSlotDto>();
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
+        if (enr?.BatchId == null) return Array.Empty<TimetableSlotDto>();
+        return await _timetableService.GetSlotsByBatchAsync(enr.BatchId.Value.ToString(), ct);
     }
 
     public async Task<IReadOnlyList<AnnouncementDto>> GetAnnouncementsAsync(string parentUserGuid, int take = 50, CancellationToken ct = default)

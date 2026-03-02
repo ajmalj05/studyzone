@@ -23,10 +23,13 @@ public class StudentDto
     public string? SiblingGroupId { get; set; }
     public Dictionary<string, string>? CustomFields { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? AcademicYearId { get; set; }
+    public string? AcademicYearName { get; set; }
 }
 
 public class CreateStudentRequest
 {
+    public string? AcademicYearId { get; set; }
     public string AdmissionNumber { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
@@ -44,6 +47,7 @@ public class CreateStudentRequest
 
 public class UpdateStudentRequest
 {
+    public string? AcademicYearId { get; set; }
     public string Name { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public string? Gender { get; set; }
@@ -61,6 +65,7 @@ public class UpdateStudentRequest
 public class BulkPromoteRequest
 {
     public IReadOnlyList<string> StudentIds { get; set; } = Array.Empty<string>();
+    public string? TargetAcademicYearId { get; set; }
     public string TargetClassId { get; set; } = string.Empty;
     public string? TargetBatchId { get; set; }
     public string? TargetSection { get; set; }

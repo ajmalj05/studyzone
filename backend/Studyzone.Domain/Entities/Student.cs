@@ -8,10 +8,6 @@ public class Student
     public string Name { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public string? Gender { get; set; }
-    public Guid? ClassId { get; set; }
-    public Guid? BatchId { get; set; }
-    public string? Section { get; set; }
-    public string Status { get; set; } = "Active"; // Active, Inactive, Transferred, Withdrawn, Alumni
     public string? GuardianName { get; set; }
     public string? GuardianPhone { get; set; }
     public string? GuardianEmail { get; set; }
@@ -22,4 +18,6 @@ public class Student
     public string? CustomFieldsJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    public ICollection<StudentEnrollment> Enrollments { get; set; } = new List<StudentEnrollment>();
 }

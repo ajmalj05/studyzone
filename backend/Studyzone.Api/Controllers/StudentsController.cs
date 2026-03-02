@@ -17,9 +17,9 @@ public class StudentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<StudentListResponse>> GetAll([FromQuery] string? classId, [FromQuery] string? batchId, [FromQuery] string? status, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+    public async Task<ActionResult<StudentListResponse>> GetAll([FromQuery] string? classId, [FromQuery] string? batchId, [FromQuery] string? status, [FromQuery] string? academicYearId, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
     {
-        var (items, total) = await _service.GetAllAsync(classId, batchId, status, skip, take, ct);
+        var (items, total) = await _service.GetAllAsync(classId, batchId, status, academicYearId, skip, take, ct);
         return Ok(new StudentListResponse { Items = items, Total = total });
     }
 

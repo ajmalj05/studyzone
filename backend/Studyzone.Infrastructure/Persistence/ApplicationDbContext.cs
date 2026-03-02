@@ -23,6 +23,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Batch> Batches => Set<Batch>();
     public DbSet<SiblingGroup> SiblingGroups => Set<SiblingGroup>();
     public DbSet<Student> Students => Set<Student>();
+    public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
     public DbSet<StudentStatusHistory> StudentStatusHistories => Set<StudentStatusHistory>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
     public DbSet<FeeStructure> FeeStructures => Set<FeeStructure>();
@@ -38,6 +39,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<MarksEntry> MarksEntries => Set<MarksEntry>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<TeacherSalary> TeacherSalaries => Set<TeacherSalary>();
+    public DbSet<TeacherSalaryPayment> TeacherSalaryPayments => Set<TeacherSalaryPayment>();
+    public DbSet<TeacherSalaryPaymentLine> TeacherSalaryPaymentLines => Set<TeacherSalaryPaymentLine>();
     public DbSet<PortalRequest> PortalRequests => Set<PortalRequest>();
     public DbSet<StudentParent> StudentParents => Set<StudentParent>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -83,9 +86,16 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Student>(e =>
         {
             e.HasIndex(x => x.AdmissionNumber).IsUnique();
-            e.HasIndex(x => x.Status);
+            e.HasMany(x => x.Enrollments).WithOne(x => x.Student).HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<StudentEnrollment>(e =>
+        {
+            e.HasIndex(x => x.StudentId);
+            e.HasIndex(x => x.AcademicYearId);
+            e.HasIndex(x => new { x.StudentId, x.AcademicYearId }).IsUnique();
             e.HasIndex(x => x.ClassId);
             e.HasIndex(x => x.BatchId);
+            e.HasIndex(x => x.Status);
         });
         modelBuilder.Entity<FeeCharge>(e =>
         {
@@ -131,6 +141,17 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(x => x.TeacherUserId);
             e.HasIndex(x => x.EffectiveFrom);
+        });
+        modelBuilder.Entity<TeacherSalaryPayment>(e =>
+        {
+            e.HasIndex(x => x.TeacherUserId);
+            e.HasIndex(x => new { x.Year, x.Month });
+            e.HasIndex(x => new { x.TeacherUserId, x.Year, x.Month }).IsUnique();
+            e.HasMany(x => x.Lines).WithOne(x => x.TeacherSalaryPayment).HasForeignKey(x => x.TeacherSalaryPaymentId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<TeacherSalaryPaymentLine>(e =>
+        {
+            e.HasIndex(x => x.TeacherSalaryPaymentId);
         });
         modelBuilder.Entity<PortalRequest>(e =>
         {

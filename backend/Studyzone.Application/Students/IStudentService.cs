@@ -3,7 +3,7 @@ namespace Studyzone.Application.Students;
 public interface IStudentService
 {
     Task<StudentDto?> GetByIdAsync(string id, CancellationToken ct = default);
-    Task<(IReadOnlyList<StudentDto> Items, int Total)> GetAllAsync(string? classId, string? batchId, string? status, int skip, int take, CancellationToken ct = default);
+    Task<(IReadOnlyList<StudentDto> Items, int Total)> GetAllAsync(string? classId, string? batchId, string? status, string? academicYearId, int skip, int take, CancellationToken ct = default);
     Task<StudentDto> CreateAsync(CreateStudentRequest request, CancellationToken ct = default);
     Task<StudentDto> UpdateAsync(string id, UpdateStudentRequest request, CancellationToken ct = default);
     Task SetStatusAsync(string id, string status, string? notes, CancellationToken ct = default);

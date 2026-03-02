@@ -13,6 +13,7 @@ namespace Studyzone.Infrastructure.Services;
 public class PortalService : IPortalService
 {
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
     private readonly IClassRepository _classRepo;
     private readonly IBatchRepository _batchRepo;
     private readonly IAttendanceRepository _attendanceRepo;
@@ -29,6 +30,7 @@ public class PortalService : IPortalService
 
     public PortalService(
         IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
         IClassRepository classRepo,
         IBatchRepository batchRepo,
         IAttendanceRepository attendanceRepo,
@@ -44,6 +46,7 @@ public class PortalService : IPortalService
         ITeacherSalaryService salaryService)
     {
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
         _classRepo = classRepo;
         _batchRepo = batchRepo;
         _attendanceRepo = attendanceRepo;
@@ -66,11 +69,12 @@ public class PortalService : IPortalService
         var student = await _studentRepo.GetByUserIdAsync(uid, ct);
         if (student == null)
             return null;
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
         string? className = null, batchName = null;
-        if (student.ClassId.HasValue)
-            className = (await _classRepo.GetByIdAsync(student.ClassId.Value, ct))?.Name;
-        if (student.BatchId.HasValue)
-            batchName = (await _batchRepo.GetByIdAsync(student.BatchId.Value, ct))?.Name;
+        if (enr?.ClassId.HasValue == true)
+            className = (await _classRepo.GetByIdAsync(enr.ClassId.Value, ct))?.Name;
+        if (enr?.BatchId.HasValue == true)
+            batchName = (await _batchRepo.GetByIdAsync(enr.BatchId.Value, ct))?.Name;
         return new StudentPortalProfileDto
         {
             Id = student.Id.ToString(),
@@ -93,6 +97,7 @@ public class PortalService : IPortalService
         var student = await _studentRepo.GetByIdAsync(studentId, ct);
         if (student == null)
             return new StudentPortalDashboardDto { Student = profile, PendingFees = 0, UpcomingExamsCount = 0 };
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
 
         var to = DateTime.UtcNow.Date;
         var from = to.AddDays(-30);
@@ -104,7 +109,7 @@ public class PortalService : IPortalService
         var ledger = await _feeService.GetLedgerAsync(profile.Id, null, null, ct);
         var pendingFees = ledger.Balance;
 
-        var exams = student.ClassId.HasValue ? await _examRepo.GetAllAsync(student.ClassId, ct) : Array.Empty<Domain.Entities.Exam>();
+        var exams = enr?.ClassId.HasValue == true ? await _examRepo.GetAllAsync(enr.ClassId, ct) : Array.Empty<Domain.Entities.Exam>();
         var upcomingExamsCount = exams.Count(e => e.ExamDate.HasValue && e.ExamDate.Value.Date >= DateTime.UtcNow.Date);
 
         return new StudentPortalDashboardDto
@@ -121,9 +126,9 @@ public class PortalService : IPortalService
         var profile = await GetStudentProfileAsync(userGuid, ct);
         if (profile == null) return Array.Empty<TimetableSlotDto>();
         if (!Guid.TryParse(profile.Id, out var studentId)) return Array.Empty<TimetableSlotDto>();
-        var student = await _studentRepo.GetByIdAsync(studentId, ct);
-        if (student?.BatchId == null) return Array.Empty<TimetableSlotDto>();
-        return await _timetableService.GetSlotsByBatchAsync(student.BatchId.Value.ToString(), ct);
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
+        if (enr?.BatchId == null) return Array.Empty<TimetableSlotDto>();
+        return await _timetableService.GetSlotsByBatchAsync(enr.BatchId.Value.ToString(), ct);
     }
 
     public async Task<IReadOnlyList<AttendanceRecordDto>> GetStudentAttendanceAsync(string userGuid, DateTime from, DateTime to, CancellationToken ct = default)
@@ -145,9 +150,9 @@ public class PortalService : IPortalService
         var profile = await GetStudentProfileAsync(userGuid, ct);
         if (profile == null) return Array.Empty<StudentExamResultDto>();
         if (!Guid.TryParse(profile.Id, out var studentId)) return Array.Empty<StudentExamResultDto>();
-        var student = await _studentRepo.GetByIdAsync(studentId, ct);
-        if (student?.ClassId == null) return Array.Empty<StudentExamResultDto>();
-        var exams = await _examRepo.GetAllAsync(student.ClassId, ct);
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
+        if (enr?.ClassId == null) return Array.Empty<StudentExamResultDto>();
+        var exams = await _examRepo.GetAllAsync(enr.ClassId, ct);
         var list = new List<StudentExamResultDto>();
         foreach (var exam in exams)
         {
@@ -164,8 +169,8 @@ public class PortalService : IPortalService
         if (profile == null) return Array.Empty<AnnouncementDto>();
         if (!Guid.TryParse(userGuid, out var uid) || !Guid.TryParse(profile.Id, out var studentId))
             return Array.Empty<AnnouncementDto>();
-        var student = await _studentRepo.GetByIdAsync(studentId, ct);
-        var classId = student?.ClassId;
+        var enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
+        var classId = enr?.ClassId;
         return await _announcementService.GetNoticeBoardAsync(classId, uid, studentId, take, ct);
     }
 

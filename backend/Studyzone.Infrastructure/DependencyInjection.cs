@@ -66,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IClassRepository, ClassRepository>();
         services.AddScoped<IBatchRepository, BatchRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
         services.AddScoped<IStudentParentRepository, StudentParentRepository>();
         services.AddScoped<IStudentStatusHistoryRepository, StudentStatusHistoryRepository>();
         services.AddScoped<ISiblingGroupRepository, SiblingGroupRepository>();
@@ -94,6 +95,9 @@ public static class DependencyInjection
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<ITeacherSalaryRepository, TeacherSalaryRepository>();
         services.AddScoped<ITeacherSalaryService, TeacherSalaryService>();
+        services.AddScoped<ITeacherSalaryPaymentRepository, TeacherSalaryPaymentRepository>();
+        services.AddScoped<ITeacherSalaryPaymentLineRepository, TeacherSalaryPaymentLineRepository>();
+        services.AddScoped<ITeacherSalaryPaymentService, TeacherSalaryPaymentService>();
         services.AddScoped<IPortalRequestRepository, PortalRequestRepository>();
         services.AddScoped<IRequestsService, RequestsService>();
         services.AddScoped<INotificationRepository, NotificationRepository>();

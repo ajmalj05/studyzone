@@ -6,7 +6,8 @@ namespace Studyzone.Infrastructure.Services;
 
 public class DashboardService : IDashboardService
 {
-    private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
+    private readonly IAcademicYearRepository _academicYearRepo;
     private readonly IUserRepository _userRepo;
     private readonly IPaymentRepository _paymentRepo;
     private readonly IFeeService _feeService;
@@ -14,14 +15,16 @@ public class DashboardService : IDashboardService
     private readonly IAdmissionApprovalRepository _approvalRepo;
 
     public DashboardService(
-        IStudentRepository studentRepo,
+        IStudentEnrollmentRepository enrollmentRepo,
+        IAcademicYearRepository academicYearRepo,
         IUserRepository userRepo,
         IPaymentRepository paymentRepo,
         IFeeService feeService,
         IEnquiryRepository enquiryRepo,
         IAdmissionApprovalRepository approvalRepo)
     {
-        _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
+        _academicYearRepo = academicYearRepo;
         _userRepo = userRepo;
         _paymentRepo = paymentRepo;
         _feeService = feeService;
@@ -31,7 +34,8 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardKpiDto> GetKpisAsync(CancellationToken ct = default)
     {
-        var totalStudents = await _studentRepo.CountAsync(null, null, "Active", ct);
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        var totalStudents = currentYear == null ? 0 : await _enrollmentRepo.CountByAcademicYearAsync(currentYear.Id, null, null, "Active", ct);
         var teachers = await _userRepo.GetAllAsync("teacher", ct);
         var staff = await _userRepo.GetAllAsync("admin", ct);
         var staffCount = (await _userRepo.GetAllAsync(null, ct)).Count;

@@ -1,5 +1,8 @@
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { useAuth } from "@/context/AuthContext";
+import { useMobileMenu } from "@/context/MobileMenuContext";
 
 function getInitials(name: string | undefined, role: string): string {
   if (name && name.trim()) {
@@ -12,6 +15,7 @@ function getInitials(name: string | undefined, role: string): string {
 
 export function DashboardHeader({ title, description }: { title?: string; description?: string }) {
   const { user } = useAuth();
+  const mobileMenu = useMobileMenu();
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "short", year: "numeric", month: "short", day: "numeric",
   });
@@ -21,7 +25,19 @@ export function DashboardHeader({ title, description }: { title?: string; descri
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-2">
-      <div className="min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
+        {mobileMenu?.isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:hidden"
+            onClick={mobileMenu.openMobileMenu}
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="min-w-0">
         {title ? (
           <>
             <h1 className="text-lg font-semibold text-foreground truncate">{title}</h1>
@@ -30,6 +46,7 @@ export function DashboardHeader({ title, description }: { title?: string; descri
         ) : (
           <p className="text-xs text-muted-foreground">{today}</p>
         )}
+        </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <NotificationDropdown />

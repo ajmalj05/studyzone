@@ -244,14 +244,16 @@ export default function Exams() {
                     </form>
                   </DialogContent>
                 </Dialog>
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b"><th className="text-left py-2">Student</th><th className="text-left py-2">Subject</th><th className="text-left py-2">Marks</th><th className="text-left py-2">Max</th></tr></thead>
-                  <tbody>
-                    {marks.map((m) => (
-                      <tr key={m.id} className="border-b"><td className="py-2">{m.studentName}</td><td>{m.subject}</td><td>{m.marksObtained}</td><td>{m.maxMarks}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b"><th className="text-left py-2">Student</th><th className="text-left py-2">Subject</th><th className="text-left py-2">Marks</th><th className="text-left py-2">Max</th></tr></thead>
+                    <tbody>
+                      {marks.map((m) => (
+                        <tr key={m.id} className="border-b"><td className="py-2">{m.studentName}</td><td>{m.subject}</td><td>{m.marksObtained}</td><td>{m.maxMarks}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}
