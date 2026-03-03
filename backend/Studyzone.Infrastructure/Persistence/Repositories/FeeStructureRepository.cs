@@ -24,6 +24,18 @@ public class FeeStructureRepository : IFeeStructureRepository
         return await _db.FeeStructures.AsNoTracking().Where(x => x.ClassId == classId).OrderBy(x => x.Name).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<FeeStructure>> GetByClassIdAndAcademicYearAsync(Guid classId, Guid academicYearId, CancellationToken ct = default)
+    {
+        return await _db.FeeStructures.AsNoTracking()
+            .Where(x => x.ClassId == classId && x.AcademicYearId == academicYearId).OrderBy(x => x.Name).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<FeeStructure>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken ct = default)
+    {
+        return await _db.FeeStructures.AsNoTracking()
+            .Where(x => x.AcademicYearId == academicYearId).OrderBy(x => x.ClassId).ThenBy(x => x.Name).ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<FeeStructure>> GetAllAsync(CancellationToken ct = default)
     {
         return await _db.FeeStructures.AsNoTracking().OrderBy(x => x.ClassId).ThenBy(x => x.Name).ToListAsync(ct);

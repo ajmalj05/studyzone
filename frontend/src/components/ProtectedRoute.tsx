@@ -23,8 +23,8 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
         // Redirect to their respective dashboard if they try to access another role's route
         if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
         if (user.role === 'teacher') return <Navigate to="/teacher/dashboard" replace />;
-        if (user.role === 'student') return <Navigate to="/student/dashboard" replace />;
         if (user.role === 'parent') return <Navigate to="/parent/dashboard" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     return <Outlet />;

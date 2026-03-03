@@ -20,6 +20,9 @@ public class AuthService : IAuthService
         if (user == null)
             return null;
 
+        if (string.Equals(user.Role, "student", StringComparison.OrdinalIgnoreCase))
+            return null;
+
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return null;
 

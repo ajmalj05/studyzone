@@ -30,12 +30,15 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { DollarSign, List, CreditCard, AlertCircle } from "lucide-react";
 
 interface FeeStructureDto {
   id: string;
   classId: string;
   className: string;
+  academicYearId?: string;
+  academicYearName?: string;
   name: string;
   amount: number;
   frequency: string;
@@ -73,6 +76,7 @@ interface StudentDto {
 }
 
 export default function Fees() {
+  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
   const [structures, setStructures] = useState<FeeStructureDto[]>([]);
   const [outstanding, setOutstanding] = useState<FeeLedgerDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
@@ -82,13 +86,16 @@ export default function Fees() {
   const [classFilter, setClassFilter] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [paymentForm, setPaymentForm] = useState({ studentId: "", amount: "", mode: "Cash" });
-  const [structureForm, setStructureForm] = useState({ classId: "", name: "", amount: "", frequency: "Monthly" });
+  const [structureForm, setStructureForm] = useState({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [structureModalOpen, setStructureModalOpen] = useState(false);
 
   const loadStructures = async () => {
     try {
-      const list = (await fetchApi("/Fees/structures")) as FeeStructureDto[];
+      const url = selectedYearId
+        ? `/Fees/structures?academicYearId=${encodeURIComponent(selectedYearId)}`
+        : "/Fees/structures";
+      const list = (await fetchApi(url)) as FeeStructureDto[];
       setStructures(list);
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to load fee structures", variant: "destructive" });
@@ -97,7 +104,10 @@ export default function Fees() {
 
   const loadOutstanding = async () => {
     try {
-      const url = classFilter ? `/Fees/outstanding?classId=${encodeURIComponent(classFilter)}` : "/Fees/outstanding";
+      const params = new URLSearchParams();
+      if (classFilter) params.set("classId", classFilter);
+      if (selectedYearId) params.set("academicYearId", selectedYearId);
+      const url = params.toString() ? `/Fees/outstanding?${params}` : "/Fees/outstanding";
       const list = (await fetchApi(url)) as FeeLedgerDto[];
       setOutstanding(list);
     } catch (e: unknown) {
@@ -135,7 +145,7 @@ export default function Fees() {
       await Promise.all([loadStructures(), loadOutstanding(), loadClasses(), loadStudents()]);
       setLoading(false);
     })();
-  }, [classFilter]);
+  }, [classFilter, selectedYearId]);
 
   useEffect(() => {
     if (selectedStudentId) loadLedger(selectedStudentId);
@@ -173,18 +183,24 @@ export default function Fees() {
       toast({ title: "Validation", description: "Class, name and amount required.", variant: "destructive" });
       return;
     }
+    const academicYearId = structureForm.academicYearId || selectedYearId;
+    if (!academicYearId) {
+      toast({ title: "Validation", description: "Select an academic year.", variant: "destructive" });
+      return;
+    }
     try {
       await fetchApi("/Fees/structures", {
         method: "POST",
         body: JSON.stringify({
           classId: structureForm.classId,
+          academicYearId,
           name: structureForm.name,
           amount: Number(structureForm.amount),
           frequency: structureForm.frequency,
         }),
       });
       toast({ title: "Success", description: "Fee structure created." });
-      setStructureForm({ classId: "", name: "", amount: "", frequency: "Monthly" });
+      setStructureForm({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
       setStructureModalOpen(false);
       await loadStructures();
     } catch (err: unknown) {
@@ -228,13 +244,19 @@ export default function Fees() {
               <Card>
                 <CardHeader>
                   <CardTitle>Outstanding by class</CardTitle>
-                  <CardDescription>Students with balance &gt; 0</CardDescription>
+                  <CardDescription>Students with balance &gt; 0 (scoped by academic year)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
-                    <SelectTrigger className="w-[180px] mb-4"><SelectValue placeholder="Filter by class" /></SelectTrigger>
-                    <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
+                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
+                      <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
+                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
+                      <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
                   <Table>
                     <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead>Charges</TableHead><TableHead>Payments</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
                     <TableBody>
@@ -323,17 +345,24 @@ export default function Fees() {
               <Card>
                 <CardHeader>
                   <CardTitle>Fee structures</CardTitle>
-                  <CardDescription>Define fee by class (e.g. Tuition, Lab).</CardDescription>
+                  <CardDescription>Define fee by class and academic year (e.g. Tuition, Lab).</CardDescription>
+                  <div className="flex gap-2 pt-2">
+                    <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
+                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
+                      <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={() => setStructureModalOpen(true)}>Add fee structure</Button>
-                  <Dialog open={structureModalOpen} onOpenChange={setStructureModalOpen}>
+                  <Button onClick={() => { setStructureForm((f) => ({ ...f, academicYearId: selectedYearId })); setStructureModalOpen(true); }}>Add fee structure</Button>
+                  <Dialog open={structureModalOpen} onOpenChange={(open) => { if (open) setStructureForm((f) => ({ ...f, academicYearId: selectedYearId })); setStructureModalOpen(open); }}>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>Add fee structure</DialogTitle>
-                        <DialogDescription>Define fee by class (e.g. Tuition, Lab).</DialogDescription>
+                        <DialogDescription>Define fee by class and academic year.</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCreateStructure} className="space-y-3">
+                        <div className="space-y-1"><Label>Academic year *</Label><Select value={structureForm.academicYearId || selectedYearId} onValueChange={(v) => setStructureForm((f) => ({ ...f, academicYearId: v }))}><SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger><SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
                         <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>

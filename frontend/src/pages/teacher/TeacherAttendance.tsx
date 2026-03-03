@@ -13,6 +13,7 @@ import { DownloadModal } from "@/components/DownloadModal";
 import { Download } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { useMyBatch } from "@/context/TeacherBatchContext";
 
 interface ClassDto {
   id: string;
@@ -31,6 +32,7 @@ interface AttendanceRecordDto {
 }
 
 const TeacherAttendance = () => {
+  const { myBatch, loading: myBatchLoading } = useMyBatch();
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [classId, setClassId] = useState("");
@@ -47,14 +49,44 @@ const TeacherAttendance = () => {
   const [selfLoading, setSelfLoading] = useState(false);
   const [currentSelfStatus, setCurrentSelfStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchApi("/Classes")
-      .then((list: ClassDto[]) => setClasses(Array.isArray(list) ? list : []))
-      .catch(() => setClasses([]));
-  }, []);
+  const effectiveBatchId = myBatch?.id ?? null;
+  const effectiveClassId = myBatch ? null : classId;
 
   useEffect(() => {
-    if (!classId) {
+    if (!myBatch) {
+      fetchApi("/Classes")
+        .then((list: ClassDto[]) => setClasses(Array.isArray(list) ? list : []))
+        .catch(() => setClasses([]));
+    }
+  }, [myBatch]);
+
+  useEffect(() => {
+    if (effectiveBatchId) {
+      setLoading(true);
+      const dateObj = new Date(date + "T12:00:00").toISOString();
+      Promise.all([
+        fetchApi(`/Students?batchId=${encodeURIComponent(effectiveBatchId)}&status=Active&take=500`) as Promise<{
+          items: StudentDto[];
+        }>,
+        fetchApi(`/Attendance/batch/${effectiveBatchId}?date=${dateObj}`) as Promise<AttendanceRecordDto[]>,
+      ])
+        .then(([res, att]) => {
+          const list = res?.items ?? [];
+          setStudents(list);
+          const map: Record<string, string> = {};
+          att.forEach((a) => {
+            if (a.studentId) map[a.studentId] = a.status;
+          });
+          list.forEach((s) => {
+            if (!(s.id in map)) map[s.id] = "Present";
+          });
+          setStatusByStudent(map);
+        })
+        .catch((e: Error) => toast({ title: "Error", description: e.message || "Failed to load", variant: "destructive" }))
+        .finally(() => setLoading(false));
+      return;
+    }
+    if (!effectiveClassId) {
       setStudents([]);
       setStatusByStudent({});
       return;
@@ -62,10 +94,10 @@ const TeacherAttendance = () => {
     setLoading(true);
     const dateObj = new Date(date + "T12:00:00").toISOString();
     Promise.all([
-      fetchApi(`/Students?classId=${encodeURIComponent(classId)}&status=Active&take=500`) as Promise<{
+      fetchApi(`/Students?classId=${encodeURIComponent(effectiveClassId)}&status=Active&take=500`) as Promise<{
         items: StudentDto[];
       }>,
-      fetchApi(`/Attendance/class/${classId}?date=${dateObj}`) as Promise<AttendanceRecordDto[]>,
+      fetchApi(`/Attendance/class/${effectiveClassId}?date=${dateObj}`) as Promise<AttendanceRecordDto[]>,
     ])
       .then(([res, att]) => {
         const list = res?.items ?? [];
@@ -81,16 +113,34 @@ const TeacherAttendance = () => {
       })
       .catch((e: Error) => toast({ title: "Error", description: e.message || "Failed to load", variant: "destructive" }))
       .finally(() => setLoading(false));
-  }, [classId, date]);
+  }, [effectiveBatchId, effectiveClassId, date]);
 
   const handleSubmit = async () => {
-    if (!classId) return;
+    if (effectiveBatchId) {
+      setSaving(true);
+      try {
+        await fetchApi("/Attendance/bulk", {
+          method: "POST",
+          body: JSON.stringify({
+            batchId: effectiveBatchId,
+            date: new Date(date + "T12:00:00").toISOString(),
+            items: students.map((s) => ({ studentId: s.id, status: statusByStudent[s.id] || "Present" })),
+          }),
+        });
+        toast({ title: "Success", description: "Attendance saved." });
+      } catch (e: unknown) {
+        toast({ title: "Error", description: (e as Error).message || "Save failed", variant: "destructive" });
+      }
+      setSaving(false);
+      return;
+    }
+    if (!effectiveClassId) return;
     setSaving(true);
     try {
       await fetchApi("/Attendance/bulk", {
         method: "POST",
         body: JSON.stringify({
-          classId,
+          classId: effectiveClassId,
           date: new Date(date + "T12:00:00").toISOString(),
           items: students.map((s) => ({ studentId: s.id, status: statusByStudent[s.id] || "Present" })),
         }),
@@ -139,21 +189,31 @@ const TeacherAttendance = () => {
     setSelfSaving(false);
   };
 
+  const batchDisplayName = myBatch ? `${myBatch.className} – ${myBatch.name}` : null;
+
   return (
     <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-lg font-semibold text-foreground">Mark Student Attendance</h1>
           <div className="flex gap-3 flex-wrap">
-            <Select value={classId} onValueChange={setClassId}>
-              <SelectTrigger className="w-[200px] rounded-xl">
-                <SelectValue placeholder="Select class" />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {myBatchLoading ? (
+              <span className="text-sm text-muted-foreground">Loading...</span>
+            ) : myBatch ? (
+              <span className="rounded-xl border border-input bg-muted/50 px-4 py-2 text-sm font-medium">
+                My batch: {batchDisplayName}
+              </span>
+            ) : (
+              <Select value={classId} onValueChange={setClassId}>
+                <SelectTrigger className="w-[200px] rounded-xl">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <input
               type="date"
               value={date}
@@ -166,11 +226,19 @@ const TeacherAttendance = () => {
           </div>
         </div>
 
+        {!myBatchLoading && !myBatch && !classId && (
+          <Card className="rounded-[var(--radius)] border-muted">
+            <CardContent className="py-6">
+              <p className="text-muted-foreground text-center">You are not assigned as class teacher of any batch. Select a class above to mark attendance, or ask admin to assign you to a batch.</p>
+            </CardContent>
+          </Card>
+        )}
+
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="rounded-[var(--radius)] shadow-card">
             <CardHeader>
               <CardTitle className="text-lg">
-                {classId ? classes.find((c) => c.id === classId)?.name ?? "Class" : "Select class"} — {date}
+                {batchDisplayName ?? (classId ? classes.find((c) => c.id === classId)?.name ?? "Class" : "Select class")} — {date}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -237,8 +305,8 @@ const TeacherAttendance = () => {
                       </Button>
                     </div>
                   )}
-                  {classId && !loading && students.length === 0 && (
-                    <p className="text-muted-foreground py-4">No active students in this class.</p>
+                  {(effectiveBatchId || effectiveClassId) && !loading && students.length === 0 && (
+                    <p className="text-muted-foreground py-4">No active students in this batch/class.</p>
                   )}
                 </>
               )}

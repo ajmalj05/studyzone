@@ -4,6 +4,7 @@ public interface IAttendanceService
 {
     Task<IReadOnlyList<AttendanceRecordDto>> GetByStudentAsync(string studentId, DateTime from, DateTime to, CancellationToken ct = default);
     Task<IReadOnlyList<AttendanceRecordDto>> GetByClassAndDateAsync(string classId, DateTime date, CancellationToken ct = default);
+    Task<IReadOnlyList<AttendanceRecordDto>> GetByBatchAndDateAsync(string batchId, DateTime date, CancellationToken ct = default);
     Task SaveBulkAsync(BulkAttendanceRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<MonthlyAttendanceReportDto>> GetMonthlyReportAsync(string? classId, int year, int month, CancellationToken ct = default);
 

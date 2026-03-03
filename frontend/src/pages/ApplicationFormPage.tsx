@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi, API_URL } from "@/lib/api";
+import { useAcademicYearOptional } from "@/context/AcademicYearContext";
 import {
   Table,
   TableBody,
@@ -252,6 +253,7 @@ export default function ApplicationFormPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const academicYearContext = useAcademicYearOptional();
   const enquiryId = searchParams.get("enquiryId") ?? undefined;
   const isNew = !id || id === "new";
 
@@ -343,9 +345,12 @@ export default function ApplicationFormPage() {
   useEffect(() => {
     (async () => {
       try {
+        const batchesUrl = academicYearContext?.selectedYearId
+          ? `/Batches?academicYearId=${encodeURIComponent(academicYearContext.selectedYearId)}`
+          : "/Batches";
         const [classesRes, batchesRes, yearsRes, currentYearRes] = await Promise.all([
           fetchApi("/Classes"),
-          fetchApi("/Batches"),
+          fetchApi(batchesUrl),
           fetchApi("/AcademicYears").catch(() => []),
           fetchApi("/AcademicYears/current").catch(() => null),
         ]);
@@ -367,7 +372,7 @@ export default function ApplicationFormPage() {
         setAcademicYears([]);
       }
     })();
-  }, [isNew]);
+  }, [isNew, academicYearContext?.selectedYearId]);
 
   useEffect(() => {
     if (!isNew && id) {

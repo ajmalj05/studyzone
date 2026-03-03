@@ -1,18 +1,15 @@
 using Studyzone.Application.Auth;
 using Studyzone.Application.Common.Interfaces;
-using Studyzone.Domain.Entities;
 
 namespace Studyzone.Infrastructure.Services;
 
 public class VerifyProfileService : IVerifyProfileService
 {
     private readonly IUserRepository _userRepo;
-    private readonly IStudentRepository _studentRepo;
 
-    public VerifyProfileService(IUserRepository userRepo, IStudentRepository studentRepo)
+    public VerifyProfileService(IUserRepository userRepo)
     {
         _userRepo = userRepo;
-        _studentRepo = studentRepo;
     }
 
     public async Task<VerifyProfileResponse?> VerifyProfileAsync(string registerNumber, string role, CancellationToken ct = default)
@@ -21,18 +18,6 @@ public class VerifyProfileService : IVerifyProfileService
         var reg = (registerNumber ?? "").Trim();
         if (string.IsNullOrEmpty(reg))
             return null;
-
-        if (r == "student")
-        {
-            var student = await _studentRepo.GetByAdmissionNumberAsync(reg, ct);
-            if (student == null)
-                return null;
-            return new VerifyProfileResponse
-            {
-                Name = student.Name ?? "",
-                Phone = student.GuardianPhone ?? "Not on file"
-            };
-        }
 
         if (r == "teacher")
         {
@@ -57,46 +42,6 @@ public class VerifyProfileService : IVerifyProfileService
             throw new InvalidOperationException("Register number and password are required.");
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
-
-        if (r == "student")
-        {
-            var student = await _studentRepo.GetByAdmissionNumberAsync(reg, ct);
-            if (student == null)
-                throw new InvalidOperationException("Student not found with this admission number.");
-
-            if (student.UserId.HasValue)
-            {
-                var existingUser = await _userRepo.GetByIdAsync(student.UserId.Value, ct);
-                if (existingUser != null)
-                {
-                    existingUser.PasswordHash = hashedPassword;
-                    existingUser.UpdatedAt = DateTime.UtcNow;
-                    await _userRepo.UpdateAsync(existingUser, ct);
-                }
-                return;
-            }
-
-            var user = new User
-            {
-                Id = Guid.NewGuid(),
-                UserId = student.AdmissionNumber,
-                PasswordHash = hashedPassword,
-                Name = student.Name,
-                Role = "student",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _userRepo.AddAsync(user, ct);
-
-            var trackedStudent = await _studentRepo.GetByIdAsync(student.Id, ct);
-            if (trackedStudent != null)
-            {
-                trackedStudent.UserId = user.Id;
-                trackedStudent.UpdatedAt = DateTime.UtcNow;
-                await _studentRepo.UpdateAsync(trackedStudent, ct);
-            }
-            return;
-        }
 
         if (r == "teacher")
         {

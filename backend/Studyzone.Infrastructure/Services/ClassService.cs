@@ -33,7 +33,6 @@ public class ClassService : IClassService
             Id = Guid.NewGuid(),
             Name = request.Name,
             Code = request.Code,
-            SeatLimit = request.SeatLimit,
             CreatedAt = DateTime.UtcNow
         };
         var added = await _repo.AddAsync(entity, ct);
@@ -47,7 +46,6 @@ public class ClassService : IClassService
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Class not found.");
         entity.Name = request.Name;
         entity.Code = request.Code;
-        entity.SeatLimit = request.SeatLimit;
         await _repo.UpdateAsync(entity, ct);
         return Map(entity);
     }
@@ -56,7 +54,6 @@ public class ClassService : IClassService
     {
         Id = e.Id.ToString(),
         Name = e.Name,
-        Code = e.Code,
-        SeatLimit = e.SeatLimit
+        Code = e.Code
     };
 }

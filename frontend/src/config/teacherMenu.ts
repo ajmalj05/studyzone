@@ -1,15 +1,16 @@
 import {
-    LayoutDashboard, Users, ClipboardCheck, BookOpen, FileText, DollarSign, Bell, UserCircle, Calendar, PenLine, MessageSquare
+    LayoutDashboard, Users, ClipboardCheck, BookOpen, FileText, DollarSign, Bell, UserCircle, Calendar, PenLine, MessageSquare, BookMarked
 } from "lucide-react";
 
 export const getTeacherMenu = () => [
     { title: "Dashboard", icon: LayoutDashboard, path: "/teacher/dashboard" },
+    { title: "My Batch", icon: BookMarked, path: "/teacher/my-batch" },
     { title: "My Classes", icon: BookOpen, path: "/teacher/classes" },
     { title: "Attendance", icon: ClipboardCheck, path: "/teacher/attendance" },
     { title: "Student List", icon: Users, path: "/teacher/students" },
     { title: "Add Marks", icon: PenLine, path: "/teacher/marks" },
     { title: "Exam Timetable", icon: Calendar, path: "/teacher/timetable" },
-    { title: "Salary Summary", icon: DollarSign, path: "/teacher/salary" },
+    { title: "Payroll", icon: DollarSign, path: "/teacher/payroll" },
     { title: "Requests", icon: MessageSquare, path: "/teacher/requests" },
     {
         title: "History",

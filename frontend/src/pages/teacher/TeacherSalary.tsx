@@ -65,7 +65,7 @@ const TeacherSalary = () => {
 
   return (
     <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-foreground">Salary Summary</h1>
+        <h1 className="text-lg font-semibold text-foreground">Payroll</h1>
 
         {loading && (
           <Card className="rounded-[var(--radius)] shadow-card">
@@ -82,7 +82,7 @@ const TeacherSalary = () => {
         {!loading && !error && !data && (
           <Card className="rounded-[var(--radius)] shadow-card">
             <CardContent className="py-12 text-center text-muted-foreground">
-              No salary record found. Contact admin.
+              No payroll record found. Contact admin.
             </CardContent>
           </Card>
         )}
@@ -92,7 +92,7 @@ const TeacherSalary = () => {
             <Card className="rounded-[var(--radius)] shadow-card">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-primary" /> Current Salary
+                  <DollarSign className="h-5 w-5 text-primary" /> Current pay
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

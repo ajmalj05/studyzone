@@ -24,7 +24,7 @@ const menuItems: MenuItem[] = [
   { title: "Students", icon: Users, path: "/admin/students" },
   { title: "Classes", icon: BookOpen, path: "/admin/classes" },
   { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
-  { title: "Salary", icon: DollarSign, path: "/admin/salary" },
+  { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
   { title: "Fees", icon: DollarSign, path: "/admin/fees" },
   { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
   { title: "Exams & Results", icon: FileText, path: "/admin/exams" },

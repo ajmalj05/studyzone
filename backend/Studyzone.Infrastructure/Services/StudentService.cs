@@ -71,6 +71,18 @@ public class StudentService : IStudentService
         return (dtos, total);
     }
 
+    public async Task<bool> IsStudentInBatchWithClassTeacherAsync(string studentId, string teacherUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(studentId) || !Guid.TryParse(studentId, out var sid)) return false;
+        if (string.IsNullOrWhiteSpace(teacherUserId) || !Guid.TryParse(teacherUserId, out var tid)) return false;
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null) return false;
+        var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(sid, currentYear.Id, ct);
+        if (enr?.BatchId == null) return false;
+        var batch = await _batchRepo.GetByIdAsync(enr.BatchId.Value, ct);
+        return batch?.ClassTeacherUserId == tid;
+    }
+
     public async Task<StudentDto> CreateAsync(CreateStudentRequest request, CancellationToken ct = default)
     {
         var currentYear = await _academicYearRepo.GetCurrentAsync(ct) ?? throw new InvalidOperationException("No current academic year set.");
@@ -211,6 +223,13 @@ public class StudentService : IStudentService
         }
         if (targetYear == null)
             throw new InvalidOperationException("Target academic year not set.");
+
+        if (targetBatchId.HasValue)
+        {
+            var batch = await _batchRepo.GetByIdAsync(targetBatchId.Value, ct);
+            if (batch == null || batch.AcademicYearId != targetYear.Id)
+                throw new ArgumentException("Target batch must belong to the target academic year.", nameof(request));
+        }
 
         var targetClass = await _classRepo.GetByIdAsync(targetClassId, ct);
         var classCode = targetClass?.Code ?? "X";

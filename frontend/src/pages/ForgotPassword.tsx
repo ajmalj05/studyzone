@@ -10,7 +10,7 @@ import logoImg from "@/assets/logo.png";
 
 const ForgotPassword = () => {
     const navigate = useNavigate();
-    const [role, setRole] = useState<"student" | "teacher">("student");
+    const role = "teacher" as const;
     const [registerNumber, setRegisterNumber] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -89,25 +89,6 @@ const ForgotPassword = () => {
                     </motion.div>
 
                     <div className="space-y-6">
-                        {/* Role Switcher */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium text-foreground">Select Role</label>
-                            <div className="flex p-1 bg-muted/40 rounded-xl border border-border/50">
-                                {(["student", "teacher"] as const).map((r) => (
-                                    <button
-                                        key={r}
-                                        onClick={() => setRole(r)}
-                                        className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${role === r
-                                                ? "bg-background shadow-sm text-primary font-semibold border border-primary/20"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                            }`}
-                                    >
-                                        {r.charAt(0).toUpperCase() + r.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
                         {/* Input Field */}
                         <div className="space-y-3">
                             <label className="text-sm font-medium text-foreground">Register Number / User ID</label>
@@ -115,7 +96,7 @@ const ForgotPassword = () => {
                                 <Input
                                     value={registerNumber}
                                     onChange={(e) => setRegisterNumber(e.target.value.toUpperCase())}
-                                    placeholder={role === 'student' ? "e.g., STU-001" : "e.g., TCH-001"}
+                                    placeholder="e.g., TCH-001"
                                     className="h-12 rounded-xl border-border/50 bg-background/50 focus:bg-background transition-all duration-300 uppercase px-4 ring-offset-background focus-visible:ring-primary/30"
                                 />
                             </div>

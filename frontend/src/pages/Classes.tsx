@@ -30,36 +30,49 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { BookOpen, Users, DollarSign, CalendarDays, Pencil } from "lucide-react";
 
 interface ClassDto {
   id: string;
   name: string;
   code: string;
-  seatLimit: number;
 }
 
 interface BatchDto {
   id: string;
   classId: string;
   className: string;
+  academicYearId?: string;
+  academicYearName?: string;
   name: string;
   section?: string;
   seatLimit?: number;
+  classTeacherUserId?: string;
+  classTeacherName?: string;
+}
+
+interface TeacherUserDto {
+  id: string;
+  name: string;
+  userId: string;
+  role: string;
 }
 
 export default function Classes() {
   const navigate = useNavigate();
+  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [classFormOpen, setClassFormOpen] = useState(false);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [classForm, setClassForm] = useState({ name: "", code: "", seatLimit: 40 });
+  const [classForm, setClassForm] = useState({ name: "", code: "" });
   const [batchFormOpen, setBatchFormOpen] = useState(false);
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
-  const [batchForm, setBatchForm] = useState({ classId: "", name: "", section: "", seatLimit: 40 });
+  const [batchForm, setBatchForm] = useState({ classId: "", academicYearId: "", name: "", section: "", seatLimit: 40, classTeacherUserId: "" });
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [teachers, setTeachers] = useState<TeacherUserDto[]>([]);
 
   const loadClasses = async () => {
     try {
@@ -72,7 +85,8 @@ export default function Classes() {
 
   const loadBatches = async () => {
     try {
-      const list = (await fetchApi("/Batches")) as BatchDto[];
+      const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to load batches", variant: "destructive" });
@@ -81,11 +95,26 @@ export default function Classes() {
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      await Promise.all([loadClasses(), loadBatches()]);
-      setLoading(false);
+      try {
+        const list = (await fetchApi("/Users?role=teacher")) as TeacherUserDto[];
+        setTeachers(Array.isArray(list) ? list : []);
+      } catch {
+        setTeachers([]);
+      }
     })();
   }, []);
+
+  useEffect(() => {
+    loadClasses();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      await loadBatches();
+      setLoading(false);
+    })();
+  }, [selectedYearId]);
 
   const batchesFiltered = selectedClassId
     ? batches.filter((b) => b.classId === selectedClassId)
@@ -93,13 +122,13 @@ export default function Classes() {
 
   const openAddClass = () => {
     setEditingClassId(null);
-    setClassForm({ name: "", code: "", seatLimit: 40 });
+    setClassForm({ name: "", code: "" });
     setClassFormOpen(true);
   };
 
   const openEditClass = (c: ClassDto) => {
     setEditingClassId(c.id);
-    setClassForm({ name: c.name, code: c.code, seatLimit: c.seatLimit });
+    setClassForm({ name: c.name, code: c.code });
     setClassFormOpen(true);
   };
 
@@ -116,7 +145,6 @@ export default function Classes() {
           body: JSON.stringify({
             name: classForm.name,
             code: classForm.code,
-            seatLimit: classForm.seatLimit,
           }),
         });
         toast({ title: "Success", description: "Class updated." });
@@ -126,7 +154,6 @@ export default function Classes() {
           body: JSON.stringify({
             name: classForm.name,
             code: classForm.code,
-            seatLimit: classForm.seatLimit,
           }),
         });
         toast({ title: "Success", description: "Class created." });
@@ -140,7 +167,14 @@ export default function Classes() {
 
   const openAddBatch = () => {
     setEditingBatchId(null);
-    setBatchForm({ classId: classes[0]?.id ?? "", name: "", section: "", seatLimit: 40 });
+    setBatchForm({
+      classId: classes[0]?.id ?? "",
+      academicYearId: selectedYearId,
+      name: "",
+      section: "",
+      seatLimit: 40,
+      classTeacherUserId: "",
+    });
     setBatchFormOpen(true);
   };
 
@@ -148,9 +182,11 @@ export default function Classes() {
     setEditingBatchId(b.id);
     setBatchForm({
       classId: b.classId,
+      academicYearId: b.academicYearId ?? selectedYearId,
       name: b.name,
       section: b.section ?? "",
       seatLimit: b.seatLimit ?? 40,
+      classTeacherUserId: b.classTeacherUserId ?? "",
     });
     setBatchFormOpen(true);
   };
@@ -164,9 +200,11 @@ export default function Classes() {
     try {
       const payload = {
         classId: batchForm.classId,
+        academicYearId: batchForm.academicYearId || selectedYearId,
         name: batchForm.name,
         section: batchForm.section || undefined,
         seatLimit: batchForm.seatLimit,
+        classTeacherUserId: batchForm.classTeacherUserId || undefined,
       };
       if (editingBatchId) {
         await fetchApi(`/Batches/${editingBatchId}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -207,10 +245,10 @@ export default function Classes() {
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>{editingClassId ? "Edit class" : "Add class"}</DialogTitle>
-                  <DialogDescription>Name, code and seat limit.</DialogDescription>
+                  <DialogDescription>Name and code. Seat limit is set per batch.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSaveClass} className="space-y-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label>Name *</Label>
                       <Input value={classForm.name} onChange={(e) => setClassForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Grade 8" />
@@ -218,10 +256,6 @@ export default function Classes() {
                     <div className="space-y-1">
                       <Label>Code *</Label>
                       <Input value={classForm.code} onChange={(e) => setClassForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. G8" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Seat limit</Label>
-                      <Input type="number" min={1} value={classForm.seatLimit} onChange={(e) => setClassForm((f) => ({ ...f, seatLimit: parseInt(e.target.value, 10) || 40 }))} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -236,7 +270,6 @@ export default function Classes() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Code</TableHead>
-                  <TableHead>Seat limit</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,7 +278,6 @@ export default function Classes() {
                   <TableRow key={c.id}>
                     <TableCell>{c.name}</TableCell>
                     <TableCell>{c.code}</TableCell>
-                    <TableCell>{c.seatLimit}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => openEditClass(c)}>
                         <Pencil className="h-3 w-3 mr-1" /> Edit
@@ -270,8 +302,14 @@ export default function Classes() {
         <Card>
           <CardHeader>
             <CardTitle>Batches</CardTitle>
-            <CardDescription>Create and edit batches under a class. Filter by class below.</CardDescription>
-            <div className="flex flex-wrap gap-2">
+            <CardDescription>Batches are scoped by academic year. Create and edit batches for the selected year.</CardDescription>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
               <Select value={selectedClassId ?? "all"} onValueChange={(v) => setSelectedClassId(v === "all" ? null : v)}>
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
                 <SelectContent>
@@ -287,10 +325,19 @@ export default function Classes() {
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>{editingBatchId ? "Edit batch" : "Add batch"}</DialogTitle>
-                  <DialogDescription>Class, batch name, section and seat limit.</DialogDescription>
+                  <DialogDescription>Class, batch name, section and seat limit (per batch).</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSaveBatch} className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {!editingBatchId && (
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label>Academic year *</Label>
+                        <Select value={batchForm.academicYearId || selectedYearId} onValueChange={(v) => setBatchForm((f) => ({ ...f, academicYearId: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger>
+                          <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <Label>Class *</Label>
                       <Select value={batchForm.classId} onValueChange={(v) => setBatchForm((f) => ({ ...f, classId: v }))} disabled={!!editingBatchId}>
@@ -310,6 +357,18 @@ export default function Classes() {
                       <Label>Seat limit</Label>
                       <Input type="number" min={1} value={batchForm.seatLimit} onChange={(e) => setBatchForm((f) => ({ ...f, seatLimit: parseInt(e.target.value, 10) || 40 }))} />
                     </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label>Class teacher</Label>
+                      <Select value={batchForm.classTeacherUserId || "none"} onValueChange={(v) => setBatchForm((f) => ({ ...f, classTeacherUserId: v === "none" ? "" : v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select class teacher (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {teachers.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>{t.name} ({t.userId})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setBatchFormOpen(false)}>Cancel</Button>
@@ -324,6 +383,7 @@ export default function Classes() {
                   <TableHead>Class</TableHead>
                   <TableHead>Batch</TableHead>
                   <TableHead>Section</TableHead>
+                  <TableHead>Class teacher</TableHead>
                   <TableHead>Seat limit</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -334,6 +394,7 @@ export default function Classes() {
                     <TableCell>{b.className}</TableCell>
                     <TableCell>{b.name}</TableCell>
                     <TableCell>{b.section ?? "—"}</TableCell>
+                    <TableCell>{b.classTeacherName ?? "—"}</TableCell>
                     <TableCell>{b.seatLimit ?? "—"}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => openEditBatch(b)}>

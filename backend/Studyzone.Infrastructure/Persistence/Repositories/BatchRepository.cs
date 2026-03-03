@@ -16,17 +16,42 @@ public class BatchRepository : IBatchRepository
 
     public async Task<Batch?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _db.Batches.Include(x => x.Class).FirstOrDefaultAsync(x => x.Id == id, ct);
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).FirstOrDefaultAsync(x => x.Id == id, ct);
+    }
+
+    public async Task<Batch?> GetByClassTeacherUserIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).FirstOrDefaultAsync(x => x.ClassTeacherUserId == userId, ct);
+    }
+
+    public async Task<Batch?> GetByClassTeacherUserIdAndAcademicYearAsync(Guid userId, Guid academicYearId, CancellationToken ct = default)
+    {
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear)
+            .FirstOrDefaultAsync(x => x.ClassTeacherUserId == userId && x.AcademicYearId == academicYearId, ct);
     }
 
     public async Task<IReadOnlyList<Batch>> GetByClassIdAsync(Guid classId, CancellationToken ct = default)
     {
-        return await _db.Batches.Include(x => x.Class).AsNoTracking().Where(x => x.ClassId == classId).OrderBy(x => x.Name).ToListAsync(ct);
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).AsNoTracking()
+            .Where(x => x.ClassId == classId).OrderBy(x => x.Name).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Batch>> GetByClassIdAndAcademicYearAsync(Guid classId, Guid academicYearId, CancellationToken ct = default)
+    {
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).AsNoTracking()
+            .Where(x => x.ClassId == classId && x.AcademicYearId == academicYearId).OrderBy(x => x.Name).ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Batch>> GetAllAsync(CancellationToken ct = default)
     {
-        return await _db.Batches.Include(x => x.Class).AsNoTracking().OrderBy(x => x.Class.Name).ThenBy(x => x.Name).ToListAsync(ct);
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).AsNoTracking()
+            .OrderBy(x => x.Class.Name).ThenBy(x => x.Name).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Batch>> GetByAcademicYearAsync(Guid academicYearId, CancellationToken ct = default)
+    {
+        return await _db.Batches.Include(x => x.Class).Include(x => x.AcademicYear).AsNoTracking()
+            .Where(x => x.AcademicYearId == academicYearId).OrderBy(x => x.Class.Name).ThenBy(x => x.Name).ToListAsync(ct);
     }
 
     public async Task<Batch> AddAsync(Batch entity, CancellationToken ct = default)

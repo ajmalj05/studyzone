@@ -81,7 +81,7 @@ public class ReportsService : IReportsService
         var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
         if (currentYear == null)
             return new List<BatchStrengthReportDto>();
-        var batches = await _batchRepo.GetAllAsync(ct);
+        var batches = await _batchRepo.GetByAcademicYearAsync(currentYear.Id, ct);
         if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var cid))
             batches = batches.Where(b => b.ClassId == cid).ToList();
         var classes = (await _classRepo.GetAllAsync(ct)).ToDictionary(c => c.Id);
@@ -102,7 +102,7 @@ public class ReportsService : IReportsService
     public async Task<FinancialReportDto> GetFinancialReportAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         var totalCollection = await _paymentRepo.GetTotalRevenueAsync(from, to, ct);
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
         var totalOutstanding = outstanding.Sum(x => x.Balance);
         var byClass = outstanding
             .GroupBy(x => x.ClassName ?? "")

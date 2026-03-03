@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { Search, Plus, Filter, MoreVertical, Edit, Trash2, Download, Check, XCircle } from "lucide-react";
+import { Search, Plus, Filter, MoreVertical, Edit, Trash2, Download, Check, XCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,13 @@ export default function Teachers() {
   const [form, setForm] = useState({ name: "", subject: "", classesAssigned: "", phone: "", registerNumber: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All");
+  const [salaryForm, setSalaryForm] = useState({
+    salaryAmount: "",
+    salaryEffectiveFrom: new Date().toISOString().slice(0, 10),
+    salaryEffectiveTo: "",
+    salaryPayFrequency: "Monthly" as "Monthly" | "Weekly",
+    salaryNotes: "",
+  });
 
   useEffect(() => {
     fetchTeachers();
@@ -64,6 +71,13 @@ export default function Teachers() {
   const openAdd = () => {
     setEditTeacher(null);
     setForm({ name: "", subject: "", classesAssigned: "", phone: "", registerNumber: "" });
+    setSalaryForm({
+      salaryAmount: "",
+      salaryEffectiveFrom: new Date().toISOString().slice(0, 10),
+      salaryEffectiveTo: "",
+      salaryPayFrequency: "Monthly",
+      salaryNotes: "",
+    });
     setShowModal(true);
   };
 
@@ -71,6 +85,13 @@ export default function Teachers() {
     if (!form.name || !form.subject || !form.registerNumber || !form.phone) {
       toast({ title: "Validation Error", description: "Name, Subject, Phone, and Register Number are required.", variant: "destructive" });
       return;
+    }
+    if (!editTeacher) {
+      const amount = parseFloat(salaryForm.salaryAmount);
+      if (salaryForm.salaryAmount === "" || isNaN(amount) || amount <= 0) {
+        toast({ title: "Validation Error", description: "Salary package is required. Enter a valid amount (greater than 0).", variant: "destructive" });
+        return;
+      }
     }
     try {
       if (editTeacher) {
@@ -87,7 +108,7 @@ export default function Teachers() {
         });
         toast({ title: "Teacher Updated", description: `${form.name} has been updated.` });
       } else {
-        await fetchApi('/Users', {
+        const createdUser = await fetchApi('/Users', {
           method: 'POST',
           body: JSON.stringify({
             userId: form.registerNumber,
@@ -98,8 +119,21 @@ export default function Teachers() {
             subject: form.subject || undefined,
             classesAssigned: form.classesAssigned || undefined,
           })
-        });
-        toast({ title: "Teacher Added", description: `${form.name} has been added.` });
+        }) as { id: string };
+        const amount = parseFloat(salaryForm.salaryAmount);
+          await fetchApi("/TeacherSalary", {
+            method: "POST",
+            body: JSON.stringify({
+              teacherUserId: createdUser.id,
+              effectiveFrom: salaryForm.salaryEffectiveFrom + "T00:00:00Z",
+              effectiveTo: salaryForm.salaryEffectiveTo ? salaryForm.salaryEffectiveTo + "T00:00:00Z" : null,
+              amount,
+              payFrequency: salaryForm.salaryPayFrequency,
+              currency: "INR",
+              notes: salaryForm.salaryNotes || undefined,
+            }),
+          });
+          toast({ title: "Teacher Added", description: `${form.name} has been added with salary package.` });
       }
       fetchTeachers();
       setShowModal(false);
@@ -263,41 +297,100 @@ export default function Teachers() {
         </motion.div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md flex max-h-[90vh] flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>{editTeacher ? "Edit Teacher" : "Add Teacher"}</DialogTitle>
             <DialogDescription>Teacher details and contact.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" />
-            </div>
-            <div className="space-y-1">
-              <Label>Register Number</Label>
-              <Input value={form.registerNumber} onChange={e => setForm(p => ({ ...p, registerNumber: e.target.value }))} placeholder="Reg. no." disabled={!!editTeacher} />
-            </div>
-            <div className="space-y-1">
-              <Label>Subject</Label>
-              <Select value={form.subject} onValueChange={v => setForm(p => ({ ...p, subject: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
-                <SelectContent>
-                  {subjects.filter(s => s !== "All").map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Classes Assigned</Label>
-              <Input value={form.classesAssigned} onChange={e => setForm(p => ({ ...p, classesAssigned: e.target.value }))} placeholder="e.g. 8A, 9B" />
-            </div>
-            <div className="space-y-1">
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>Name</Label>
+                <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" />
+              </div>
+              <div className="space-y-1">
+                <Label>Register Number</Label>
+                <Input value={form.registerNumber} onChange={e => setForm(p => ({ ...p, registerNumber: e.target.value }))} placeholder="Reg. no." disabled={!!editTeacher} />
+              </div>
+              <div className="space-y-1">
+                <Label>Subject</Label>
+                <Select value={form.subject} onValueChange={v => setForm(p => ({ ...p, subject: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjects.filter(s => s !== "All").map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Classes Assigned</Label>
+                <Input value={form.classesAssigned} onChange={e => setForm(p => ({ ...p, classesAssigned: e.target.value }))} placeholder="e.g. 8A, 9B" />
+              </div>
+              <div className="space-y-1">
+                <Label>Phone</Label>
+                <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
+              </div>
+              {!editTeacher && (
+                <div className="space-y-3 pt-2 border-t">
+                  <p className="text-sm font-medium text-foreground">Salary package (required)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Amount</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={salaryForm.salaryAmount}
+                        onChange={e => setSalaryForm(s => ({ ...s, salaryAmount: e.target.value }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Pay frequency</Label>
+                      <Select
+                        value={salaryForm.salaryPayFrequency}
+                        onValueChange={(v: "Monthly" | "Weekly") => setSalaryForm(s => ({ ...s, salaryPayFrequency: v }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Monthly">Monthly</SelectItem>
+                          <SelectItem value="Weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Effective from</Label>
+                      <Input
+                        type="date"
+                        value={salaryForm.salaryEffectiveFrom}
+                        onChange={e => setSalaryForm(s => ({ ...s, salaryEffectiveFrom: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Effective to (optional)</Label>
+                      <Input
+                        type="date"
+                        value={salaryForm.salaryEffectiveTo}
+                        onChange={e => setSalaryForm(s => ({ ...s, salaryEffectiveTo: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Notes (optional)</Label>
+                    <Input
+                      value={salaryForm.salaryNotes}
+                      onChange={e => setSalaryForm(s => ({ ...s, salaryNotes: e.target.value }))}
+                      placeholder="Notes"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button onClick={handleSave}>{editTeacher ? "Update Teacher" : "Add Teacher"}</Button>
           </DialogFooter>

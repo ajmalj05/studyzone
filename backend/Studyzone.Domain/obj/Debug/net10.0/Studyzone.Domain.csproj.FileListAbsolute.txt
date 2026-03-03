@@ -16,8 +16,8 @@ C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Stu
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.AssemblyInfoInputs.cache
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.AssemblyInfo.cs
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.csproj.CoreCompileInputs.cache
+C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.sourcelink.json
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.dll
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\refint\Studyzone.Domain.dll
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.pdb
 C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\ref\Studyzone.Domain.dll
-C:\Users\ajmal\Pictures\Studyzone\backend\Studyzone.Domain\obj\Debug\net10.0\Studyzone.Domain.sourcelink.json

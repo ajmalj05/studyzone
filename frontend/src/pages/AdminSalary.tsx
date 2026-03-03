@@ -150,7 +150,7 @@ export default function AdminSalary() {
         method: "POST",
         body: JSON.stringify({ year: payrollYear, month: payrollMonth }),
       });
-      toast({ title: "Payroll generated", description: "Payments created for teachers with current salary." });
+      toast({ title: "Payroll generated", description: "Payments created for teachers with current pay." });
       loadPaymentsForMonth();
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to generate payroll", variant: "destructive" });
@@ -260,7 +260,7 @@ export default function AdminSalary() {
             notes: form.notes || undefined,
           }),
         });
-        toast({ title: "Updated", description: "Salary record updated." });
+        toast({ title: "Updated", description: "Payroll record updated." });
       } else {
         await fetchApi("/TeacherSalary", {
           method: "POST",
@@ -274,7 +274,7 @@ export default function AdminSalary() {
             notes: form.notes || undefined,
           }),
         });
-        toast({ title: "Created", description: "Salary record added." });
+        toast({ title: "Created", description: "Payroll record added." });
       }
       setModalOpen(false);
       if (selectedTeacherId) loadSalariesForTeacher(selectedTeacherId);
@@ -286,7 +286,7 @@ export default function AdminSalary() {
   const handleDelete = async (id: string, teacherUserId: string) => {
     try {
       await fetchApi(`/TeacherSalary/${id}`, { method: "DELETE" });
-      toast({ title: "Deleted", description: "Salary record removed." });
+      toast({ title: "Deleted", description: "Payroll record removed." });
       loadSalariesForTeacher(teacherUserId);
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed", variant: "destructive" });
@@ -301,19 +301,19 @@ export default function AdminSalary() {
 
   return (
     <div className="space-y-6">
-        <DashboardHeader title="Teacher Salary" description="Manage salary records and monthly payroll" />
+        <DashboardHeader title="Payroll" description="Manage payroll records and monthly payments" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button onClick={() => openAdd()} className="gap-2">
-            <Plus className="h-4 w-4" /> Add salary record
+            <Plus className="h-4 w-4" /> Add payroll record
           </Button>
         </div>
 
         <Card className="rounded-[var(--radius)]">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> Salary records
+              <DollarSign className="h-4 w-4" /> Payroll records
             </CardTitle>
-            <CardDescription>Set base salary per teacher (effective from/to).</CardDescription>
+            <CardDescription>Set base pay per teacher (effective from/to).</CardDescription>
           </CardHeader>
         </Card>
 
@@ -342,7 +342,7 @@ export default function AdminSalary() {
                     </CardHeader>
                     <CardContent>
                       {salaries.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No salary records. Add one above.</p>
+                        <p className="text-sm text-muted-foreground">No payroll records. Add one above.</p>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
@@ -421,7 +421,7 @@ export default function AdminSalary() {
             {paymentsLoading ? (
               <p className="text-sm text-muted-foreground py-4">Loading payments…</p>
             ) : payments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">No payments for this month. Generate payroll or add salary records first.</p>
+              <p className="text-sm text-muted-foreground py-4">No payments for this month. Generate payroll or add payroll records first.</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
@@ -475,7 +475,7 @@ export default function AdminSalary() {
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>{editingSalary ? "Edit salary" : "Add salary record"}</DialogTitle>
+              <DialogTitle>{editingSalary ? "Edit payroll record" : "Add payroll record"}</DialogTitle>
               <DialogDescription>Effective from/to and amount.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">

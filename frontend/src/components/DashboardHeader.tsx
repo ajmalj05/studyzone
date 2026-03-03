@@ -10,7 +10,7 @@ function getInitials(name: string | undefined, role: string): string {
     if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
     return name.slice(0, 2).toUpperCase();
   }
-  return role === "student" ? "ST" : role === "teacher" ? "TR" : "AK";
+  return role === "teacher" ? "TR" : role === "parent" ? "PA" : "AK";
 }
 
 export function DashboardHeader({ title, description }: { title?: string; description?: string }) {
@@ -20,7 +20,7 @@ export function DashboardHeader({ title, description }: { title?: string; descri
     weekday: "short", year: "numeric", month: "short", day: "numeric",
   });
   const role = user?.role ?? "admin";
-  const displayName = user?.name ?? (role === "student" ? "Student" : role === "teacher" ? "Teacher" : "Admin");
+  const displayName = user?.name ?? (role === "teacher" ? "Teacher" : role === "parent" ? "Parent" : "Admin");
   const initials = getInitials(user?.name, role);
 
   return (

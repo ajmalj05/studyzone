@@ -5,6 +5,8 @@ public class FeeStructureDto
     public string Id { get; set; } = string.Empty;
     public string ClassId { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
+    public string AcademicYearId { get; set; } = string.Empty;
+    public string? AcademicYearName { get; set; }
     public string Name { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Frequency { get; set; } = string.Empty;
@@ -14,6 +16,7 @@ public class FeeStructureDto
 public class CreateFeeStructureRequest
 {
     public string ClassId { get; set; } = string.Empty;
+    public string AcademicYearId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Frequency { get; set; } = "Monthly";

@@ -82,6 +82,15 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Batch>(e =>
         {
             e.HasOne(x => x.Class).WithMany().HasForeignKey(x => x.ClassId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.AcademicYearId);
+            e.HasIndex(x => new { x.ClassId, x.AcademicYearId, x.Name }).IsUnique();
+        });
+        modelBuilder.Entity<FeeStructure>(e =>
+        {
+            e.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.AcademicYearId);
+            e.HasIndex(x => new { x.ClassId, x.AcademicYearId, x.Name }).IsUnique();
         });
         modelBuilder.Entity<Student>(e =>
         {

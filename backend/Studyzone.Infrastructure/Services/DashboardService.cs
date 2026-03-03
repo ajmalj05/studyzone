@@ -40,7 +40,7 @@ public class DashboardService : IDashboardService
         var staff = await _userRepo.GetAllAsync("admin", ct);
         var staffCount = (await _userRepo.GetAllAsync(null, ct)).Count;
         var revenue = await _paymentRepo.GetTotalRevenueAsync(null, null, ct);
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
         var pendingDues = outstanding.Sum(x => x.Balance);
         return new DashboardKpiDto
         {
@@ -69,7 +69,7 @@ public class DashboardService : IDashboardService
 
     public async Task<IReadOnlyList<FeeSummaryDto>> GetFeeSummaryByClassAsync(CancellationToken ct = default)
     {
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
         var byClass = outstanding.GroupBy(x => x.ClassName ?? "").Select(g => new FeeSummaryDto
         {
             ClassName = g.Key,

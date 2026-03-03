@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Studyzone.Application.Students;
@@ -16,17 +17,28 @@ public class BatchesController : ControllerBase
         _service = service;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<BatchDto>>> GetAll(CancellationToken ct)
+    [HttpGet("my-batch")]
+    [Authorize(Roles = "Teacher,teacher")]
+    public async Task<ActionResult<BatchDto>> GetMyBatch(CancellationToken ct)
     {
-        var list = await _service.GetAllAsync(ct);
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized();
+        var batch = await _service.GetBatchByClassTeacherAsync(currentUserId, ct);
+        if (batch == null) return NotFound();
+        return Ok(batch);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<BatchDto>>> GetAll([FromQuery] string? academicYearId, CancellationToken ct)
+    {
+        var list = await _service.GetAllAsync(academicYearId, ct);
         return Ok(list);
     }
 
     [HttpGet("by-class/{classId}")]
-    public async Task<ActionResult<IReadOnlyList<BatchDto>>> GetByClass(string classId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<BatchDto>>> GetByClass(string classId, [FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var list = await _service.GetByClassIdAsync(classId, ct);
+        var list = await _service.GetByClassIdAsync(classId, academicYearId, ct);
         return Ok(list);
     }
 
@@ -39,6 +51,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<ActionResult<BatchDto>> Create([FromBody] CreateBatchRequest request, CancellationToken ct)
     {
         try
@@ -47,9 +60,11 @@ public class BatchesController : ControllerBase
             return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
         catch (ArgumentException) { return BadRequest(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<ActionResult<BatchDto>> Update(string id, [FromBody] CreateBatchRequest request, CancellationToken ct)
     {
         try

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Studyzone.Application.Students;
@@ -10,15 +11,25 @@ namespace Studyzone.Api.Controllers;
 public class StudentsController : ControllerBase
 {
     private readonly IStudentService _service;
+    private readonly IBatchService _batchService;
 
-    public StudentsController(IStudentService service)
+    public StudentsController(IStudentService service, IBatchService batchService)
     {
         _service = service;
+        _batchService = batchService;
     }
 
     [HttpGet]
     public async Task<ActionResult<StudentListResponse>> GetAll([FromQuery] string? classId, [FromQuery] string? batchId, [FromQuery] string? status, [FromQuery] string? academicYearId, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(batchId) && User.IsInRole("Teacher") && !User.IsInRole("Admin"))
+        {
+            var batch = await _batchService.GetByIdAsync(batchId, ct);
+            if (batch == null) return NotFound();
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId) || batch.ClassTeacherUserId != currentUserId)
+                return Forbid();
+        }
         var (items, total) = await _service.GetAllAsync(classId, batchId, status, academicYearId, skip, take, ct);
         return Ok(new StudentListResponse { Items = items, Total = total });
     }
@@ -45,6 +56,12 @@ public class StudentsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<StudentDto>> Update(string id, [FromBody] UpdateStudentRequest request, CancellationToken ct)
     {
+        if (User.IsInRole("Teacher") && !User.IsInRole("Admin"))
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(currentUserId) && !await _service.IsStudentInBatchWithClassTeacherAsync(id, currentUserId, ct))
+                return Forbid();
+        }
         try
         {
             var dto = await _service.UpdateAsync(id, request, ct);
@@ -57,6 +74,12 @@ public class StudentsController : ControllerBase
     [HttpPost("{id}/status")]
     public async Task<IActionResult> SetStatus(string id, [FromBody] SetStatusRequest request, CancellationToken ct)
     {
+        if (User.IsInRole("Teacher") && !User.IsInRole("Admin"))
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(currentUserId) && !await _service.IsStudentInBatchWithClassTeacherAsync(id, currentUserId, ct))
+                return Forbid();
+        }
         try
         {
             await _service.SetStatusAsync(id, request.Status, request.Notes, ct);

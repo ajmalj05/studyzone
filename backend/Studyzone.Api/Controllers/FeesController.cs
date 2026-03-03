@@ -17,14 +17,14 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("structures")]
-    public async Task<ActionResult<IReadOnlyList<FeeStructureDto>>> GetStructures([FromQuery] string? classId, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<FeeStructureDto>>> GetStructures([FromQuery] string? classId, [FromQuery] string? academicYearId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(classId))
         {
-            var all = await _service.GetAllStructuresAsync(ct);
+            var all = await _service.GetAllStructuresAsync(academicYearId, ct);
             return Ok(all);
         }
-        var list = await _service.GetStructuresByClassAsync(classId, ct);
+        var list = await _service.GetStructuresByClassAsync(classId, academicYearId, ct);
         return Ok(list);
     }
 
@@ -45,6 +45,7 @@ public class FeesController : ControllerBase
             return CreatedAtAction(nameof(GetStructureById), new { id = dto.Id }, dto);
         }
         catch (ArgumentException) { return BadRequest(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 
     [HttpPost("charges")]
@@ -70,9 +71,9 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("outstanding")]
-    public async Task<ActionResult<IReadOnlyList<FeeLedgerDto>>> GetOutstanding([FromQuery] string? classId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<FeeLedgerDto>>> GetOutstanding([FromQuery] string? classId, [FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var list = await _service.GetOutstandingByClassAsync(classId, ct);
+        var list = await _service.GetOutstandingByClassAsync(classId, academicYearId, ct);
         return Ok(list);
     }
 

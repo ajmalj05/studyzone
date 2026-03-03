@@ -45,16 +45,21 @@ public class FeeService : IFeeService
         var e = await _structureRepo.GetByIdAsync(guid, ct);
         if (e == null) return null;
         var className = "";
+        string? academicYearName = null;
         if (e.ClassId != Guid.Empty)
         {
             var c = await _classRepo.GetByIdAsync(e.ClassId, ct);
             className = c?.Name ?? "";
         }
+        var ay = await _academicYearRepo.GetByIdAsync(e.AcademicYearId, ct);
+        if (ay != null) academicYearName = ay.Name;
         return new FeeStructureDto
         {
             Id = e.Id.ToString(),
             ClassId = e.ClassId.ToString(),
             ClassName = className,
+            AcademicYearId = e.AcademicYearId.ToString(),
+            AcademicYearName = academicYearName,
             Name = e.Name,
             Amount = e.Amount,
             Frequency = e.Frequency,
@@ -62,18 +67,23 @@ public class FeeService : IFeeService
         };
     }
 
-    public async Task<IReadOnlyList<FeeStructureDto>> GetStructuresByClassAsync(string classId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<FeeStructureDto>> GetStructuresByClassAsync(string classId, string? academicYearId, CancellationToken ct = default)
     {
         if (!Guid.TryParse(classId, out var cid)) return Array.Empty<FeeStructureDto>();
-        var list = await _structureRepo.GetByClassIdAsync(cid, ct);
-        var className = "";
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        if (yearId == null) return Array.Empty<FeeStructureDto>();
+        var list = await _structureRepo.GetByClassIdAndAcademicYearAsync(cid, yearId.Value, ct);
         var c = await _classRepo.GetByIdAsync(cid, ct);
-        if (c != null) className = c.Name;
+        var ay = await _academicYearRepo.GetByIdAsync(yearId.Value, ct);
+        var className = c?.Name ?? "";
+        var academicYearName = ay?.Name;
         return list.Select(e => new FeeStructureDto
         {
             Id = e.Id.ToString(),
             ClassId = e.ClassId.ToString(),
             ClassName = className,
+            AcademicYearId = e.AcademicYearId.ToString(),
+            AcademicYearName = academicYearName,
             Name = e.Name,
             Amount = e.Amount,
             Frequency = e.Frequency,
@@ -81,18 +91,24 @@ public class FeeService : IFeeService
         }).ToList();
     }
 
-    public async Task<IReadOnlyList<FeeStructureDto>> GetAllStructuresAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<FeeStructureDto>> GetAllStructuresAsync(string? academicYearId, CancellationToken ct = default)
     {
-        var list = await _structureRepo.GetAllAsync(ct);
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        var list = yearId.HasValue
+            ? await _structureRepo.GetByAcademicYearAsync(yearId.Value, ct)
+            : await _structureRepo.GetAllAsync(ct);
         var dtos = new List<FeeStructureDto>();
         foreach (var e in list)
         {
             var c = await _classRepo.GetByIdAsync(e.ClassId, ct);
+            var ay = await _academicYearRepo.GetByIdAsync(e.AcademicYearId, ct);
             dtos.Add(new FeeStructureDto
             {
                 Id = e.Id.ToString(),
                 ClassId = e.ClassId.ToString(),
                 ClassName = c?.Name ?? "",
+                AcademicYearId = e.AcademicYearId.ToString(),
+                AcademicYearName = ay?.Name,
                 Name = e.Name,
                 Amount = e.Amount,
                 Frequency = e.Frequency,
@@ -106,10 +122,14 @@ public class FeeService : IFeeService
     {
         if (!Guid.TryParse(request.ClassId, out var classId))
             throw new ArgumentException("Invalid class id.", nameof(request));
+        var academicYearId = await ResolveAcademicYearIdAsync(
+            string.IsNullOrWhiteSpace(request.AcademicYearId) ? null : request.AcademicYearId, ct)
+            ?? throw new InvalidOperationException("Academic year is required. Set current academic year in settings.");
         var entity = new FeeStructure
         {
             Id = Guid.NewGuid(),
             ClassId = classId,
+            AcademicYearId = academicYearId,
             Name = request.Name,
             Amount = request.Amount,
             Frequency = request.Frequency,
@@ -118,16 +138,27 @@ public class FeeService : IFeeService
         };
         var added = await _structureRepo.AddAsync(entity, ct);
         var c = await _classRepo.GetByIdAsync(classId, ct);
+        var ay = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
         return new FeeStructureDto
         {
             Id = added.Id.ToString(),
             ClassId = added.ClassId.ToString(),
             ClassName = c?.Name ?? "",
+            AcademicYearId = added.AcademicYearId.ToString(),
+            AcademicYearName = ay?.Name,
             Name = added.Name,
             Amount = added.Amount,
             Frequency = added.Frequency,
             EffectiveFrom = added.EffectiveFrom
         };
+    }
+
+    private async Task<Guid?> ResolveAcademicYearIdAsync(string? academicYearId, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(academicYearId) && Guid.TryParse(academicYearId, out var id))
+            return id;
+        var current = await _academicYearRepo.GetCurrentAsync(ct);
+        return current?.Id;
     }
 
     public async Task AddChargeAsync(AddChargeRequest request, CancellationToken ct = default)
@@ -247,12 +278,12 @@ public class FeeService : IFeeService
         }).ToList();
     }
 
-    public async Task<IReadOnlyList<FeeLedgerDto>> GetOutstandingByClassAsync(string? classId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<FeeLedgerDto>> GetOutstandingByClassAsync(string? classId, string? academicYearId, CancellationToken ct = default)
     {
-        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
-        if (currentYear == null) return new List<FeeLedgerDto>();
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        if (yearId == null) return new List<FeeLedgerDto>();
         Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var g) ? null : g;
-        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 500, ct);
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(yearId.Value, cid, null, "Active", 0, 500, ct);
         var result = new List<FeeLedgerDto>();
         foreach (var enr in enrollments)
         {

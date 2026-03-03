@@ -8,6 +8,7 @@ import { Search, X, Eye, Download, History, Phone, Mail, User, Calendar } from "
 import { AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fetchApi } from "@/lib/api";
+import { useMyBatch } from "@/context/TeacherBatchContext";
 
 interface StudentDto {
   id: string;
@@ -29,6 +30,7 @@ interface StudentRow {
 }
 
 const TeacherStudents = () => {
+  const { myBatch, loading: myBatchLoading } = useMyBatch();
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,21 +44,28 @@ const TeacherStudents = () => {
   const [modalMonthFilter, setModalMonthFilter] = useState("All");
 
   useEffect(() => {
-    (async () => {
-      try {
-        const list = (await fetchApi("/Classes")) as { id: string; name: string }[];
-        setClasses(Array.isArray(list) ? list : []);
-      } catch {
-        setClasses([]);
-      }
-    })();
-  }, []);
+    if (!myBatch) {
+      (async () => {
+        try {
+          const list = (await fetchApi("/Classes")) as { id: string; name: string }[];
+          setClasses(Array.isArray(list) ? list : []);
+        } catch {
+          setClasses([]);
+        }
+      })();
+    }
+  }, [myBatch]);
 
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (classId) params.set("classId", classId);
-    fetchApi(`/Students?${params.toString()}&take=200`)
+    if (myBatch) {
+      params.set("batchId", myBatch.id);
+    } else if (classId) {
+      params.set("classId", classId);
+    }
+    params.set("take", "200");
+    fetchApi(`/Students?${params.toString()}`)
       .then((res: { items?: StudentDto[]; total?: number }) => {
         const items = res?.items ?? [];
         setStudents(
@@ -72,7 +81,7 @@ const TeacherStudents = () => {
       })
       .catch(() => setStudents([]))
       .finally(() => setLoading(false));
-  }, [classId]);
+  }, [myBatch, classId]);
 
   const openDetail = async (row: StudentRow) => {
     setSelectedStudent({ ...row });
@@ -125,15 +134,26 @@ const TeacherStudents = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search by name or roll number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 rounded-xl" />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-muted-foreground">Class</label>
-            <select value={classId} onChange={e => setClassId(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-4 py-2 text-sm">
-              <option value="">All</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          {myBatchLoading ? (
+            <span className="text-sm text-muted-foreground">Loading...</span>
+          ) : myBatch ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-muted-foreground">My batch</label>
+              <span className="h-10 rounded-xl border border-input bg-muted/50 px-4 py-2 text-sm flex items-center">
+                {myBatch.className} – {myBatch.name}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-muted-foreground">Class</label>
+              <select value={classId} onChange={e => setClassId(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-4 py-2 text-sm">
+                <option value="">All</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

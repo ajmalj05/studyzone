@@ -61,13 +61,13 @@ interface ClassDto {
   id: string;
   name: string;
   code: string;
-  seatLimit: number;
 }
 
 interface BatchDto {
   id: string;
   classId: string;
   className: string;
+  academicYearId?: string;
   name: string;
   section?: string;
   seatLimit?: number;
@@ -108,7 +108,6 @@ export default function Students() {
   const [promoteTargetBatchId, setPromoteTargetBatchId] = useState("");
   const [newClassName, setNewClassName] = useState("");
   const [newClassCode, setNewClassCode] = useState("");
-  const [newClassSeatLimit, setNewClassSeatLimit] = useState(40);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [newBatchClassId, setNewBatchClassId] = useState("");
   const [newBatchName, setNewBatchName] = useState("");
@@ -128,10 +127,30 @@ export default function Students() {
 
   const loadBatches = async () => {
     try {
-      const list = (await fetchApi("/Batches")) as BatchDto[];
+      const url = academicYearFilter ? `/Batches?academicYearId=${encodeURIComponent(academicYearFilter)}` : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to load batches", variant: "destructive" });
+    }
+  };
+
+  const [promotionBatches, setPromotionBatches] = useState<BatchDto[]>([]);
+  const loadPromotionBatches = async () => {
+    if (!promoteTargetAcademicYearId) {
+      setPromotionBatches([]);
+      return;
+    }
+    try {
+      if (promoteTargetClassId) {
+        const list = (await fetchApi(`/Batches/by-class/${promoteTargetClassId}?academicYearId=${encodeURIComponent(promoteTargetAcademicYearId)}`)) as BatchDto[];
+        setPromotionBatches(list);
+      } else {
+        const list = (await fetchApi(`/Batches?academicYearId=${encodeURIComponent(promoteTargetAcademicYearId)}`)) as BatchDto[];
+        setPromotionBatches(list);
+      }
+    } catch {
+      setPromotionBatches([]);
     }
   };
 
@@ -163,12 +182,20 @@ export default function Students() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadClasses(), loadBatches(), loadAcademicYears()]);
+      await Promise.all([loadClasses(), loadAcademicYears()]);
       const current = (await fetchApi("/AcademicYears/current").catch(() => null)) as { id: string } | null;
       if (current?.id) setAcademicYearFilter(current.id);
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    loadBatches();
+  }, [academicYearFilter]);
+
+  useEffect(() => {
+    loadPromotionBatches();
+  }, [promoteTargetAcademicYearId, promoteTargetClassId]);
 
   useEffect(() => {
     loadStudents();
@@ -320,14 +347,14 @@ export default function Students() {
     }
     try {
       if (editingClassId) {
-        await fetchApi(`/Classes/${editingClassId}`, { method: "PUT", body: JSON.stringify({ name: newClassName, code: newClassCode, seatLimit: newClassSeatLimit }) });
+        await fetchApi(`/Classes/${editingClassId}`, { method: "PUT", body: JSON.stringify({ name: newClassName, code: newClassCode }) });
         toast({ title: "Success", description: "Class updated." });
         setEditingClassId(null);
       } else {
-        await fetchApi("/Classes", { method: "POST", body: JSON.stringify({ name: newClassName, code: newClassCode, seatLimit: newClassSeatLimit }) });
+        await fetchApi("/Classes", { method: "POST", body: JSON.stringify({ name: newClassName, code: newClassCode }) });
         toast({ title: "Success", description: "Class created." });
       }
-      setNewClassName(""); setNewClassCode(""); setNewClassSeatLimit(40);
+      setNewClassName(""); setNewClassCode("");
       setClassModalOpen(false);
       await loadClasses();
     } catch (err: unknown) {
@@ -337,7 +364,7 @@ export default function Students() {
 
   const openAddClass = () => {
     setEditingClassId(null);
-    setNewClassName(""); setNewClassCode(""); setNewClassSeatLimit(40);
+    setNewClassName(""); setNewClassCode("");
     setClassModalOpen(true);
   };
 
@@ -345,28 +372,31 @@ export default function Students() {
     setEditingClassId(c.id);
     setNewClassName(c.name);
     setNewClassCode(c.code);
-    setNewClassSeatLimit(c.seatLimit);
     setClassModalOpen(true);
   };
 
   const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBatchClassId || !newBatchName.trim()) {
-      toast({ title: "Validation", description: "Class and batch name required.", variant: "destructive" });
+    const academicYearId = editingBatchId
+      ? (batches.find((b) => b.id === editingBatchId)?.academicYearId ?? academicYearFilter)
+      : academicYearFilter;
+    if (!newBatchClassId || !newBatchName.trim() || !academicYearId) {
+      toast({ title: "Validation", description: "Select academic year, class and batch name.", variant: "destructive" });
       return;
     }
     try {
-      const payload = { classId: newBatchClassId, name: newBatchName, section: newBatchSection || undefined };
+      const payload = { classId: newBatchClassId, academicYearId, name: newBatchName, section: newBatchSection || undefined };
       if (editingBatchId) {
         await fetchApi(`/Batches/${editingBatchId}`, { method: "PUT", body: JSON.stringify(payload) });
-        toast({ title: "Success", description: "Batch updated." });
-        setEditingBatchId(null);
       } else {
         await fetchApi("/Batches", { method: "POST", body: JSON.stringify(payload) });
-        toast({ title: "Success", description: "Batch created." });
       }
-      setNewBatchClassId(""); setNewBatchName(""); setNewBatchSection("");
+      toast({ title: "Success", description: editingBatchId ? "Batch updated." : "Batch created." });
       setBatchModalOpen(false);
+      setNewBatchClassId("");
+      setNewBatchName("");
+      setNewBatchSection("");
+      setEditingBatchId(null);
       await loadBatches();
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
@@ -517,7 +547,7 @@ export default function Students() {
                         <Label>Target batch</Label>
                         <Select value={promoteTargetBatchId} onValueChange={setPromoteTargetBatchId}>
                           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Batch" /></SelectTrigger>
-                          <SelectContent>{batches.filter((b) => b.classId === promoteTargetClassId).map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
+                          <SelectContent>{promotionBatches.filter((b) => b.classId === promoteTargetClassId).map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <div className="flex items-end"><Button type="submit" disabled={promoteStudentIds.length === 0}>Promote selected ({promoteStudentIds.length})</Button></div>
@@ -539,7 +569,7 @@ export default function Students() {
               <Card>
                 <CardHeader>
                   <CardTitle>Classes</CardTitle>
-                  <CardDescription>Create classes with seat limits.</CardDescription>
+                  <CardDescription>Create classes (name and code). Seat limit is per batch.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Button onClick={openAddClass}>Add class</Button>
@@ -547,12 +577,11 @@ export default function Students() {
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>{editingClassId ? "Edit class" : "Add class"}</DialogTitle>
-                        <DialogDescription>Name, code and seat limit.</DialogDescription>
+                        <DialogDescription>Name and code.</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCreateClass} className="space-y-3">
                         <div className="space-y-1"><Label>Name</Label><Input value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g. Grade 8" /></div>
                         <div className="space-y-1"><Label>Code</Label><Input value={newClassCode} onChange={(e) => setNewClassCode(e.target.value)} placeholder="e.g. G8" /></div>
-                        <div className="space-y-1"><Label>Seat limit</Label><Input type="number" min={1} value={newClassSeatLimit} onChange={(e) => setNewClassSeatLimit(parseInt(e.target.value, 10) || 40)} /></div>
                         <DialogFooter>
                           <Button type="button" variant="outline" onClick={() => setClassModalOpen(false)}>Cancel</Button>
                           <Button type="submit">{editingClassId ? "Update class" : "Add class"}</Button>
@@ -561,11 +590,11 @@ export default function Students() {
                     </DialogContent>
                   </Dialog>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Seat limit</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {classes.map((c) => (
                         <TableRow key={c.id}>
-                          <TableCell>{c.name}</TableCell><TableCell>{c.code}</TableCell><TableCell>{c.seatLimit}</TableCell>
+                          <TableCell>{c.name}</TableCell><TableCell>{c.code}</TableCell>
                           <TableCell><Button size="sm" variant="outline" onClick={() => openEditClass(c)}>Edit</Button></TableCell>
                         </TableRow>
                       ))}

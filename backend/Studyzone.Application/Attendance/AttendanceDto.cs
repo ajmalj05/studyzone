@@ -13,7 +13,8 @@ public class AttendanceRecordDto
 
 public class BulkAttendanceRequest
 {
-    public string ClassId { get; set; } = string.Empty;
+    public string? ClassId { get; set; }
+    public string? BatchId { get; set; }
     public DateTime Date { get; set; }
     public IReadOnlyList<StudentAttendanceItem> Items { get; set; } = Array.Empty<StudentAttendanceItem>();
 }

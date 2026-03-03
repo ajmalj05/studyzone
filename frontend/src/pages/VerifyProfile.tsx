@@ -10,7 +10,7 @@ import logoImg from "@/assets/logo.png";
 
 const VerifyProfile = () => {
     const navigate = useNavigate();
-    const [role, setRole] = useState<"teacher" | "student">("student");
+    const role = "teacher" as const;
     const [registerNumber, setRegisterNumber] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -71,37 +71,19 @@ const VerifyProfile = () => {
                     </motion.div>
 
                     <form onSubmit={handleVerify} className="space-y-6">
-                        <div className="flex p-1 bg-muted/50 rounded-xl mb-6">
-                            {(["student", "teacher"] as const).map((r) => (
-                                <button
-                                    key={r}
-                                    type="button"
-                                    onClick={() => setRole(r)}
-                                    className={`flex-1 flex justify-center py-2.5 text-sm font-medium rounded-lg transition-all ${role === r
-                                        ? "bg-background shadow-sm text-foreground font-semibold"
-                                        : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                >
-                                    {r.charAt(0).toUpperCase() + r.slice(1)}
-                                </button>
-                            ))}
-                        </div>
-
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.3 }}
                             className="space-y-2"
                         >
-                            <label className="text-sm font-medium text-foreground">
-                                    {role === "student" ? "Admission Number" : "Register Number"}
-                                </label>
+                            <label className="text-sm font-medium text-foreground">Register Number</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={registerNumber}
                                     onChange={(e) => setRegisterNumber(e.target.value)}
-                                    placeholder={role === "student" ? "Enter your Admission Number" : "Enter your Register Number"}
+                                    placeholder="Enter your Register Number"
                                     className="pl-10 rounded-xl h-12"
                                 />
                             </div>

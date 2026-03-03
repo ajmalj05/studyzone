@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./layouts/AdminLayout";
-import { StudentLayout } from "./layouts/StudentLayout";
 import { TeacherLayout } from "./layouts/TeacherLayout";
 import { ParentLayout } from "./layouts/ParentLayout";
 
@@ -41,15 +40,6 @@ import AdminTeacherRequests from "./pages/AdminTeacherRequests";
 import StudentAttendanceHistory from "./pages/history/StudentAttendanceHistory";
 import TeacherAttendanceHistory from "./pages/history/TeacherAttendanceHistory";
 
-// Student Portal
-import StudentDashboard from "./pages/student/StudentDashboard";
-import StudentAttendance from "./pages/student/StudentAttendance";
-import StudentRequests from "./pages/student/StudentRequests";
-import StudentPlaceholder from "./pages/student/StudentPlaceholder";
-import StudentFees from "./pages/student/StudentFees";
-import StudentExams from "./pages/student/StudentExams";
-import StudentNotices from "./pages/student/StudentNotices";
-
 // Teacher Portal
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
@@ -59,6 +49,7 @@ import TeacherTimetable from "./pages/teacher/TeacherTimetable";
 import TeacherRequests from "./pages/teacher/TeacherRequests";
 import TeacherPlaceholder from "./pages/teacher/TeacherPlaceholder";
 import TeacherSalary from "./pages/teacher/TeacherSalary";
+import TeacherMyBatch from "./pages/teacher/TeacherMyBatch";
 import TeacherNotices from "./pages/teacher/TeacherNotices";
 import AdminSalary from "./pages/AdminSalary";
 import AdminParentManagement from "./pages/AdminParentManagement";
@@ -99,7 +90,8 @@ const App = () => (
                 <Route path="dashboard" element={<Index />} />
                 <Route path="students" element={<Students />} />
                 <Route path="teachers" element={<Teachers />} />
-                <Route path="salary" element={<AdminSalary />} />
+                <Route path="payroll" element={<AdminSalary />} />
+                <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="exams" element={<Exams />} />
@@ -118,21 +110,6 @@ const App = () => (
                 <Route path="reports" element={<Reports />} />
                 <Route path="academic-year" element={<AcademicYearPage />} />
                 <Route path="settings" element={<Settings />} />
-              </Route>
-            </Route>
-
-            {/* Student Portal */}
-            <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-              <Route path="/student" element={<StudentLayout />}>
-                <Route index element={<Navigate to="/student/dashboard" replace />} />
-                <Route path="dashboard" element={<StudentDashboard />} />
-                <Route path="attendance" element={<StudentAttendance />} />
-                <Route path="courses" element={<StudentPlaceholder title="My Courses" />} />
-                <Route path="fees" element={<StudentFees />} />
-                <Route path="exams" element={<StudentExams />} />
-                <Route path="requests" element={<StudentRequests />} />
-                <Route path="notices" element={<StudentNotices />} />
-                <Route path="profile" element={<StudentPlaceholder title="Profile" />} />
               </Route>
             </Route>
 
@@ -155,6 +132,7 @@ const App = () => (
               <Route path="/teacher" element={<TeacherLayout />}>
                 <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 <Route path="dashboard" element={<TeacherDashboard />} />
+                <Route path="my-batch" element={<TeacherMyBatch />} />
                 <Route path="classes" element={<TeacherPlaceholder title="My Classes" />} />
                 <Route path="attendance" element={<TeacherAttendance />} />
                 <Route path="students" element={<TeacherStudents />} />
@@ -163,7 +141,8 @@ const App = () => (
                 <Route path="requests" element={<TeacherRequests />} />
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
-                <Route path="salary" element={<TeacherSalary />} />
+                <Route path="payroll" element={<TeacherSalary />} />
+                <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="notices" element={<TeacherNotices />} />
                 <Route path="profile" element={<TeacherPlaceholder title="Profile" />} />
               </Route>

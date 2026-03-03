@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { useAcademicYearOptional } from "@/context/AcademicYearContext";
 import { UserPlus } from "lucide-react";
 
 interface ApplicationDto {
@@ -39,7 +40,6 @@ interface ClassDto {
   id: string;
   name: string;
   code: string;
-  seatLimit: number;
 }
 
 interface BatchDto {
@@ -52,6 +52,7 @@ interface BatchDto {
 
 export default function Admission() {
   const navigate = useNavigate();
+  const academicYear = useAcademicYearOptional();
   const [applications, setApplications] = useState<ApplicationDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
@@ -91,7 +92,9 @@ export default function Admission() {
 
   const loadAllBatches = async () => {
     try {
-      const list = (await fetchApi("/Batches")) as BatchDto[];
+      const yearId = academicYear?.selectedYearId;
+      const url = yearId ? `/Batches?academicYearId=${encodeURIComponent(yearId)}` : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch {
       setBatches([]);
@@ -105,7 +108,7 @@ export default function Admission() {
       setLoading(false);
       initialLoadDone.current = true;
     })();
-  }, [applicationClassId, applicationBatchId]);
+  }, [applicationClassId, applicationBatchId, academicYear?.selectedYearId]);
 
   const batchesForApplicationClass = applicationClassId
     ? batches.filter((b) => b.classId === applicationClassId)

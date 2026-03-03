@@ -13,8 +13,8 @@ import logoImg from '@/assets/logo.png';
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [role, setRole] = useState<"teacher" | "student" | "parent">("student");
-  const [userId, setUserId] = useState("S1001");
+  const [role, setRole] = useState<"teacher" | "parent">("teacher");
+  const [userId, setUserId] = useState("T1001");
   const [password, setPassword] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,8 +31,7 @@ const Login = () => {
       toast.success("Login successful!");
 
       if (role === "teacher") navigate("/teacher/dashboard");
-      else if (role === "parent") navigate("/parent/dashboard");
-      else navigate("/student/dashboard");
+      else navigate("/parent/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -57,14 +56,14 @@ const Login = () => {
           </div>
 
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-4 sm:mb-6 md:mb-8 flex-shrink-0">
-            {role === "teacher" ? "Teacher Login" : role === "parent" ? "Parent Login" : "Student Login"}
+            {role === "teacher" ? "Teacher Login" : "Parent Login"}
           </h2>
 
           {/* Form - spacing scales */}
           <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 md:space-y-5 flex-shrink-0">
             {/* Role Switcher */}
             <div className="flex p-1 bg-background rounded-xl mb-4 sm:mb-6">
-              {(["teacher", "student", "parent"] as const).map((r) => (
+              {(["teacher", "parent"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
@@ -73,11 +72,8 @@ const Login = () => {
                     if (r === "teacher") {
                       setUserId("T1001");
                       setPassword("password");
-                    } else if (r === "parent") {
-                      setUserId("P1001");
-                      setPassword("password");
                     } else {
-                      setUserId("S1001");
+                      setUserId("P1001");
                       setPassword("password");
                     }
                   }}

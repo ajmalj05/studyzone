@@ -130,12 +130,9 @@ const Index = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" /> How portal logins work</CardTitle>
-            <CardDescription>How students, teachers, and parents get and use their logins</CardDescription>
+            <CardDescription>How teachers and parents get and use their logins</CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-3">
-            <div>
-              <span className="font-medium text-foreground">Students:</span> Admin creates the student (Students page) with an <strong>Admission Number</strong>. The student goes to <strong>Verify Profile</strong> (login page link), enters Admission Number and role &quot;Student&quot;, then completes OTP and <strong>Setup Account</strong> to set their password. Login ID = Admission Number.
-            </div>
             <div>
               <span className="font-medium text-foreground">Teachers:</span> Admin creates the teacher (Teachers page) with a <strong>Register Number</strong> (used as Login ID), name, phone, subject. Initial password can be set by admin or the teacher can use <strong>Verify Profile</strong> → <strong>Setup Account</strong> to set or change it.
             </div>

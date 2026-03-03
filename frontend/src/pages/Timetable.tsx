@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CalendarDays } from "lucide-react";
 
 interface PeriodConfigDto {
@@ -46,6 +47,7 @@ interface BatchDto {
 const DAYS = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function Timetable() {
+  const { selectedYearId } = useAcademicYear();
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [periods, setPeriods] = useState<PeriodConfigDto[]>([]);
   const [slots, setSlots] = useState<TimetableSlotDto[]>([]);
@@ -54,7 +56,8 @@ export default function Timetable() {
 
   const loadBatches = async () => {
     try {
-      const list = (await fetchApi("/Batches")) as BatchDto[];
+      const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch (_) {}
   };
@@ -85,7 +88,7 @@ export default function Timetable() {
       await Promise.all([loadBatches(), loadPeriods()]);
       setLoading(false);
     })();
-  }, []);
+  }, [selectedYearId]);
 
   useEffect(() => {
     loadSlots();
@@ -120,8 +123,8 @@ export default function Timetable() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Weekly timetable</CardTitle>
-              <CardDescription>Select a batch to view or edit the grid. Add slots via the grid (subject, room, teacher).</CardDescription>
+              <CardTitle>Timetable per batch</CardTitle>
+              <CardDescription>Each batch (e.g. Class 8-A, 8-B) has its own timetable since they run at the same time. Select a batch to view or edit.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2 items-center">

@@ -317,7 +317,6 @@ export default function Settings() {
                             <SelectContent>
                               <SelectItem value="admin">Admin</SelectItem>
                               <SelectItem value="teacher">Teacher</SelectItem>
-                              <SelectItem value="student">Student</SelectItem>
                               <SelectItem value="parent">Parent</SelectItem>
                               <SelectItem value="accountant">Accountant</SelectItem>
                               <SelectItem value="receptionist">Receptionist</SelectItem>

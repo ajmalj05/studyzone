@@ -55,6 +55,25 @@ public class AttendanceService : IAttendanceService
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<AttendanceRecordDto>> GetByBatchAndDateAsync(string batchId, DateTime date, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(batchId, out var bid)) return Array.Empty<AttendanceRecordDto>();
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear == null) return Array.Empty<AttendanceRecordDto>();
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, null, bid, "Active", 0, 1000, ct);
+        var studentIds = enrollments.Select(e => e.StudentId).ToList();
+        var list = await _attRepo.GetByStudentIdsAndDateAsync(studentIds, date, ct);
+        return list.Select(x => new AttendanceRecordDto
+        {
+            Id = x.Id.ToString(),
+            StudentId = x.StudentId?.ToString(),
+            Date = x.Date,
+            PeriodNumber = x.PeriodNumber,
+            Status = x.Status,
+            RecordType = x.RecordType
+        }).ToList();
+    }
+
     public async Task SaveBulkAsync(BulkAttendanceRequest request, CancellationToken ct = default)
     {
         var date = request.Date.Date;
