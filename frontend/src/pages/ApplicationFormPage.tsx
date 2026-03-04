@@ -616,11 +616,6 @@ export default function ApplicationFormPage() {
   };
 
   const handleSubmitAndEnroll = async () => {
-    if (!form.studentName.trim() || !form.fatherNameAsInPassport?.trim() || !form.fatherMobileNumber?.trim() || !form.fatherEmailAddress?.trim() ||
-        !form.motherNameAsInPassport?.trim() || !form.motherMobileNumber?.trim() || !form.motherEmailAddress?.trim()) {
-      toast({ title: "Validation", description: "Student name and both guardians' name, mobile and email are required for enrollment.", variant: "destructive" });
-      return;
-    }
     if (isNew) {
       toast({ title: "Validation", description: "Save the application first, then use Submit & create student.", variant: "destructive" });
       return;

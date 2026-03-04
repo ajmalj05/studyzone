@@ -187,13 +187,8 @@ public class AdmissionApplicationService : IApplicationService
 
     private static void ValidateRequiredForEnrollment(Domain.Entities.Application app)
     {
-        if (string.IsNullOrWhiteSpace(app.StudentName)) throw new ArgumentException("Student name is required.");
-        if (string.IsNullOrWhiteSpace(app.FatherNameAsInPassport)) throw new ArgumentException("Father name (as in passport) is required.");
-        if (string.IsNullOrWhiteSpace(app.FatherMobileNumber)) throw new ArgumentException("Father mobile number is required.");
-        if (string.IsNullOrWhiteSpace(app.FatherEmailAddress)) throw new ArgumentException("Father email is required.");
-        if (string.IsNullOrWhiteSpace(app.MotherNameAsInPassport)) throw new ArgumentException("Mother name (as in passport) is required.");
-        if (string.IsNullOrWhiteSpace(app.MotherMobileNumber)) throw new ArgumentException("Mother mobile number is required.");
-        if (string.IsNullOrWhiteSpace(app.MotherEmailAddress)) throw new ArgumentException("Mother email is required.");
+        if (string.IsNullOrWhiteSpace(app.StudentName))
+            throw new ArgumentException("Student name is required.");
     }
 
     private static Domain.Entities.Application MapToEntity(CreateApplicationRequest request)
