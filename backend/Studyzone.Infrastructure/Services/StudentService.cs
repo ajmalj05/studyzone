@@ -134,6 +134,7 @@ public class StudentService : IStudentService
             Status = "Active",
             AdmissionNumber = admissionNumber,
             JoinedAt = DateTime.UtcNow,
+            FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null,
             CreatedAt = DateTime.UtcNow
         };
         await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -173,6 +174,7 @@ public class StudentService : IStudentService
                 enr.ClassId = string.IsNullOrWhiteSpace(request.ClassId) || !Guid.TryParse(request.ClassId, out var cg) ? null : cg;
                 enr.BatchId = string.IsNullOrWhiteSpace(request.BatchId) || !Guid.TryParse(request.BatchId, out var bg) ? null : bg;
                 enr.Section = request.Section;
+                enr.FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null;
                 await _enrollmentRepo.UpdateAsync(enr, ct);
             }
         }
@@ -252,6 +254,7 @@ public class StudentService : IStudentService
                 Status = "Active",
                 AdmissionNumber = admissionNumber,
                 JoinedAt = DateTime.UtcNow,
+                FeePaymentStartMonth = request.TargetFeePaymentStartMonth is >= 1 and <= 12 ? request.TargetFeePaymentStartMonth : null,
                 CreatedAt = DateTime.UtcNow
             };
             await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -305,7 +308,8 @@ public class StudentService : IStudentService
             CustomFields = custom,
             CreatedAt = s.CreatedAt,
             AcademicYearId = enr?.AcademicYearId.ToString(),
-            AcademicYearName = academicYearName
+            AcademicYearName = academicYearName,
+            FeePaymentStartMonth = enr?.FeePaymentStartMonth
         };
     }
 }

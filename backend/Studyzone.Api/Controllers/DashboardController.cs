@@ -17,9 +17,9 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("kpis")]
-    public async Task<ActionResult<DashboardKpiDto>> GetKpis(CancellationToken ct)
+    public async Task<ActionResult<DashboardKpiDto>> GetKpis([FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var dto = await _service.GetKpisAsync(ct);
+        var dto = await _service.GetKpisAsync(academicYearId, ct);
         return Ok(dto);
     }
 
@@ -31,9 +31,9 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("fee-summary")]
-    public async Task<ActionResult<IReadOnlyList<FeeSummaryDto>>> GetFeeSummary(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<FeeSummaryDto>>> GetFeeSummary([FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var list = await _service.GetFeeSummaryByClassAsync(ct);
+        var list = await _service.GetFeeSummaryByClassAsync(academicYearId, ct);
         return Ok(list);
     }
 }

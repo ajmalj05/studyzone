@@ -31,16 +31,16 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("financial")]
-    public async Task<ActionResult<FinancialReportDto>> GetFinancial([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    public async Task<ActionResult<FinancialReportDto>> GetFinancial([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var dto = await _service.GetFinancialReportAsync(from, to, ct);
+        var dto = await _service.GetFinancialReportAsync(from, to, academicYearId, ct);
         return Ok(dto);
     }
 
     [HttpGet("attendance")]
-    public async Task<ActionResult<AttendanceReportDto>> GetAttendance([FromQuery] string? classId, [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct)
+    public async Task<ActionResult<AttendanceReportDto>> GetAttendance([FromQuery] string? classId, [FromQuery] DateTime from, [FromQuery] DateTime to, [FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var dto = await _service.GetAttendanceReportAsync(classId, from, to, ct);
+        var dto = await _service.GetAttendanceReportAsync(classId, from, to, academicYearId, ct);
         return Ok(dto);
     }
 

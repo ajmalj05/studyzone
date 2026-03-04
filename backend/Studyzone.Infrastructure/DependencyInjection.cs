@@ -18,6 +18,7 @@ using Studyzone.Application.Reports;
 using Studyzone.Application.TeacherSalary;
 using Studyzone.Application.Requests;
 using Studyzone.Application.Notifications;
+using Studyzone.Application.Subjects;
 using Studyzone.Infrastructure.Persistence;
 using Studyzone.Infrastructure.Persistence.Repositories;
 using Studyzone.Infrastructure.Services;
@@ -64,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationService, AdmissionApplicationService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IClassRepository, ClassRepository>();
+        services.AddScoped<ISubjectRepository, SubjectRepository>();
         services.AddScoped<IBatchRepository, BatchRepository>();
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
@@ -72,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<ISiblingGroupRepository, SiblingGroupRepository>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IClassService, ClassService>();
+        services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IBatchService, BatchService>();
         services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
         services.AddScoped<IFeeChargeRepository, FeeChargeRepository>();
@@ -79,6 +82,7 @@ public static class DependencyInjection
         services.AddScoped<IReceiptSequenceRepository, ReceiptSequenceRepository>();
         services.AddScoped<IFeeService, FeeService>();
         services.AddScoped<IPeriodConfigRepository, PeriodConfigRepository>();
+        services.AddScoped<ITimetableSettingsRepository, TimetableSettingsRepository>();
         services.AddScoped<ITimetableSlotRepository, TimetableSlotRepository>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IDashboardService, DashboardService>();

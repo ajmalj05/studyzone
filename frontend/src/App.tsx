@@ -18,10 +18,12 @@ import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import Settings from "./pages/Settings";
 import AcademicYearPage from "./pages/AcademicYearPage";
+import AcademicYearDetailPage from "./pages/AcademicYearDetailPage";
 import Admission from "./pages/Admission";
 import Enquiry from "./pages/Enquiry";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
 import Classes from "./pages/Classes";
+import Subjects from "./pages/Subjects";
 import Timetable from "./pages/Timetable";
 import Reports from "./pages/Reports";
 import Communication from "./pages/Communication";
@@ -35,6 +37,7 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminLogin from "./pages/AdminLogin";
 import AdminStudentRequests from "./pages/AdminStudentRequests";
 import AdminTeacherRequests from "./pages/AdminTeacherRequests";
+import AdminParentRequests from "./pages/AdminParentRequests";
 
 // History Module
 import StudentAttendanceHistory from "./pages/history/StudentAttendanceHistory";
@@ -62,6 +65,7 @@ import ParentFees from "./pages/parent/ParentFees";
 import ParentReports from "./pages/parent/ParentReports";
 import ParentTimetable from "./pages/parent/ParentTimetable";
 import ParentAnnouncements from "./pages/parent/ParentAnnouncements";
+import ParentRequests from "./pages/parent/ParentRequests";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +101,7 @@ const App = () => (
                 <Route path="exams" element={<Exams />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />
                 <Route path="requests/teacher" element={<AdminTeacherRequests />} />
+                <Route path="requests/parent" element={<AdminParentRequests />} />
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
                 <Route path="enquiry" element={<Enquiry />} />
@@ -104,11 +109,13 @@ const App = () => (
                 <Route path="admission/application/new" element={<ApplicationFormPage />} />
                 <Route path="admission/application/:id" element={<ApplicationFormPage />} />
                 <Route path="classes" element={<Classes />} />
+                <Route path="subjects" element={<Subjects />} />
                 <Route path="timetable" element={<Timetable />} />
                 <Route path="parents" element={<AdminParentManagement />} />
                 <Route path="communication" element={<Communication />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="academic-year" element={<AcademicYearPage />} />
+                <Route path="year/:yearId" element={<AcademicYearDetailPage />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
             </Route>
@@ -124,6 +131,7 @@ const App = () => (
                 <Route path="reports" element={<ParentReports />} />
                 <Route path="timetable" element={<ParentTimetable />} />
                 <Route path="announcements" element={<ParentAnnouncements />} />
+                <Route path="requests" element={<ParentRequests />} />
               </Route>
             </Route>
 

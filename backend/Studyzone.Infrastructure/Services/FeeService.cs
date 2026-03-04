@@ -210,6 +210,7 @@ public class FeeService : IFeeService
             TotalCharges = totalCharges,
             TotalPayments = totalPayments,
             Balance = totalCharges - totalPayments,
+            FeePaymentStartMonth = enr?.FeePaymentStartMonth,
             Charges = charges.Select(x => new FeeChargeDto { Id = x.Id.ToString(), Period = x.Period, Amount = x.Amount, Description = x.Description }).ToList(),
             Payments = payments.Select(x => new PaymentDto
             {
@@ -289,7 +290,10 @@ public class FeeService : IFeeService
         {
             var ledger = await GetLedgerAsync(enr.StudentId.ToString(), null, null, ct);
             if (ledger.Balance > 0)
+            {
+                ledger.FeePaymentStartMonth = enr.FeePaymentStartMonth;
                 result.Add(ledger);
+            }
         }
         return result.OrderByDescending(x => x.Balance).ToList();
     }

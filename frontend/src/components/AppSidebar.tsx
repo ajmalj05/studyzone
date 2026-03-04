@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, CalendarDays, BookOpen, Calendar,
+  ClipboardList, CalendarDays, BookOpen, Calendar, Library,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -23,6 +23,7 @@ const menuItems: MenuItem[] = [
   { title: "Academic Year", icon: Calendar, path: "/admin/academic-year" },
   { title: "Students", icon: Users, path: "/admin/students" },
   { title: "Classes", icon: BookOpen, path: "/admin/classes" },
+  { title: "Subjects", icon: Library, path: "/admin/subjects" },
   { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
   { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
   { title: "Fees", icon: DollarSign, path: "/admin/fees" },
@@ -30,6 +31,7 @@ const menuItems: MenuItem[] = [
   { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
   { title: "Student Requests", icon: MessageSquare, path: "/admin/requests/student" },
   { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
+  { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
   {
     title: "History",
     icon: FileText,

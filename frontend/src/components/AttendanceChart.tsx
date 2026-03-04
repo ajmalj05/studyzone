@@ -19,7 +19,11 @@ function groupByClass(rows: { className?: string; percentage?: number }[]) {
   }));
 }
 
-export function AttendanceChart() {
+interface AttendanceChartProps {
+  academicYearId?: string;
+}
+
+export function AttendanceChart({ academicYearId }: AttendanceChartProps) {
   const [classes, setClasses] = useState<{ name: string; attendance: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,14 +31,19 @@ export function AttendanceChart() {
     const to = new Date();
     const from = new Date(to);
     from.setDate(from.getDate() - 30);
-    fetchApi(`/Reports/attendance?from=${from.toISOString()}&to=${to.toISOString()}`)
+    const params = new URLSearchParams({
+      from: from.toISOString(),
+      to: to.toISOString(),
+    });
+    if (academicYearId) params.set("academicYearId", academicYearId);
+    fetchApi(`/Reports/attendance?${params.toString()}`)
       .then((d: AttendanceReportDto) => {
         const rows = d.rows ?? [];
         setClasses(groupByClass(rows).slice(0, 8));
       })
       .catch(() => setClasses([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [academicYearId]);
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">

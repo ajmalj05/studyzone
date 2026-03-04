@@ -72,6 +72,8 @@ public class RequestsService : IRequestsService
         existing.Status = request.Status ?? existing.Status;
         existing.AdminComment = request.AdminComment;
         var updated = await _repo.UpdateAsync(existing, ct);
+        if (string.Equals(existing.Role, "parent", StringComparison.OrdinalIgnoreCase))
+            await _notificationService.CreateForUserAsync(existing.UserId.ToString(), "PortalRequest", $"Admin responded to your request: {existing.Subject}", existing.Id, ct);
         return (await MapAsync(updated, ct))!;
     }
 

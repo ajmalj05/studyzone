@@ -60,6 +60,8 @@ public class FeeLedgerDto
     public decimal TotalCharges { get; set; }
     public decimal TotalPayments { get; set; }
     public decimal Balance { get; set; }
+    /// <summary>First month (1-12) from which fees are due for this student's enrollment. Null = not set.</summary>
+    public int? FeePaymentStartMonth { get; set; }
     public IReadOnlyList<FeeChargeDto> Charges { get; set; } = Array.Empty<FeeChargeDto>();
     public IReadOnlyList<PaymentDto> Payments { get; set; } = Array.Empty<PaymentDto>();
 }

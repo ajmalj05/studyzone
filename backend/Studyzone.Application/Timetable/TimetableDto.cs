@@ -1,5 +1,11 @@
 namespace Studyzone.Application.Timetable;
 
+public class TimetableSettingsDto
+{
+    public int WorkingDayCount { get; set; } = 5;
+    public int PeriodsPerDay { get; set; } = 6;
+}
+
 public class PeriodConfigDto
 {
     public string Id { get; set; } = string.Empty;
@@ -9,6 +15,12 @@ public class PeriodConfigDto
     public string EndTime { get; set; } = string.Empty;
     public bool IsBreak { get; set; }
     public string? Label { get; set; }
+}
+
+public class TeacherForSubjectDto
+{
+    public string Id { get; set; } = string.Empty; // User.Id (guid)
+    public string Name { get; set; } = string.Empty;
 }
 
 public class TimetableSlotDto

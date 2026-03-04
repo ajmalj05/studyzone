@@ -493,6 +493,9 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClassTeacherUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -503,9 +506,6 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<int?>("SeatLimit")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ClassTeacherUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Section")
                         .HasColumnType("text");
 
@@ -513,28 +513,10 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("AcademicYearId");
 
-                    b.HasIndex("ClassId");
-
                     b.HasIndex("ClassId", "AcademicYearId", "Name")
                         .IsUnique();
 
                     b.ToTable("Batches");
-
-                    b.HasOne("Studyzone.Domain.Entities.AcademicYear", "AcademicYear")
-                        .WithMany()
-                        .HasForeignKey("AcademicYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Studyzone.Domain.Entities.Class", "Class")
-                        .WithMany()
-                        .HasForeignKey("ClassId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("AcademicYear");
-
-                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Class", b =>
@@ -557,6 +539,21 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Classes");
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.ClassSubject", b =>
+                {
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ClassId", "SubjectId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("ClassSubjects");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.CustomFieldDefinition", b =>
@@ -750,11 +747,11 @@ namespace Studyzone.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
-
                     b.Property<Guid>("AcademicYearId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
 
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid");
@@ -784,12 +781,6 @@ namespace Studyzone.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("FeeStructures");
-
-                    b.HasOne("Studyzone.Domain.Entities.AcademicYear", "AcademicYear")
-                        .WithMany()
-                        .HasForeignKey("AcademicYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.LeaveRequest", b =>
@@ -974,6 +965,23 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PeriodConfigs");
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.TimetableSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PeriodsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorkingDayCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TimetableSettings");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.PortalRequest", b =>
@@ -1227,6 +1235,9 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("FeePaymentStartMonth")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Section")
                         .HasColumnType("text");
 
@@ -1310,6 +1321,29 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("StudentStatusHistories");
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.Subject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Substitution", b =>
@@ -1551,13 +1585,47 @@ namespace Studyzone.Infrastructure.Migrations
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Batch", b =>
                 {
+                    b.HasOne("Studyzone.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Studyzone.Domain.Entities.Class", "Class")
                         .WithMany()
                         .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("AcademicYear");
+
                     b.Navigation("Class");
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.ClassSubject", b =>
+                {
+                    b.HasOne("Studyzone.Domain.Entities.Class", null)
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Studyzone.Domain.Entities.Subject", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.FeeStructure", b =>
+                {
+                    b.HasOne("Studyzone.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.RolePermission", b =>

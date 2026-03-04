@@ -24,11 +24,16 @@ import { DownloadModal } from "@/components/DownloadModal";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 
-const subjects = ["All", "Mathematics", "Physics", "Chemistry", "English", "Biology", "Computer Science"];
+interface SubjectDto {
+  id: string;
+  name: string;
+  code?: string;
+}
 
 export default function Teachers() {
   const [activeTab, setActiveTab] = useState<"list" | "attendance">("list");
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<SubjectDto[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editTeacher, setEditTeacher] = useState<any | null>(null);
   const [showDownload, setShowDownload] = useState(false);
@@ -45,6 +50,12 @@ export default function Teachers() {
 
   useEffect(() => {
     fetchTeachers();
+  }, []);
+
+  useEffect(() => {
+    fetchApi("/Subjects")
+      .then((list: SubjectDto[]) => setSubjects(Array.isArray(list) ? list : []))
+      .catch(() => setSubjects([]));
   }, []);
 
   const fetchTeachers = async () => {
@@ -214,13 +225,20 @@ export default function Teachers() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+            <button
+              key="All"
+              onClick={() => setSelectedSubject("All")}
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedSubject === "All" ? "gradient-primary text-white shadow-md" : "bg-card text-muted-foreground border border-border hover:bg-muted"}`}
+            >
+              All
+            </button>
             {subjects.map(s => (
               <button
-                key={s}
-                onClick={() => setSelectedSubject(s)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedSubject === s ? "gradient-primary text-white shadow-md" : "bg-card text-muted-foreground border border-border hover:bg-muted"}`}
+                key={s.id}
+                onClick={() => setSelectedSubject(s.name)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedSubject === s.name ? "gradient-primary text-white shadow-md" : "bg-card text-muted-foreground border border-border hover:bg-muted"}`}
               >
-                {s}
+                {s.name}
               </button>
             ))}
           </div>
@@ -314,11 +332,14 @@ export default function Teachers() {
               </div>
               <div className="space-y-1">
                 <Label>Subject</Label>
-                <Select value={form.subject} onValueChange={v => setForm(p => ({ ...p, subject: v }))}>
+                <Select value={form.subject || undefined} onValueChange={v => setForm(p => ({ ...p, subject: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {subjects.filter(s => s !== "All").map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {editTeacher && form.subject && !subjects.some(s => s.name === form.subject) && (
+                      <SelectItem value={form.subject}>{form.subject} (current)</SelectItem>
+                    )}
+                    {subjects.map(s => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}{s.code ? ` (${s.code})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

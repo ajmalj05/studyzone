@@ -32,15 +32,20 @@ public class DashboardService : IDashboardService
         _approvalRepo = approvalRepo;
     }
 
-    public async Task<DashboardKpiDto> GetKpisAsync(CancellationToken ct = default)
+    public async Task<DashboardKpiDto> GetKpisAsync(string? academicYearId = null, CancellationToken ct = default)
     {
-        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
-        var totalStudents = currentYear == null ? 0 : await _enrollmentRepo.CountByAcademicYearAsync(currentYear.Id, null, null, "Active", ct);
+        var year = await ResolveAcademicYearAsync(academicYearId, ct);
+        var totalStudents = year == null ? 0 : await _enrollmentRepo.CountByAcademicYearAsync(year.Id, null, null, "Active", ct);
         var teachers = await _userRepo.GetAllAsync("teacher", ct);
-        var staff = await _userRepo.GetAllAsync("admin", ct);
         var staffCount = (await _userRepo.GetAllAsync(null, ct)).Count;
-        var revenue = await _paymentRepo.GetTotalRevenueAsync(null, null, ct);
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
+        DateTime? from = null, to = null;
+        if (year != null)
+        {
+            from = year.StartDate;
+            to = year.EndDate;
+        }
+        var revenue = await _paymentRepo.GetTotalRevenueAsync(from, to, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, academicYearId, ct);
         var pendingDues = outstanding.Sum(x => x.Balance);
         return new DashboardKpiDto
         {
@@ -50,6 +55,15 @@ public class DashboardService : IDashboardService
             RevenueCollected = revenue,
             PendingDues = pendingDues
         };
+    }
+
+    private async Task<Domain.Entities.AcademicYear?> ResolveAcademicYearAsync(string? academicYearId, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(academicYearId) && Guid.TryParse(academicYearId, out var guid))
+        {
+            return await _academicYearRepo.GetByIdAsync(guid, ct);
+        }
+        return await _academicYearRepo.GetCurrentAsync(ct);
     }
 
     public async Task<AdmissionPipelineDto> GetAdmissionPipelineAsync(CancellationToken ct = default)
@@ -67,9 +81,9 @@ public class DashboardService : IDashboardService
         };
     }
 
-    public async Task<IReadOnlyList<FeeSummaryDto>> GetFeeSummaryByClassAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<FeeSummaryDto>> GetFeeSummaryByClassAsync(string? academicYearId = null, CancellationToken ct = default)
     {
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, academicYearId, ct);
         var byClass = outstanding.GroupBy(x => x.ClassName ?? "").Select(g => new FeeSummaryDto
         {
             ClassName = g.Key,

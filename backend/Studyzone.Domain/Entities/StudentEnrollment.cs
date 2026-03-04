@@ -14,5 +14,7 @@ public class StudentEnrollment
     public string AdmissionNumber { get; set; } = string.Empty;
     public DateTime? JoinedAt { get; set; }
     public DateTime? LeftAt { get; set; }
+    /// <summary>First month (1-12) from which fees are due for this enrollment. Null = not set.</summary>
+    public int? FeePaymentStartMonth { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Calendar, Plus } from "lucide-react";
+import { Calendar, Plus, Eye } from "lucide-react";
 
 interface AcademicYearDto {
   id: string;
@@ -26,6 +27,7 @@ interface AcademicYearDto {
 }
 
 export default function AcademicYearPage() {
+  const navigate = useNavigate();
   const [academicYears, setAcademicYears] = useState<AcademicYearDto[]>([]);
   const [currentYear, setCurrentYear] = useState<AcademicYearDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +127,7 @@ export default function AcademicYearPage() {
   };
 
   const activeYears = academicYears.filter((y) => !y.isArchived);
+  const archivedYears = academicYears.filter((y) => y.isArchived);
 
   return (
     <div className="space-y-4">
@@ -169,15 +172,26 @@ export default function AcademicYearPage() {
                         <span className="ml-2 text-primary font-medium">(Current)</span>
                       )}
                     </span>
-                    {!y.isCurrent && (
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleSetCurrentYear(y.id)}
+                        variant="default"
+                        onClick={() => navigate(`/admin/year/${y.id}`)}
+                        className="gap-1"
                       >
-                        Set as current
+                        <Eye className="h-4 w-4" />
+                        View data
                       </Button>
-                    )}
+                      {!y.isCurrent && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSetCurrentYear(y.id)}
+                        >
+                          Set as current
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {activeYears.length === 0 && (
@@ -188,6 +202,36 @@ export default function AcademicYearPage() {
               </div>
             </CardContent>
           </Card>
+
+          {archivedYears.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Archived years</CardTitle>
+                <CardDescription>View data for past academic years.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {archivedYears.map((y) => (
+                  <div
+                    key={y.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <span className="text-muted-foreground">
+                      {y.name} ({y.startDate} – {y.endDate})
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => navigate(`/admin/year/${y.id}`)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View data
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Button onClick={() => setAddModalOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />

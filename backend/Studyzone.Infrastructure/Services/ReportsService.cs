@@ -99,10 +99,20 @@ public class ReportsService : IReportsService
         return result.OrderBy(x => x.ClassName).ThenBy(x => x.BatchName).ToList();
     }
 
-    public async Task<FinancialReportDto> GetFinancialReportAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
+    public async Task<FinancialReportDto> GetFinancialReportAsync(DateTime? from, DateTime? to, string? academicYearId = null, CancellationToken ct = default)
     {
-        var totalCollection = await _paymentRepo.GetTotalRevenueAsync(from, to, ct);
-        var outstanding = await _feeService.GetOutstandingByClassAsync(null, null, ct);
+        DateTime? reportFrom = from, reportTo = to;
+        if (!string.IsNullOrWhiteSpace(academicYearId) && Guid.TryParse(academicYearId, out var yearGuid))
+        {
+            var year = await _academicYearRepo.GetByIdAsync(yearGuid, ct);
+            if (year != null)
+            {
+                reportFrom = year.StartDate;
+                reportTo = year.EndDate;
+            }
+        }
+        var totalCollection = await _paymentRepo.GetTotalRevenueAsync(reportFrom, reportTo, ct);
+        var outstanding = await _feeService.GetOutstandingByClassAsync(null, academicYearId, ct);
         var totalOutstanding = outstanding.Sum(x => x.Balance);
         var byClass = outstanding
             .GroupBy(x => x.ClassName ?? "")
@@ -110,23 +120,27 @@ public class ReportsService : IReportsService
             .ToList();
         return new FinancialReportDto
         {
-            From = from,
-            To = to,
+            From = reportFrom,
+            To = reportTo,
             TotalCollection = totalCollection,
             TotalOutstanding = totalOutstanding,
             OutstandingByClass = byClass
         };
     }
 
-    public async Task<AttendanceReportDto> GetAttendanceReportAsync(string? classId, DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<AttendanceReportDto> GetAttendanceReportAsync(string? classId, DateTime from, DateTime to, string? academicYearId = null, CancellationToken ct = default)
     {
-        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
-        if (currentYear == null)
+        AcademicYear? year = null;
+        if (!string.IsNullOrWhiteSpace(academicYearId) && Guid.TryParse(academicYearId, out var yearGuid))
+            year = await _academicYearRepo.GetByIdAsync(yearGuid, ct);
+        if (year == null)
+            year = await _academicYearRepo.GetCurrentAsync(ct);
+        if (year == null)
             return new AttendanceReportDto { From = from, To = to, ClassId = classId, Rows = new List<AttendanceReportRowDto>() };
         Guid? cid = null;
         if (!string.IsNullOrWhiteSpace(classId) && Guid.TryParse(classId, out var parsed))
             cid = parsed;
-        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(currentYear.Id, cid, null, "Active", 0, 5000, ct);
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(year.Id, cid, null, "Active", 0, 5000, ct);
         var rows = new List<AttendanceReportRowDto>();
         var classDict = (await _classRepo.GetAllAsync(ct)).ToDictionary(c => c.Id);
         foreach (var enr in enrollments)

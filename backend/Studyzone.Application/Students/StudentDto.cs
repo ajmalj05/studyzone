@@ -25,6 +25,8 @@ public class StudentDto
     public DateTime CreatedAt { get; set; }
     public string? AcademicYearId { get; set; }
     public string? AcademicYearName { get; set; }
+    /// <summary>First month (1-12) from which fees are due for this enrollment. Null = not set.</summary>
+    public int? FeePaymentStartMonth { get; set; }
 }
 
 public class CreateStudentRequest
@@ -43,6 +45,8 @@ public class CreateStudentRequest
     public string? Address { get; set; }
     public string? SiblingGroupId { get; set; }
     public Dictionary<string, string>? CustomFields { get; set; }
+    /// <summary>First month (1-12) from which fees are due. Null = not set.</summary>
+    public int? FeePaymentStartMonth { get; set; }
 }
 
 public class UpdateStudentRequest
@@ -60,6 +64,8 @@ public class UpdateStudentRequest
     public string? Address { get; set; }
     public string? SiblingGroupId { get; set; }
     public Dictionary<string, string>? CustomFields { get; set; }
+    /// <summary>First month (1-12) from which fees are due. Null = not set.</summary>
+    public int? FeePaymentStartMonth { get; set; }
 }
 
 public class BulkPromoteRequest
@@ -69,4 +75,6 @@ public class BulkPromoteRequest
     public string TargetClassId { get; set; } = string.Empty;
     public string? TargetBatchId { get; set; }
     public string? TargetSection { get; set; }
+    /// <summary>First month (1-12) from which fees are due for promoted enrollments. Null = not set.</summary>
+    public int? TargetFeePaymentStartMonth { get; set; }
 }

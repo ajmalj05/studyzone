@@ -46,7 +46,7 @@ const TeacherExams = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="rounded-[var(--radius)] shadow-card">
             <CardHeader>
-              <CardTitle className="text-lg">Mathematics — Mid-Term Exam (Max: 100)</CardTitle>
+              <CardTitle className="text-lg">Exam — Mid-Term (Max: 100)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">

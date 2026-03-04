@@ -52,11 +52,18 @@ interface StudentDto {
   name: string;
 }
 
+interface SubjectDto {
+  id: string;
+  name: string;
+  code?: string;
+}
+
 export default function Exams() {
   const [exams, setExams] = useState<ExamDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [marks, setMarks] = useState<MarksEntryDto[]>([]);
+  const [subjectsForExamClass, setSubjectsForExamClass] = useState<SubjectDto[]>([]);
   const [selectedExamId, setSelectedExamId] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -113,6 +120,21 @@ export default function Exams() {
   }, [selectedExamId, exams]);
 
   const selectedExam = exams.find((e) => e.id === selectedExamId);
+  const selectedExamClassId = selectedExam?.classId;
+
+  useEffect(() => {
+    if (!selectedExamClassId) {
+      setSubjectsForExamClass([]);
+      return;
+    }
+    fetchApi(`/Subjects/for-class/${selectedExamClassId}`)
+      .then((list: SubjectDto[]) => setSubjectsForExamClass(Array.isArray(list) ? list : []))
+      .catch(() => setSubjectsForExamClass([]));
+  }, [selectedExamClassId]);
+
+  useEffect(() => {
+    setMarksForm((f) => ({ ...f, subject: "" }));
+  }, [selectedExamId]);
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,14 +254,28 @@ export default function Exams() {
                     </DialogHeader>
                     <form onSubmit={handleSaveMarks} className="space-y-3">
                       <div className="space-y-1"><Label>Student</Label><Select value={marksForm.studentId} onValueChange={(v) => setMarksForm((f) => ({ ...f, studentId: v }))}><SelectTrigger><SelectValue placeholder="Student" /></SelectTrigger><SelectContent>{students.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}</SelectContent></Select></div>
-                      <div className="space-y-1"><Label>Subject</Label><Input value={marksForm.subject} onChange={(e) => setMarksForm((f) => ({ ...f, subject: e.target.value }))} placeholder="Subject" /></div>
+                      <div className="space-y-1">
+                        <Label>Subject</Label>
+                        {subjectsForExamClass.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No subjects mapped to this exam&apos;s class. Map them in the Subjects page.</p>
+                        ) : (
+                          <Select value={marksForm.subject || undefined} onValueChange={(v) => setMarksForm((f) => ({ ...f, subject: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                            <SelectContent>
+                              {subjectsForExamClass.map((s) => (
+                                <SelectItem key={s.id} value={s.name}>{s.name}{s.code ? ` (${s.code})` : ""}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1"><Label>Marks</Label><Input type="number" min="0" step="0.01" value={marksForm.marksObtained} onChange={(e) => setMarksForm((f) => ({ ...f, marksObtained: e.target.value }))} placeholder="Obtained" /></div>
                         <div className="space-y-1"><Label>Max</Label><Input type="number" min="1" value={marksForm.maxMarks} onChange={(e) => setMarksForm((f) => ({ ...f, maxMarks: e.target.value }))} /></div>
                       </div>
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setShowMarksModal(false)}>Cancel</Button>
-                        <Button type="submit">Save</Button>
+                        <Button type="submit" disabled={subjectsForExamClass.length === 0 || !marksForm.subject.trim()}>Save</Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>

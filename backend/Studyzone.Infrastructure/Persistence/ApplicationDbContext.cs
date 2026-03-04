@@ -20,6 +20,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<AdmissionApproval> AdmissionApprovals => Set<AdmissionApproval>();
     public DbSet<AdmissionNumberSequence> AdmissionNumberSequences => Set<AdmissionNumberSequence>();
     public DbSet<Class> Classes => Set<Class>();
+    public DbSet<Subject> Subjects => Set<Subject>();
+    public DbSet<ClassSubject> ClassSubjects => Set<ClassSubject>();
     public DbSet<Batch> Batches => Set<Batch>();
     public DbSet<SiblingGroup> SiblingGroups => Set<SiblingGroup>();
     public DbSet<Student> Students => Set<Student>();
@@ -31,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ReceiptSequence> ReceiptSequences => Set<ReceiptSequence>();
     public DbSet<PeriodConfig> PeriodConfigs => Set<PeriodConfig>();
+    public DbSet<TimetableSettings> TimetableSettings => Set<TimetableSettings>();
     public DbSet<TimetableSlot> TimetableSlots => Set<TimetableSlot>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Substitution> Substitutions => Set<Substitution>();
@@ -85,6 +88,16 @@ public class ApplicationDbContext : DbContext
             e.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.AcademicYearId);
             e.HasIndex(x => new { x.ClassId, x.AcademicYearId, x.Name }).IsUnique();
+        });
+        modelBuilder.Entity<Subject>(e =>
+        {
+            e.HasIndex(x => x.Name);
+        });
+        modelBuilder.Entity<ClassSubject>(e =>
+        {
+            e.HasKey(x => new { x.ClassId, x.SubjectId });
+            e.HasOne<Class>().WithMany().HasForeignKey(x => x.ClassId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Subject>().WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<FeeStructure>(e =>
         {

@@ -6,6 +6,7 @@ import {
   FileText,
   Calendar,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 
 export const getParentMenu = () => [
@@ -16,4 +17,5 @@ export const getParentMenu = () => [
   { title: "Report Cards", icon: FileText, path: "/parent/reports" },
   { title: "Timetable", icon: Calendar, path: "/parent/timetable" },
   { title: "Announcements", icon: Bell, path: "/parent/announcements" },
+  { title: "Report Issue", icon: MessageSquare, path: "/parent/requests" },
 ];

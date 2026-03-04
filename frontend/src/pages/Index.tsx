@@ -6,9 +6,18 @@ import { AttendanceChart } from "@/components/AttendanceChart";
 import { RecentActivity } from "@/components/RecentActivity";
 import { QuickActions } from "@/components/QuickActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Users, GraduationCap, DollarSign, AlertCircle, ClipboardList, TrendingUp, KeyRound } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { Link } from "react-router-dom";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 
 interface KpiDto {
   totalStudents: number;
@@ -32,6 +41,7 @@ interface FeeSummaryDto {
 }
 
 const Index = () => {
+  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
   const [kpis, setKpis] = useState<KpiDto | null>(null);
   const [pipeline, setPipeline] = useState<AdmissionPipelineDto | null>(null);
   const [feeSummary, setFeeSummary] = useState<FeeSummaryDto[]>([]);
@@ -40,10 +50,11 @@ const Index = () => {
   useEffect(() => {
     (async () => {
       try {
+        const yearParam = selectedYearId ? `?academicYearId=${encodeURIComponent(selectedYearId)}` : "";
         const [k, p, f] = await Promise.all([
-          fetchApi("/Dashboard/kpis") as Promise<KpiDto>,
+          fetchApi(`/Dashboard/kpis${yearParam}`) as Promise<KpiDto>,
           fetchApi("/Dashboard/admission-pipeline") as Promise<AdmissionPipelineDto>,
-          fetchApi("/Dashboard/fee-summary") as Promise<FeeSummaryDto[]>,
+          fetchApi(`/Dashboard/fee-summary${yearParam}`) as Promise<FeeSummaryDto[]>,
         ]);
         setKpis(k);
         setPipeline(p);
@@ -54,13 +65,31 @@ const Index = () => {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [selectedYearId]);
 
   const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
   return (
     <div className="space-y-4">
       <DashboardHeader />
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="dashboard-year" className="text-sm font-medium">Academic year</Label>
+          <Select
+            value={selectedYearId || (academicYears[0]?.id ?? "")}
+            onValueChange={(v) => v && setSelectedYearId(v)}
+          >
+            <SelectTrigger id="dashboard-year" className="w-[200px] rounded-xl">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              {academicYears.map((y) => (
+                <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
         {/* Stat Cards - live from API */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Total Students" value={loading ? 0 : (kpis?.totalStudents ?? 0)} icon={Users} color="gradient-primary" />
@@ -114,9 +143,9 @@ const Index = () => {
         {/* Charts & Activity */}
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <RevenueChart />
+            <RevenueChart academicYearId={selectedYearId || undefined} />
           </div>
-          <AttendanceChart />
+          <AttendanceChart academicYearId={selectedYearId || undefined} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">

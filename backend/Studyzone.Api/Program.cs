@@ -220,12 +220,28 @@ END $$");
 INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ({0}, '10.0.0') ON CONFLICT (""MigrationId"") DO NOTHING", AddAcademicYearMigrationId);
 }
 
+// Ensure migration AddFeePaymentStartMonth is applied (when EF migration was not run yet)
+const string AddFeePaymentStartMonthMigrationId = "20260303150000_AddFeePaymentStartMonth";
+
+async Task EnsureFeePaymentStartMonthAsync(ApplicationDbContext db)
+{
+    var hasColumn = await db.Database.SqlQueryRaw<int>(@"
+SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'StudentEnrollments' AND column_name = 'FeePaymentStartMonth'").FirstOrDefaultAsync();
+    if (hasColumn != 0) return;
+
+    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""StudentEnrollments"" ADD COLUMN IF NOT EXISTS ""FeePaymentStartMonth"" integer NULL");
+    await db.Database.ExecuteSqlRawAsync(@"
+INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ({0}, '10.0.0') ON CONFLICT (""MigrationId"") DO NOTHING", AddFeePaymentStartMonthMigrationId);
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await EnsureMigrationHistoryBaselineAsync(db);
     await EnsureBatchClassTeacherUserIdAsync(db);
     await EnsureAcademicYearOnBatchAndFeeStructureAsync(db);
+    await EnsureFeePaymentStartMonthAsync(db);
     await db.Database.MigrateAsync();
     await EnsureMissingSchemaPartsAsync(db);
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];

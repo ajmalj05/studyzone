@@ -44,6 +44,8 @@ interface FeeStructureDto {
   frequency: string;
 }
 
+const FEE_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 interface FeeLedgerDto {
   studentId: string;
   studentName: string;
@@ -51,6 +53,7 @@ interface FeeLedgerDto {
   totalCharges: number;
   totalPayments: number;
   balance: number;
+  feePaymentStartMonth?: number;
   charges: { id: string; period: string; amount: number }[];
   payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode: string }[];
 }
@@ -258,12 +261,13 @@ export default function Fees() {
                     </Select>
                   </div>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead>Charges</TableHead><TableHead>Payments</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead>Fee start</TableHead><TableHead>Charges</TableHead><TableHead>Payments</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {outstanding.map((o) => (
                         <TableRow key={o.studentId}>
                           <TableCell>{o.studentName}</TableCell>
                           <TableCell>{o.className ?? "—"}</TableCell>
+                          <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? FEE_MONTH_NAMES[o.feePaymentStartMonth - 1] : "—"}</TableCell>
                           <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
                           <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
                           <TableCell className="font-medium text-warning">{formatCurrency(o.balance)}</TableCell>
@@ -326,7 +330,7 @@ export default function Fees() {
                   </div>
                   {ledger && (
                     <div className="space-y-4">
-                      <p><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}</p>
+                      <p><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
                       <Table>
                         <TableHeader><TableRow><TableHead>Period</TableHead><TableHead>Charge</TableHead></TableRow></TableHeader>
                         <TableBody>{ledger.charges.map((c) => (<TableRow key={c.id}><TableCell>{c.period}</TableCell><TableCell>{formatCurrency(c.amount)}</TableCell></TableRow>))}</TableBody>

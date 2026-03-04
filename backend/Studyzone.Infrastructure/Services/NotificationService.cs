@@ -54,6 +54,22 @@ public class NotificationService : INotificationService
         }
     }
 
+    public async Task CreateForUserAsync(string userId, string type, string title, Guid? relatedEntityId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var userGuid))
+            return;
+        var entity = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userGuid,
+            Type = type,
+            Title = title,
+            RelatedEntityId = relatedEntityId,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _repo.AddAsync(entity, ct);
+    }
+
     private static NotificationDto MapToDto(Notification e)
     {
         return new NotificationDto

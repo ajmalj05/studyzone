@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Studyzone.Application.Requests;
@@ -34,6 +35,13 @@ public class RequestsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<RequestDto>> Create([FromBody] CreateRequestRequest request, CancellationToken ct)
     {
+        var isAdmin = User.IsInRole("admin") || User.IsInRole("Admin");
+        if (!isAdmin)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(currentUserId))
+                request.UserId = currentUserId;
+        }
         var dto = await _service.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
     }

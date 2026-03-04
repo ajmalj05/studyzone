@@ -16,6 +16,29 @@ public class TimetableController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("settings")]
+    public async Task<ActionResult<TimetableSettingsDto>> GetSettings(CancellationToken ct)
+    {
+        var settings = await _service.GetTimetableSettingsAsync(ct);
+        if (settings == null)
+            return Ok(new TimetableSettingsDto { WorkingDayCount = 5, PeriodsPerDay = 6 });
+        return Ok(settings);
+    }
+
+    [HttpPut("settings")]
+    public async Task<ActionResult<TimetableSettingsDto>> SaveSettings([FromBody] TimetableSettingsDto dto, CancellationToken ct)
+    {
+        var result = await _service.SaveTimetableSettingsAsync(dto, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("teachers-for-subject")]
+    public async Task<ActionResult<IReadOnlyList<TeacherForSubjectDto>>> GetTeachersForSubject([FromQuery] string subjectName, CancellationToken ct)
+    {
+        var list = await _service.GetTeachersForSubjectAsync(subjectName ?? "", ct);
+        return Ok(list);
+    }
+
     [HttpGet("period-config")]
     public async Task<ActionResult<IReadOnlyList<PeriodConfigDto>>> GetPeriodConfig(CancellationToken ct)
     {
@@ -40,8 +63,15 @@ public class TimetableController : ControllerBase
     [HttpPost("slot")]
     public async Task<ActionResult<TimetableSlotDto>> SaveSlot([FromBody] TimetableSlotDto dto, CancellationToken ct)
     {
-        var result = await _service.SaveSlotAsync(dto, ct);
-        return Ok(result);
+        try
+        {
+            var result = await _service.SaveSlotAsync(dto, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("batch/{batchId}/publish")]

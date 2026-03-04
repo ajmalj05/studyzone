@@ -8,16 +8,23 @@ interface FinancialReportDto {
   outstandingByClass?: { className: string; outstanding: number; studentCount: number }[];
 }
 
-export function RevenueChart() {
+interface RevenueChartProps {
+  academicYearId?: string;
+}
+
+export function RevenueChart({ academicYearId }: RevenueChartProps) {
   const [data, setData] = useState<FinancialReportDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchApi("/Reports/financial")
+    const params = new URLSearchParams();
+    if (academicYearId) params.set("academicYearId", academicYearId);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    fetchApi(`/Reports/financial${query}`)
       .then((d: FinancialReportDto) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, []);
+  }, [academicYearId]);
 
   const chartData = (data?.outstandingByClass ?? []).slice(0, 12).map((c) => ({
     name: c.className || "—",

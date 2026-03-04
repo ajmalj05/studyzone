@@ -6,17 +6,68 @@ namespace Studyzone.Infrastructure.Services;
 
 public class TimetableService : ITimetableService
 {
+    private static readonly string[] DayNames = { "", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
     private readonly IPeriodConfigRepository _periodRepo;
+    private readonly ITimetableSettingsRepository _settingsRepo;
     private readonly ITimetableSlotRepository _slotRepo;
     private readonly IBatchRepository _batchRepo;
     private readonly IUserRepository _userRepo;
 
-    public TimetableService(IPeriodConfigRepository periodRepo, ITimetableSlotRepository slotRepo, IBatchRepository batchRepo, IUserRepository userRepo)
+    public TimetableService(
+        IPeriodConfigRepository periodRepo,
+        ITimetableSettingsRepository settingsRepo,
+        ITimetableSlotRepository slotRepo,
+        IBatchRepository batchRepo,
+        IUserRepository userRepo)
     {
         _periodRepo = periodRepo;
+        _settingsRepo = settingsRepo;
         _slotRepo = slotRepo;
         _batchRepo = batchRepo;
         _userRepo = userRepo;
+    }
+
+    public async Task<TimetableSettingsDto?> GetTimetableSettingsAsync(CancellationToken ct = default)
+    {
+        var row = await _settingsRepo.GetSingleAsync(ct);
+        if (row == null) return null;
+        return new TimetableSettingsDto
+        {
+            WorkingDayCount = row.WorkingDayCount,
+            PeriodsPerDay = row.PeriodsPerDay
+        };
+    }
+
+    public async Task<TimetableSettingsDto> SaveTimetableSettingsAsync(TimetableSettingsDto dto, CancellationToken ct = default)
+    {
+        var entity = new TimetableSettings
+        {
+            Id = Guid.NewGuid(),
+            WorkingDayCount = Math.Clamp(dto.WorkingDayCount, 1, 7),
+            PeriodsPerDay = Math.Clamp(dto.PeriodsPerDay, 1, 20)
+        };
+        var saved = await _settingsRepo.AddOrUpdateAsync(entity, ct);
+        return new TimetableSettingsDto
+        {
+            WorkingDayCount = saved.WorkingDayCount,
+            PeriodsPerDay = saved.PeriodsPerDay
+        };
+    }
+
+    public async Task<IReadOnlyList<TeacherForSubjectDto>> GetTeachersForSubjectAsync(string subjectName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(subjectName)) return Array.Empty<TeacherForSubjectDto>();
+        var teachers = await _userRepo.GetAllAsync("Teacher");
+        var match = subjectName.Trim();
+        return teachers
+            .Where(u => !string.IsNullOrWhiteSpace(u.Subject) && string.Equals(u.Subject.Trim(), match, StringComparison.OrdinalIgnoreCase))
+            .Select(u => new TeacherForSubjectDto
+            {
+                Id = u.Id.ToString(),
+                Name = u.Name ?? ""
+            })
+            .ToList();
     }
 
     public async Task<IReadOnlyList<PeriodConfigDto>> GetPeriodConfigAsync(CancellationToken ct = default)
@@ -99,11 +150,32 @@ public class TimetableService : ITimetableService
         if (!Guid.TryParse(dto.BatchId, out var batchId))
             throw new ArgumentException("Invalid batch id.", nameof(dto));
         Guid? teacherId = string.IsNullOrWhiteSpace(dto.TeacherUserId) || !Guid.TryParse(dto.TeacherUserId, out var tid) ? null : tid;
+        Guid? excludeSlotId = !string.IsNullOrWhiteSpace(dto.Id) && Guid.TryParse(dto.Id, out var parsedId) ? parsedId : null;
+
+        if (teacherId.HasValue)
+        {
+            var teacherSlots = await _slotRepo.GetByTeacherUserIdAsync(teacherId.Value, ct);
+            var conflict = teacherSlots.FirstOrDefault(s =>
+                s.DayOfWeek == dto.DayOfWeek && s.PeriodOrder == dto.PeriodOrder
+                && s.BatchId != batchId
+                && (excludeSlotId == null || s.Id != excludeSlotId));
+            if (conflict != null)
+            {
+                var otherBatch = await _batchRepo.GetByIdAsync(conflict.BatchId, ct);
+                var otherDisplay = otherBatch != null
+                    ? $"{otherBatch.Class?.Name ?? "?"}-{otherBatch.Name}"
+                    : conflict.BatchId.ToString();
+                var dayName = dto.DayOfWeek >= 1 && dto.DayOfWeek <= 7 ? DayNames[dto.DayOfWeek] : $"Day {dto.DayOfWeek}";
+                throw new InvalidOperationException(
+                    $"This teacher is already assigned to {otherDisplay} on {dayName} period {dto.PeriodOrder}.");
+            }
+        }
+
         var batch = await _batchRepo.GetByIdAsync(batchId, ct);
         var batchName = batch?.Name ?? "";
-        if (!string.IsNullOrWhiteSpace(dto.Id) && Guid.TryParse(dto.Id, out var id))
+        if (excludeSlotId.HasValue)
         {
-            var existing = await _slotRepo.GetByIdAsync(id, ct);
+            var existing = await _slotRepo.GetByIdAsync(excludeSlotId.Value, ct);
             if (existing != null)
             {
                 existing.Subject = dto.Subject;
