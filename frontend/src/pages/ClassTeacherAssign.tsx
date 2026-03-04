@@ -41,6 +41,7 @@ export default function ClassTeacherAssign() {
   const [teachers, setTeachers] = useState<TeacherUserDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingBatchId, setUpdatingBatchId] = useState<string | null>(null);
+  const [pendingAssignments, setPendingAssignments] = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -74,7 +75,14 @@ export default function ClassTeacherAssign() {
       try {
         const url = `/Batches?academicYearId=${encodeURIComponent(academicYearId)}`;
         const list = (await fetchApi(url)) as BatchDto[];
-        setBatches(Array.isArray(list) ? list : []);
+        const safeList = Array.isArray(list) ? list : [];
+        setBatches(safeList);
+        setPendingAssignments(
+          safeList.reduce<Record<string, string>>((acc, b) => {
+            acc[b.id] = b.classTeacherUserId || "_none";
+            return acc;
+          }, {}),
+        );
       } catch (e: unknown) {
         toast({
           title: "Error",
@@ -117,6 +125,11 @@ export default function ClassTeacherAssign() {
             : b,
         ),
       );
+
+      setPendingAssignments((prev) => ({
+        ...prev,
+        [batch.id]: teacherUserId || "_none",
+      }));
 
       toast({
         title: "Saved",
@@ -189,34 +202,32 @@ export default function ClassTeacherAssign() {
                   <TableHead>Section</TableHead>
                   <TableHead>Academic year</TableHead>
                   <TableHead>Class teacher</TableHead>
-                  <TableHead className="w-[220px]">Assign</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {batches.map((b) => {
                   const cls = classesById.get(b.classId);
                   const currentValue = b.classTeacherUserId || "_none";
+                  const selectedValue = pendingAssignments[b.id] ?? currentValue;
+                  const hasChanges = selectedValue !== currentValue;
                   return (
                     <TableRow key={b.id}>
                       <TableCell>{b.className || cls?.name || "—"}</TableCell>
                       <TableCell>{b.name}</TableCell>
                       <TableCell>{b.section ?? "—"}</TableCell>
                       <TableCell>{b.academicYearName ?? academicYears.find((y) => y.id === b.academicYearId)?.name ?? "—"}</TableCell>
-                      <TableCell>{b.classTeacherName ?? "—"}</TableCell>
                       <TableCell>
                         {teachers.length === 0 ? (
                           <span className="text-sm text-muted-foreground">No teacher users found.</span>
                         ) : (
                           <div className="flex items-center gap-2">
                             <Select
-                              value={currentValue}
+                              value={selectedValue}
                               onValueChange={(v) =>
-                                updateBatchTeacher(
-                                  b,
-                                  v === "_none"
-                                    ? null
-                                    : v,
-                                )
+                                setPendingAssignments((prev) => ({
+                                  ...prev,
+                                  [b.id]: v,
+                                }))
                               }
                               disabled={updatingBatchId === b.id}
                             >
@@ -232,11 +243,18 @@ export default function ClassTeacherAssign() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            {updatingBatchId === b.id && (
-                              <Button size="sm" variant="ghost" disabled>
-                                Saving…
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                updateBatchTeacher(
+                                  b,
+                                  selectedValue === "_none" ? null : selectedValue,
+                                )
+                              }
+                              disabled={updatingBatchId === b.id || !hasChanges}
+                            >
+                              {updatingBatchId === b.id ? "Saving…" : "Save"}
+                            </Button>
                           </div>
                         )}
                       </TableCell>
