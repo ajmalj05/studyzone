@@ -70,6 +70,11 @@ const AdminParentManagement = () => {
       setParents(Array.isArray(list) ? list : []);
     } catch {
       setParents([]);
+      toast({
+        title: "Could not load parents",
+        description: "The parent list could not be loaded. You may need to sign in again or check your connection.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -115,20 +120,46 @@ const AdminParentManagement = () => {
           name: createForm.name,
           role: "parent",
         }),
-      })) as { id: string };
-      const parentId = created?.id;
-      if (parentId) {
-        for (const studentId of selectedStudentIds) {
+      })) as { id?: string; Id?: string };
+      // Support both camelCase (id) and PascalCase (Id) from API
+      const parentId = created?.id ?? (created as { Id?: string })?.Id;
+      if (!parentId) {
+        toast({
+          title: "Error",
+          description: "Parent was created but the response did not include an ID. The parent should still appear in the list below.",
+          variant: "destructive",
+        });
+        setCreateForm({ userId: "", password: "", name: "" });
+        setSelectedStudentIds([]);
+        setShowCreateForm(false);
+        await loadParents();
+        return;
+      }
+      setCreateForm({ userId: "", password: "", name: "" });
+      setSelectedStudentIds([]);
+      setShowCreateForm(false);
+      await loadParents();
+      toast({ title: "Success", description: "Parent account created. Linking students…" });
+      let linkFailCount = 0;
+      for (const studentId of selectedStudentIds) {
+        try {
           await fetchApi("/ParentManagement/link", {
             method: "POST",
             body: JSON.stringify({ parentUserId: parentId, studentId }),
           });
+        } catch {
+          linkFailCount += 1;
         }
       }
-      toast({ title: "Success", description: "Parent account created and linked to selected student(s)." });
-      setCreateForm({ userId: "", password: "", name: "" });
-      setSelectedStudentIds([]);
-      setShowCreateForm(false);
+      if (linkFailCount > 0) {
+        toast({
+          title: "Partially done",
+          description: `Parent created. ${linkFailCount} of ${selectedStudentIds.length} student link(s) failed. You can link them from the table below.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Success", description: "Parent account created and linked to selected student(s)." });
+      }
       await loadParents();
     } catch (err: unknown) {
       const msg =
