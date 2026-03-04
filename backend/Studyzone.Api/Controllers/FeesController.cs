@@ -59,6 +59,18 @@ public class FeesController : ControllerBase
         catch (ArgumentException) { return BadRequest(); }
     }
 
+    [HttpPost("generate-charges")]
+    public async Task<ActionResult<GenerateChargesResult>> GenerateCharges([FromBody] GenerateChargesRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _service.GenerateChargesForStudentAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
     [HttpGet("ledger/{studentId}")]
     public async Task<ActionResult<FeeLedgerDto>> GetLedger(string studentId, [FromQuery] string? periodFrom, [FromQuery] string? periodTo, CancellationToken ct)
     {

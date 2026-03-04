@@ -31,79 +31,18 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { DollarSign, List, CreditCard, AlertCircle } from "lucide-react";
-
-interface FeeStructureDto {
-  id: string;
-  classId: string;
-  className: string;
-  academicYearId?: string;
-  academicYearName?: string;
-  name: string;
-  amount: number;
-  frequency: string;
-}
-
-const FEE_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-interface FeeLedgerDto {
-  studentId: string;
-  studentName: string;
-  className?: string;
-  totalCharges: number;
-  totalPayments: number;
-  balance: number;
-  feePaymentStartMonth?: number;
-  charges: { id: string; period: string; amount: number }[];
-  payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode: string }[];
-}
-
-interface PaymentDto {
-  id: string;
-  amount: number;
-  receiptNumber: string;
-  paidAt: string;
-  mode: string;
-}
-
-interface ClassDto {
-  id: string;
-  name: string;
-}
-
-interface StudentDto {
-  id: string;
-  name: string;
-  admissionNumber: string;
-  className?: string;
-}
+import { CreditCard, AlertCircle } from "lucide-react";
+import { FeeLedgerDto, ClassDto, StudentDto, FEE_MONTH_NAMES, formatCurrency } from "@/types/fees";
 
 export default function Fees() {
   const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
-  const [structures, setStructures] = useState<FeeStructureDto[]>([]);
   const [outstanding, setOutstanding] = useState<FeeLedgerDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
-  const [ledger, setLedger] = useState<FeeLedgerDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [classFilter, setClassFilter] = useState("");
-  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [paymentForm, setPaymentForm] = useState({ studentId: "", amount: "", mode: "Cash" });
-  const [structureForm, setStructureForm] = useState({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [structureModalOpen, setStructureModalOpen] = useState(false);
-
-  const loadStructures = async () => {
-    try {
-      const url = selectedYearId
-        ? `/Fees/structures?academicYearId=${encodeURIComponent(selectedYearId)}`
-        : "/Fees/structures";
-      const list = (await fetchApi(url)) as FeeStructureDto[];
-      setStructures(list);
-    } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message || "Failed to load fee structures", variant: "destructive" });
-    }
-  };
 
   const loadOutstanding = async () => {
     try {
@@ -132,28 +71,13 @@ export default function Fees() {
     } catch (_) {}
   };
 
-  const loadLedger = async (studentId: string) => {
-    if (!studentId) return;
-    try {
-      const data = (await fetchApi(`/Fees/ledger/${studentId}`)) as FeeLedgerDto;
-      setLedger(data);
-    } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message || "Failed to load ledger", variant: "destructive" });
-    }
-  };
-
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadStructures(), loadOutstanding(), loadClasses(), loadStudents()]);
+      await Promise.all([loadOutstanding(), loadClasses(), loadStudents()]);
       setLoading(false);
     })();
   }, [classFilter, selectedYearId]);
-
-  useEffect(() => {
-    if (selectedStudentId) loadLedger(selectedStudentId);
-    else setLedger(null);
-  }, [selectedStudentId]);
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,45 +97,12 @@ export default function Fees() {
       toast({ title: "Success", description: "Payment recorded." });
       setPaymentForm({ studentId: "", amount: "", mode: "Cash" });
       setPaymentModalOpen(false);
-      if (paymentForm.studentId === selectedStudentId) loadLedger(selectedStudentId);
       await loadOutstanding();
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
     }
   };
 
-  const handleCreateStructure = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!structureForm.classId || !structureForm.name.trim() || !structureForm.amount || Number(structureForm.amount) <= 0) {
-      toast({ title: "Validation", description: "Class, name and amount required.", variant: "destructive" });
-      return;
-    }
-    const academicYearId = structureForm.academicYearId || selectedYearId;
-    if (!academicYearId) {
-      toast({ title: "Validation", description: "Select an academic year.", variant: "destructive" });
-      return;
-    }
-    try {
-      await fetchApi("/Fees/structures", {
-        method: "POST",
-        body: JSON.stringify({
-          classId: structureForm.classId,
-          academicYearId,
-          name: structureForm.name,
-          amount: Number(structureForm.amount),
-          frequency: structureForm.frequency,
-        }),
-      });
-      toast({ title: "Success", description: "Fee structure created." });
-      setStructureForm({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
-      setStructureModalOpen(false);
-      await loadStructures();
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
-    }
-  };
-
-  const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
   const totalOutstanding = outstanding.reduce((s, x) => s + x.balance, 0);
   const totalCollected = outstanding.reduce((s, x) => s + x.totalPayments, 0);
 
@@ -239,8 +130,6 @@ export default function Fees() {
             <TabsList>
               <TabsTrigger value="outstanding" className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Outstanding</TabsTrigger>
               <TabsTrigger value="collect" className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Record payment</TabsTrigger>
-              <TabsTrigger value="ledger" className="flex items-center gap-2"><List className="h-4 w-4" /> Student ledger</TabsTrigger>
-              <TabsTrigger value="structures" className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Fee structures</TabsTrigger>
             </TabsList>
 
             <TabsContent value="outstanding" className="space-y-4">
@@ -267,7 +156,7 @@ export default function Fees() {
                         <TableRow key={o.studentId}>
                           <TableCell>{o.studentName}</TableCell>
                           <TableCell>{o.className ?? "—"}</TableCell>
-                          <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? FEE_MONTH_NAMES[o.feePaymentStartMonth - 1] : "—"}</TableCell>
+                          <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? (o.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}` : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]) : "—"}</TableCell>
                           <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
                           <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
                           <TableCell className="font-medium text-warning">{formatCurrency(o.balance)}</TableCell>
@@ -310,82 +199,6 @@ export default function Fees() {
                       </form>
                     </DialogContent>
                   </Dialog>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="ledger" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Student fee ledger</CardTitle>
-                  <CardDescription>View charges, payments and balance for a student.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <Label>Student</Label>
-                    <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                      <SelectTrigger className="w-[280px] mt-1"><SelectValue placeholder="Select student" /></SelectTrigger>
-                      <SelectContent>{students.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                  {ledger && (
-                    <div className="space-y-4">
-                      <p><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Period</TableHead><TableHead>Charge</TableHead></TableRow></TableHeader>
-                        <TableBody>{ledger.charges.map((c) => (<TableRow key={c.id}><TableCell>{c.period}</TableCell><TableCell>{formatCurrency(c.amount)}</TableCell></TableRow>))}</TableBody>
-                      </Table>
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Receipt</TableHead><TableHead>Mode</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader>
-                        <TableBody>{ledger.payments.map((p) => (<TableRow key={p.id}><TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell><TableCell>{p.receiptNumber}</TableCell><TableCell>{p.mode}</TableCell><TableCell>{formatCurrency(p.amount)}</TableCell></TableRow>))}</TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="structures" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fee structures</CardTitle>
-                  <CardDescription>Define fee by class and academic year (e.g. Tuition, Lab).</CardDescription>
-                  <div className="flex gap-2 pt-2">
-                    <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
-                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
-                      <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button onClick={() => { setStructureForm((f) => ({ ...f, academicYearId: selectedYearId })); setStructureModalOpen(true); }}>Add fee structure</Button>
-                  <Dialog open={structureModalOpen} onOpenChange={(open) => { if (open) setStructureForm((f) => ({ ...f, academicYearId: selectedYearId })); setStructureModalOpen(open); }}>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Add fee structure</DialogTitle>
-                        <DialogDescription>Define fee by class and academic year.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateStructure} className="space-y-3">
-                        <div className="space-y-1"><Label>Academic year *</Label><Select value={structureForm.academicYearId || selectedYearId} onValueChange={(v) => setStructureForm((f) => ({ ...f, academicYearId: v }))}><SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger><SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent></Select></div>
-                        <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
-                        <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
-                        <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>
-                        <div className="space-y-1"><Label>Frequency</Label><Select value={structureForm.frequency} onValueChange={(v) => setStructureForm((f) => ({ ...f, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem><SelectItem value="HalfYearly">Half-yearly</SelectItem><SelectItem value="Yearly">Yearly</SelectItem></SelectContent></Select></div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setStructureModalOpen(false)}>Cancel</Button>
-                          <Button type="submit">Add</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Class</TableHead><TableHead>Name</TableHead><TableHead>Amount</TableHead><TableHead>Frequency</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {structures.map((s) => (
-                        <TableRow key={s.id}><TableCell>{s.className}</TableCell><TableCell>{s.name}</TableCell><TableCell>{formatCurrency(s.amount)}</TableCell><TableCell>{s.frequency}</TableCell></TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>

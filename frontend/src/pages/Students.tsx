@@ -52,6 +52,7 @@ interface StudentDto {
   guardianPhone?: string;
   guardianEmail?: string;
   feePaymentStartMonth?: number;
+  feePaymentStartYear?: number;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export default function Students() {
     guardianEmail: "",
     address: "",
     feePaymentStartMonth: "",
+    feePaymentStartYear: "",
   });
   const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
   const [promoteTargetAcademicYearId, setPromoteTargetAcademicYearId] = useState("");
@@ -224,6 +226,7 @@ export default function Students() {
       guardianEmail: "",
       address: "",
       feePaymentStartMonth: "",
+      feePaymentStartYear: "",
     });
     setShowForm(true);
   };
@@ -244,6 +247,7 @@ export default function Students() {
       guardianEmail: s.guardianEmail ?? "",
       address: "",
       feePaymentStartMonth: s.feePaymentStartMonth != null ? String(s.feePaymentStartMonth) : "",
+      feePaymentStartYear: s.feePaymentStartYear != null ? String(s.feePaymentStartYear) : "",
     });
     setShowForm(true);
   };
@@ -271,6 +275,7 @@ export default function Students() {
             guardianEmail: form.guardianEmail || undefined,
             address: form.address || undefined,
             feePaymentStartMonth: form.feePaymentStartMonth ? Number(form.feePaymentStartMonth) : undefined,
+            feePaymentStartYear: form.feePaymentStartYear ? Number(form.feePaymentStartYear) : undefined,
           }),
         });
         toast({ title: "Success", description: "Student updated." });
@@ -295,6 +300,7 @@ export default function Students() {
             guardianEmail: form.guardianEmail || undefined,
             address: form.address || undefined,
             feePaymentStartMonth: form.feePaymentStartMonth ? Number(form.feePaymentStartMonth) : undefined,
+            feePaymentStartYear: form.feePaymentStartYear ? Number(form.feePaymentStartYear) : undefined,
           }),
         });
         toast({ title: "Success", description: "Student added." });
@@ -495,7 +501,8 @@ export default function Students() {
                           <div className="space-y-1 col-span-2"><Label>Guardian name</Label><Input value={form.guardianName} onChange={(e) => setForm((f) => ({ ...f, guardianName: e.target.value }))} /></div>
                           <div className="space-y-1"><Label>Guardian phone</Label><Input value={form.guardianPhone} onChange={(e) => setForm((f) => ({ ...f, guardianPhone: e.target.value }))} /></div>
                           <div className="space-y-1"><Label>Guardian email</Label><Input type="email" value={form.guardianEmail} onChange={(e) => setForm((f) => ({ ...f, guardianEmail: e.target.value }))} /></div>
-                          <div className="space-y-1 col-span-2"><Label>Fee payment start month</Label><Select value={form.feePaymentStartMonth || "none"} onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartMonth: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger><SelectContent><SelectItem value="none">Not set</SelectItem>{MONTH_NAMES.map((name, i) => (<SelectItem key={i} value={String(i + 1)}>{name}</SelectItem>))}</SelectContent></Select></div>
+                          <div className="space-y-1"><Label>Fees start month</Label><Select value={form.feePaymentStartMonth || "none"} onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartMonth: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger><SelectContent><SelectItem value="none">Not set</SelectItem>{MONTH_NAMES.map((name, i) => (<SelectItem key={i} value={String(i + 1)}>{name}</SelectItem>))}</SelectContent></Select></div>
+                          <div className="space-y-1"><Label>Fees start year</Label><Select value={form.feePaymentStartYear || "none"} onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartYear: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger><SelectContent><SelectItem value="none">Not set</SelectItem>{[new Date().getFullYear() + 1, new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}</SelectContent></Select></div>
                         </div>
                         <DialogFooter>
                           <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -513,7 +520,7 @@ export default function Students() {
                           <TableCell>{s.name}</TableCell>
                           <TableCell>{s.className ?? "—"}</TableCell>
                           <TableCell>{s.batchName ?? "—"}</TableCell>
-                          <TableCell>{s.feePaymentStartMonth != null && s.feePaymentStartMonth >= 1 && s.feePaymentStartMonth <= 12 ? MONTH_NAMES[s.feePaymentStartMonth - 1] : "—"}</TableCell>
+                          <TableCell>{s.feePaymentStartMonth != null && s.feePaymentStartMonth >= 1 && s.feePaymentStartMonth <= 12 ? (s.feePaymentStartYear != null ? `${MONTH_NAMES[s.feePaymentStartMonth - 1]} ${s.feePaymentStartYear}` : MONTH_NAMES[s.feePaymentStartMonth - 1]) : "—"}</TableCell>
                           <TableCell>
                             <Select value={s.status} onValueChange={(v) => handleSetStatus(s.id, v)}>
                               <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>

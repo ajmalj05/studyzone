@@ -66,6 +66,7 @@ interface FeeLedgerDto {
   totalPayments: number;
   balance: number;
   feePaymentStartMonth?: number;
+  feePaymentStartYear?: number;
 }
 
 function formatCurrency(n: number): string {
@@ -517,7 +518,7 @@ export default function AcademicYearDetailPage() {
                             <TableRow key={o.studentId}>
                               <TableCell>{o.studentName}</TableCell>
                               <TableCell>{o.className ?? "—"}</TableCell>
-                              <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? FEE_MONTH_NAMES[o.feePaymentStartMonth - 1] : "—"}</TableCell>
+                              <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? (o.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}` : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]) : "—"}</TableCell>
                               <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
                               <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
                               <TableCell className="font-medium">{formatCurrency(o.balance)}</TableCell>

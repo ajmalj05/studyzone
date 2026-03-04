@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, CalendarDays, BookOpen, Calendar, Library, UserRoundCog, Wallet,
+  ClipboardList, CalendarDays, BookOpen, Calendar, Library, UserRoundCog, Wallet, Receipt,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -29,7 +29,17 @@ const menuItems: MenuItem[] = [
   { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
   { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
   { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
-  { title: "Fees", icon: DollarSign, path: "/admin/fees" },
+  { title: "Expenses", icon: Receipt, path: "/admin/expenses" },
+  {
+    title: "Fees",
+    icon: DollarSign,
+    path: "#",
+    subItems: [
+      { title: "Fee Management", path: "/admin/fees" },
+      { title: "Student Ledger", path: "/admin/fees/ledger" },
+      { title: "Fee Structures", path: "/admin/fees/structures" },
+    ],
+  },
   { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
   { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
   { title: "Student Requests", icon: MessageSquare, path: "/admin/requests/student" },

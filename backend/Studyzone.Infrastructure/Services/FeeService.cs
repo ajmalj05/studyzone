@@ -211,6 +211,7 @@ public class FeeService : IFeeService
             TotalPayments = totalPayments,
             Balance = totalCharges - totalPayments,
             FeePaymentStartMonth = enr?.FeePaymentStartMonth,
+            FeePaymentStartYear = enr?.FeePaymentStartYear,
             Charges = charges.Select(x => new FeeChargeDto { Id = x.Id.ToString(), Period = x.Period, Amount = x.Amount, Description = x.Description }).ToList(),
             Payments = payments.Select(x => new PaymentDto
             {
@@ -292,9 +293,95 @@ public class FeeService : IFeeService
             if (ledger.Balance > 0)
             {
                 ledger.FeePaymentStartMonth = enr.FeePaymentStartMonth;
+                ledger.FeePaymentStartYear = enr.FeePaymentStartYear;
                 result.Add(ledger);
             }
         }
         return result.OrderByDescending(x => x.Balance).ToList();
+    }
+
+    public async Task<GenerateChargesResult> GenerateChargesForStudentAsync(GenerateChargesRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.StudentId) || !Guid.TryParse(request.StudentId, out var studentId))
+            throw new ArgumentException("Invalid student id.", nameof(request));
+
+        var yearId = await ResolveAcademicYearIdAsync(request.AcademicYearId, ct);
+        StudentEnrollment? enr;
+        if (yearId.HasValue)
+            enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(studentId, yearId.Value, ct);
+        else
+            enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
+
+        if (enr == null)
+            throw new InvalidOperationException("Student has no enrollment for the specified academic year.");
+        if (!enr.ClassId.HasValue)
+            throw new InvalidOperationException("Student enrollment has no class; cannot determine fee structure.");
+
+        var ay = await _academicYearRepo.GetByIdAsync(enr.AcademicYearId, ct);
+        var structures = await _structureRepo.GetByClassIdAndAcademicYearAsync(enr.ClassId.Value, enr.AcademicYearId, ct);
+        if (structures.Count == 0)
+            return new GenerateChargesResult { ChargesAdded = 0 };
+
+        int startYear, startMonth;
+        if (enr.FeePaymentStartYear.HasValue && enr.FeePaymentStartMonth.HasValue && enr.FeePaymentStartMonth >= 1 && enr.FeePaymentStartMonth <= 12)
+        {
+            startYear = enr.FeePaymentStartYear.Value;
+            startMonth = enr.FeePaymentStartMonth.Value;
+        }
+        else if (enr.FeePaymentStartMonth.HasValue && enr.FeePaymentStartMonth >= 1 && enr.FeePaymentStartMonth <= 12 && ay != null)
+        {
+            startYear = ay.StartDate.Year;
+            startMonth = enr.FeePaymentStartMonth.Value;
+        }
+        else if (enr.JoinedAt.HasValue)
+        {
+            startYear = enr.JoinedAt.Value.Year;
+            startMonth = enr.JoinedAt.Value.Month;
+        }
+        else if (ay != null)
+        {
+            startYear = ay.StartDate.Year;
+            startMonth = ay.StartDate.Month;
+        }
+        else
+            return new GenerateChargesResult { ChargesAdded = 0 };
+
+        var now = DateTime.UtcNow;
+        int endYear = request.UpToYear ?? now.Year;
+        int endMonth = request.UpToMonth ?? now.Month;
+        if (endYear < startYear || (endYear == startYear && endMonth < startMonth))
+            return new GenerateChargesResult { ChargesAdded = 0 };
+
+        var existingCharges = await _chargeRepo.GetByStudentIdAsync(studentId, null, ct);
+        var existingSet = existingCharges.Select(c => (c.FeeStructureId, c.Period)).ToHashSet();
+
+        int added = 0;
+        for (int y = startYear; y <= endYear; y++)
+        {
+            int monthStart = (y == startYear) ? startMonth : 1;
+            int monthEnd = (y == endYear) ? endMonth : 12;
+            for (int m = monthStart; m <= monthEnd; m++)
+            {
+                var period = $"{y}-{m:D2}";
+                foreach (var structure in structures)
+                {
+                    if (existingSet.Contains((structure.Id, period)))
+                        continue;
+                    await _chargeRepo.AddAsync(new FeeCharge
+                    {
+                        Id = Guid.NewGuid(),
+                        StudentId = studentId,
+                        FeeStructureId = structure.Id,
+                        Period = period,
+                        Amount = structure.Amount,
+                        Description = $"{structure.Name} {period}",
+                        CreatedAt = DateTime.UtcNow
+                    }, ct);
+                    existingSet.Add((structure.Id, period));
+                    added++;
+                }
+            }
+        }
+        return new GenerateChargesResult { ChargesAdded = added };
     }
 }

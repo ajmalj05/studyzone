@@ -27,6 +27,8 @@ public class StudentDto
     public string? AcademicYearName { get; set; }
     /// <summary>First month (1-12) from which fees are due for this enrollment. Null = not set.</summary>
     public int? FeePaymentStartMonth { get; set; }
+    /// <summary>First year from which fees are due (e.g. 2024). Null = not set.</summary>
+    public int? FeePaymentStartYear { get; set; }
 }
 
 public class CreateStudentRequest
@@ -47,6 +49,8 @@ public class CreateStudentRequest
     public Dictionary<string, string>? CustomFields { get; set; }
     /// <summary>First month (1-12) from which fees are due. Null = not set.</summary>
     public int? FeePaymentStartMonth { get; set; }
+    /// <summary>First year from which fees are due. Null = not set.</summary>
+    public int? FeePaymentStartYear { get; set; }
 }
 
 public class UpdateStudentRequest
@@ -66,6 +70,8 @@ public class UpdateStudentRequest
     public Dictionary<string, string>? CustomFields { get; set; }
     /// <summary>First month (1-12) from which fees are due. Null = not set.</summary>
     public int? FeePaymentStartMonth { get; set; }
+    /// <summary>First year from which fees are due. Null = not set.</summary>
+    public int? FeePaymentStartYear { get; set; }
 }
 
 public class BulkPromoteRequest
@@ -77,4 +83,6 @@ public class BulkPromoteRequest
     public string? TargetSection { get; set; }
     /// <summary>First month (1-12) from which fees are due for promoted enrollments. Null = not set.</summary>
     public int? TargetFeePaymentStartMonth { get; set; }
+    /// <summary>First year from which fees are due for promoted enrollments. Null = not set.</summary>
+    public int? TargetFeePaymentStartYear { get; set; }
 }

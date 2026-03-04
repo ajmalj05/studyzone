@@ -13,6 +13,8 @@ import Index from "./pages/Index";
 import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
 import Fees from "./pages/Fees";
+import StudentLedger from "./pages/StudentLedger";
+import FeeStructures from "./pages/FeeStructures";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -57,6 +59,7 @@ import TeacherNotices from "./pages/teacher/TeacherNotices";
 import TeacherClassesAndStudents from "./pages/teacher/TeacherClassesAndStudents";
 import AdminSalary from "./pages/AdminSalary";
 import AdminSalaryAndExpenses from "./pages/AdminSalaryAndExpenses";
+import Expenses from "./pages/Expenses";
 import AdminParentManagement from "./pages/AdminParentManagement";
 
 // Parent Portal
@@ -100,6 +103,8 @@ const App = () => (
                 <Route path="payroll" element={<AdminSalary />} />
                 <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />
+                <Route path="fees/ledger" element={<StudentLedger />} />
+                <Route path="fees/structures" element={<FeeStructures />} />
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="exams" element={<Exams />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />
@@ -122,6 +127,7 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
                 <Route path="class-teacher" element={<ClassTeacherAssign />} />
                 <Route path="salary-expenses" element={<AdminSalaryAndExpenses />} />
+                <Route path="expenses" element={<Expenses />} />
               </Route>
             </Route>
 

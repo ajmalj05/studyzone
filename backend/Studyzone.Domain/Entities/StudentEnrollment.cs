@@ -16,5 +16,7 @@ public class StudentEnrollment
     public DateTime? LeftAt { get; set; }
     /// <summary>First month (1-12) from which fees are due for this enrollment. Null = not set.</summary>
     public int? FeePaymentStartMonth { get; set; }
+    /// <summary>First year from which fees are due (e.g. 2024). Null = not set.</summary>
+    public int? FeePaymentStartYear { get; set; }
     public DateTime CreatedAt { get; set; }
 }

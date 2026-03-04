@@ -135,6 +135,7 @@ public class StudentService : IStudentService
             AdmissionNumber = admissionNumber,
             JoinedAt = DateTime.UtcNow,
             FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null,
+            FeePaymentStartYear = request.FeePaymentStartYear is >= 2000 and <= 2100 ? request.FeePaymentStartYear : null,
             CreatedAt = DateTime.UtcNow
         };
         await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -175,6 +176,7 @@ public class StudentService : IStudentService
                 enr.BatchId = string.IsNullOrWhiteSpace(request.BatchId) || !Guid.TryParse(request.BatchId, out var bg) ? null : bg;
                 enr.Section = request.Section;
                 enr.FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null;
+                enr.FeePaymentStartYear = request.FeePaymentStartYear is >= 2000 and <= 2100 ? request.FeePaymentStartYear : null;
                 await _enrollmentRepo.UpdateAsync(enr, ct);
             }
         }
@@ -255,6 +257,7 @@ public class StudentService : IStudentService
                 AdmissionNumber = admissionNumber,
                 JoinedAt = DateTime.UtcNow,
                 FeePaymentStartMonth = request.TargetFeePaymentStartMonth is >= 1 and <= 12 ? request.TargetFeePaymentStartMonth : null,
+                FeePaymentStartYear = request.TargetFeePaymentStartYear is >= 2000 and <= 2100 ? request.TargetFeePaymentStartYear : null,
                 CreatedAt = DateTime.UtcNow
             };
             await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -309,7 +312,8 @@ public class StudentService : IStudentService
             CreatedAt = s.CreatedAt,
             AcademicYearId = enr?.AcademicYearId.ToString(),
             AcademicYearName = academicYearName,
-            FeePaymentStartMonth = enr?.FeePaymentStartMonth
+            FeePaymentStartMonth = enr?.FeePaymentStartMonth,
+            FeePaymentStartYear = enr?.FeePaymentStartYear
         };
     }
 }

@@ -1250,6 +1250,9 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<int?>("FeePaymentStartMonth")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("FeePaymentStartYear")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
 
