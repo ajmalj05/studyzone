@@ -35,7 +35,7 @@ interface TeacherUserDto {
 }
 
 export default function ClassTeacherAssign() {
-  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
+  const { currentYear, academicYears, loading: yearLoading } = useAcademicYear();
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [teachers, setTeachers] = useState<TeacherUserDto[]>([]);
@@ -62,10 +62,17 @@ export default function ClassTeacherAssign() {
   }, []);
 
   useEffect(() => {
+    const academicYearId = currentYear?.id;
+    if (!academicYearId) {
+      setBatches([]);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       setLoading(true);
       try {
-        const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
+        const url = `/Batches?academicYearId=${encodeURIComponent(academicYearId)}`;
         const list = (await fetchApi(url)) as BatchDto[];
         setBatches(Array.isArray(list) ? list : []);
       } catch (e: unknown) {
@@ -78,14 +85,14 @@ export default function ClassTeacherAssign() {
         setLoading(false);
       }
     })();
-  }, [selectedYearId]);
+  }, [currentYear?.id]);
 
   const updateBatchTeacher = async (batch: BatchDto, teacherUserId: string | null) => {
     setUpdatingBatchId(batch.id);
     try {
       const payload = {
         classId: batch.classId,
-        academicYearId: batch.academicYearId || selectedYearId,
+        academicYearId: batch.academicYearId || currentYear?.id,
         name: batch.name,
         section: batch.section || undefined,
         seatLimit: batch.seatLimit,
@@ -126,45 +133,39 @@ export default function ClassTeacherAssign() {
     }
   };
 
-  const effectiveYearId = selectedYearId || academicYears[0]?.id || "";
-
-  const handleYearChange = (value: string) => {
-    setSelectedYearId(value);
-  };
-
   const classesById = new Map(classes.map((c) => [c.id, c]));
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Class Teacher Mapping" description="Assign class teachers to batches for the selected academic year." />
+      <div className="flex items-start justify-between gap-4">
+        <DashboardHeader
+          title="Class Teacher Mapping"
+          description="Assign class teachers to batches for the current academic year."
+        />
+        <div className="mt-2 text-right">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Current academic year</p>
+          <p className="text-sm font-medium">
+            {yearLoading
+              ? "Loading..."
+              : currentYear
+              ? currentYear.name
+              : "Not set – please configure a current academic year."}
+          </p>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Select academic year to view and edit class teacher mappings.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3 items-center">
-          <Select value={effectiveYearId} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Academic year" />
-            </SelectTrigger>
-            <SelectContent>
-              {academicYears.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {academicYears.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No academic years configured. Set them up in Academic Year settings.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {loading ? (
+      {yearLoading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">Loading academic year…</div>
+      ) : !currentYear ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No current academic year</CardTitle>
+            <CardDescription>
+              Set a current academic year in the Academic Year settings to manage class teacher mappings.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : loading ? (
         <div className="flex items-center justify-center min-h-[40vh]">Loading batches…</div>
       ) : batches.length === 0 ? (
         <Card>

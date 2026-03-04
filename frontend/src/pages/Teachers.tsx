@@ -37,7 +37,7 @@ export default function Teachers() {
   const [showModal, setShowModal] = useState(false);
   const [editTeacher, setEditTeacher] = useState<any | null>(null);
   const [showDownload, setShowDownload] = useState(false);
-  const [form, setForm] = useState({ name: "", subject: "", classesAssigned: "", phone: "", registerNumber: "" });
+  const [form, setForm] = useState({ name: "", subject: "", phone: "", registerNumber: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All");
   const [salaryForm, setSalaryForm] = useState({
@@ -75,13 +75,13 @@ export default function Teachers() {
 
   const openEdit = (t: any) => {
     setEditTeacher(t);
-    setForm({ name: t.name, subject: t.subject || "", classesAssigned: t.classesAssigned || "", phone: t.phone || "", registerNumber: t.registerNumber || t.userId || "" });
+    setForm({ name: t.name, subject: t.subject || "", phone: t.phone || "", registerNumber: t.registerNumber || t.userId || "" });
     setShowModal(true);
   };
 
   const openAdd = () => {
     setEditTeacher(null);
-    setForm({ name: "", subject: "", classesAssigned: "", phone: "", registerNumber: "" });
+    setForm({ name: "", subject: "", phone: "", registerNumber: "" });
     setSalaryForm({
       salaryAmount: "",
       salaryEffectiveFrom: new Date().toISOString().slice(0, 10),
@@ -114,7 +114,6 @@ export default function Teachers() {
             isActive: editTeacher.isActive ?? true,
             phone: form.phone || undefined,
             subject: form.subject || undefined,
-            classesAssigned: form.classesAssigned || undefined,
           })
         });
         toast({ title: "Teacher Updated", description: `${form.name} has been updated.` });
@@ -128,7 +127,6 @@ export default function Teachers() {
             role: "teacher",
             phone: form.phone || undefined,
             subject: form.subject || undefined,
-            classesAssigned: form.classesAssigned || undefined,
           })
         }) as { id: string };
         const amount = parseFloat(salaryForm.salaryAmount);
@@ -343,10 +341,6 @@ export default function Teachers() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Classes Assigned</Label>
-                <Input value={form.classesAssigned} onChange={e => setForm(p => ({ ...p, classesAssigned: e.target.value }))} placeholder="e.g. 8A, 9B" />
               </div>
               <div className="space-y-1">
                 <Label>Phone</Label>
