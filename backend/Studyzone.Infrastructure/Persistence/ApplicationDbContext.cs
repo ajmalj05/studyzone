@@ -47,6 +47,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PortalRequest> PortalRequests => Set<PortalRequest>();
     public DbSet<StudentParent> StudentParents => Set<StudentParent>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<SchoolExpense> SchoolExpenses => Set<SchoolExpense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -191,6 +192,11 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => x.CreatedAt);
+        });
+        modelBuilder.Entity<SchoolExpense>(e =>
+        {
+            e.HasIndex(x => x.Date);
+            e.HasIndex(x => x.Category);
         });
     }
 }

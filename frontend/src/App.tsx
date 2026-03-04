@@ -56,6 +56,7 @@ import TeacherMyBatch from "./pages/teacher/TeacherMyBatch";
 import TeacherNotices from "./pages/teacher/TeacherNotices";
 import TeacherClassesAndStudents from "./pages/teacher/TeacherClassesAndStudents";
 import AdminSalary from "./pages/AdminSalary";
+import AdminSalaryAndExpenses from "./pages/AdminSalaryAndExpenses";
 import AdminParentManagement from "./pages/AdminParentManagement";
 
 // Parent Portal
@@ -120,6 +121,7 @@ const App = () => (
                 <Route path="year/:yearId" element={<AcademicYearDetailPage />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="class-teacher" element={<ClassTeacherAssign />} />
+                <Route path="salary-expenses" element={<AdminSalaryAndExpenses />} />
               </Route>
             </Route>
 

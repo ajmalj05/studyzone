@@ -8,6 +8,7 @@ public interface ITeacherSalaryPaymentRepository
     Task<TeacherSalaryPaymentEntity?> GetByIdWithLinesAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<TeacherSalaryPaymentEntity>> GetByTeacherAsync(Guid teacherUserId, CancellationToken ct = default);
     Task<IReadOnlyList<TeacherSalaryPaymentEntity>> GetByMonthAsync(int year, int month, CancellationToken ct = default);
+    Task<IReadOnlyList<TeacherSalaryPaymentEntity>> GetByStatusAndDateRangeAsync(string? status, int? yearFrom, int? yearTo, int? monthFrom, int? monthTo, CancellationToken ct = default);
     Task<bool> ExistsByTeacherAndMonthAsync(Guid teacherUserId, int year, int month, CancellationToken ct = default);
     Task<TeacherSalaryPaymentEntity> AddAsync(TeacherSalaryPaymentEntity entity, CancellationToken ct = default);
     Task<TeacherSalaryPaymentEntity> UpdateAsync(TeacherSalaryPaymentEntity entity, CancellationToken ct = default);

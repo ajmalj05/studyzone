@@ -16,6 +16,7 @@ using Studyzone.Application.Portal;
 using Studyzone.Application.ParentPortal;
 using Studyzone.Application.Reports;
 using Studyzone.Application.TeacherSalary;
+using Studyzone.Application.Expenses;
 using Studyzone.Application.Requests;
 using Studyzone.Application.Notifications;
 using Studyzone.Application.Subjects;
@@ -102,6 +103,8 @@ public static class DependencyInjection
         services.AddScoped<ITeacherSalaryPaymentRepository, TeacherSalaryPaymentRepository>();
         services.AddScoped<ITeacherSalaryPaymentLineRepository, TeacherSalaryPaymentLineRepository>();
         services.AddScoped<ITeacherSalaryPaymentService, TeacherSalaryPaymentService>();
+        services.AddScoped<ISchoolExpenseRepository, SchoolExpenseRepository>();
+        services.AddScoped<ISchoolExpenseService, SchoolExpenseService>();
         services.AddScoped<IPortalRequestRepository, PortalRequestRepository>();
         services.AddScoped<IRequestsService, RequestsService>();
         services.AddScoped<INotificationRepository, NotificationRepository>();

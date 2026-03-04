@@ -23,13 +23,24 @@ public class TeacherSalaryController : ControllerBase
 
     // ----- Payment (monthly payroll) endpoints -----
     [HttpGet("payments")]
-    public async Task<ActionResult<IReadOnlyList<TeacherSalaryPaymentDto>>> GetPaymentsByMonth([FromQuery] int year, [FromQuery] int month, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<TeacherSalaryPaymentDto>>> GetPayments([FromQuery] int? year, [FromQuery] int? month, [FromQuery] string? status, [FromQuery] int? yearFrom, [FromQuery] int? yearTo, [FromQuery] int? monthFrom, [FromQuery] int? monthTo, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
-        var y = year >= 1 && year <= 9999 ? year : now.Year;
-        var m = month >= 1 && month <= 12 ? month : now.Month;
-        var list = await _paymentService.GetByMonthAsync(y, m, ct);
-        return Ok(list);
+        if (year.HasValue && month.HasValue)
+        {
+            var now = DateTime.UtcNow;
+            var y = year.Value >= 1 && year.Value <= 9999 ? year.Value : now.Year;
+            var m = month.Value >= 1 && month.Value <= 12 ? month.Value : now.Month;
+            var list = await _paymentService.GetByMonthAsync(y, m, ct);
+            return Ok(list);
+        }
+        if (yearFrom.HasValue || yearTo.HasValue || !string.IsNullOrWhiteSpace(status))
+        {
+            var list = await _paymentService.GetByStatusAndDateRangeAsync(status?.Trim(), yearFrom, yearTo, monthFrom, monthTo, ct);
+            return Ok(list);
+        }
+        var nowFallback = DateTime.UtcNow;
+        var listDefault = await _paymentService.GetByMonthAsync(nowFallback.Year, nowFallback.Month, ct);
+        return Ok(listDefault);
     }
 
     [HttpGet("payments/by-teacher/{teacherUserId}")]

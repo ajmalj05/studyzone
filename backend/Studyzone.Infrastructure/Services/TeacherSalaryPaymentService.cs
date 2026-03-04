@@ -53,6 +53,15 @@ public class TeacherSalaryPaymentService : ITeacherSalaryPaymentService
         return dtos;
     }
 
+    public async Task<IReadOnlyList<TeacherSalaryPaymentDto>> GetByStatusAndDateRangeAsync(string? status, int? yearFrom, int? yearTo, int? monthFrom, int? monthTo, CancellationToken ct = default)
+    {
+        var list = await _paymentRepo.GetByStatusAndDateRangeAsync(status, yearFrom, yearTo, monthFrom, monthTo, ct);
+        var dtos = new List<TeacherSalaryPaymentDto>();
+        foreach (var e in list)
+            dtos.Add(await MapToDtoAsync(e, ct));
+        return dtos;
+    }
+
     public async Task<TeacherSalaryPaymentDto> CreateAsync(CreateTeacherSalaryPaymentRequest request, CancellationToken ct = default)
     {
         if (request.Year < 1 || request.Year > 9999 || request.Month < 1 || request.Month > 12)

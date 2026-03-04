@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, CalendarDays, BookOpen, Calendar, Library, UserRoundCog,
+  ClipboardList, CalendarDays, BookOpen, Calendar, Library, UserRoundCog, Wallet,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -28,6 +28,7 @@ const menuItems: MenuItem[] = [
   { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
   { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
   { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
+  { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
   { title: "Fees", icon: DollarSign, path: "/admin/fees" },
   { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
   { title: "Exams & Results", icon: FileText, path: "/admin/exams" },

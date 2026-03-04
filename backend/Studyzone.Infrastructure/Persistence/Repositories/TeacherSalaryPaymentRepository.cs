@@ -46,6 +46,26 @@ public class TeacherSalaryPaymentRepository : ITeacherSalaryPaymentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<TeacherSalaryPayment>> GetByStatusAndDateRangeAsync(string? status, int? yearFrom, int? yearTo, int? monthFrom, int? monthTo, CancellationToken ct = default)
+    {
+        var query = _db.TeacherSalaryPayments.Include(x => x.Lines).AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(x => x.Status == status.Trim());
+        if (yearFrom.HasValue)
+        {
+            var periodFrom = yearFrom.Value * 12 + (monthFrom ?? 1);
+            query = query.Where(x => (x.Year * 12 + x.Month) >= periodFrom);
+        }
+        if (yearTo.HasValue)
+        {
+            var periodTo = yearTo.Value * 12 + (monthTo ?? 12);
+            query = query.Where(x => (x.Year * 12 + x.Month) <= periodTo);
+        }
+        return await query
+            .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).ThenBy(x => x.TeacherUserId.ToString())
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> ExistsByTeacherAndMonthAsync(Guid teacherUserId, int year, int month, CancellationToken ct = default)
     {
         return await _db.TeacherSalaryPayments.AnyAsync(x => x.TeacherUserId == teacherUserId && x.Year == year && x.Month == month, ct);
