@@ -34,8 +34,6 @@ const TeacherStudents = () => {
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [classId, setClassId] = useState("");
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow & { detail?: StudentDto } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [attendanceHistory, setAttendanceHistory] = useState<{ date: string; status: string }[]>([]);
@@ -45,25 +43,13 @@ const TeacherStudents = () => {
 
   useEffect(() => {
     if (!myBatch) {
-      (async () => {
-        try {
-          const list = (await fetchApi("/Classes")) as { id: string; name: string }[];
-          setClasses(Array.isArray(list) ? list : []);
-        } catch {
-          setClasses([]);
-        }
-      })();
+      setStudents([]);
+      setLoading(false);
+      return;
     }
-  }, [myBatch]);
-
-  useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (myBatch) {
-      params.set("batchId", myBatch.id);
-    } else if (classId) {
-      params.set("classId", classId);
-    }
+    params.set("batchId", myBatch.id);
     params.set("take", "200");
     fetchApi(`/Students?${params.toString()}`)
       .then((res: { items?: StudentDto[]; total?: number }) => {
@@ -81,7 +67,7 @@ const TeacherStudents = () => {
       })
       .catch(() => setStudents([]))
       .finally(() => setLoading(false));
-  }, [myBatch, classId]);
+  }, [myBatch]);
 
   const openDetail = async (row: StudentRow) => {
     setSelectedStudent({ ...row });
@@ -143,19 +129,18 @@ const TeacherStudents = () => {
                 {myBatch.className} – {myBatch.name}
               </span>
             </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-muted-foreground">Class</label>
-              <select value={classId} onChange={e => setClassId(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-4 py-2 text-sm">
-                <option value="">All</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          ) : null}
         </div>
 
+        {!myBatchLoading && !myBatch && (
+          <Card className="rounded-[var(--radius)] border-muted">
+            <CardContent className="py-6">
+              <p className="text-muted-foreground text-center">You are not assigned as class teacher. Only class teachers can view their class students. Please contact admin to assign you to a batch.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {myBatch && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="rounded-[var(--radius)] shadow-card overflow-hidden">
             <CardContent className="p-0">
@@ -190,6 +175,7 @@ const TeacherStudents = () => {
             </CardContent>
           </Card>
         </motion.div>
+        )}
 
         <AnimatePresence>
           {selectedStudent && (

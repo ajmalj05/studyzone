@@ -5,7 +5,7 @@ import {
 export const getTeacherMenu = () => [
     { title: "Dashboard", icon: LayoutDashboard, path: "/teacher/dashboard" },
     { title: "My Batch", icon: BookMarked, path: "/teacher/my-batch" },
-    { title: "My Classes", icon: BookOpen, path: "/teacher/classes" },
+    { title: "Classes & Students", icon: BookOpen, path: "/teacher/classes" },
     { title: "Attendance", icon: ClipboardCheck, path: "/teacher/attendance" },
     { title: "Student List", icon: Users, path: "/teacher/students" },
     { title: "Add Marks", icon: PenLine, path: "/teacher/marks" },

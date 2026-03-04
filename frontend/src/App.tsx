@@ -54,6 +54,7 @@ import TeacherPlaceholder from "./pages/teacher/TeacherPlaceholder";
 import TeacherSalary from "./pages/teacher/TeacherSalary";
 import TeacherMyBatch from "./pages/teacher/TeacherMyBatch";
 import TeacherNotices from "./pages/teacher/TeacherNotices";
+import TeacherClassesAndStudents from "./pages/teacher/TeacherClassesAndStudents";
 import AdminSalary from "./pages/AdminSalary";
 import AdminParentManagement from "./pages/AdminParentManagement";
 
@@ -141,7 +142,7 @@ const App = () => (
                 <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 <Route path="dashboard" element={<TeacherDashboard />} />
                 <Route path="my-batch" element={<TeacherMyBatch />} />
-                <Route path="classes" element={<TeacherPlaceholder title="My Classes" />} />
+                <Route path="classes" element={<TeacherClassesAndStudents />} />
                 <Route path="attendance" element={<TeacherAttendance />} />
                 <Route path="students" element={<TeacherStudents />} />
                 <Route path="marks" element={<TeacherExams />} />

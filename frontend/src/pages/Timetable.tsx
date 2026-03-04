@@ -344,7 +344,7 @@ export default function Timetable() {
           <Card>
             <CardHeader>
               <CardTitle>Timetable per batch</CardTitle>
-              <CardDescription>Each batch (e.g. Class 8-A, 8-B) has its own timetable since they run at the same time. Select a batch to view or edit.</CardDescription>
+              <CardDescription>Add and edit timetable for each batch (e.g. Class 8-A, 8-B). Publish so teachers and students can see it.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2 items-center">

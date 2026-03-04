@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Studyzone.Application.Exams;
+using Studyzone.Application.Portal;
 
 namespace Studyzone.Api.Controllers;
 
@@ -10,10 +12,12 @@ namespace Studyzone.Api.Controllers;
 public class ExamsController : ControllerBase
 {
     private readonly IExamService _service;
+    private readonly IPortalService _portal;
 
-    public ExamsController(IExamService service)
+    public ExamsController(IExamService service, IPortalService portal)
     {
         _service = service;
+        _portal = portal;
     }
 
     [HttpGet]
@@ -48,6 +52,20 @@ public class ExamsController : ControllerBase
     [HttpPost("marks")]
     public async Task<IActionResult> SaveMarks([FromBody] SaveMarksRequest request, CancellationToken ct)
     {
+        if (User.IsInRole("Teacher") || User.IsInRole("teacher"))
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var exam = await _service.GetByIdAsync(request.ExamId, ct);
+            if (exam == null)
+                return NotFound();
+            if (string.IsNullOrEmpty(exam.ClassId))
+                return BadRequest(new { message = "Exam is not linked to a class." });
+            var assignedClassIds = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
+            if (assignedClassIds.Count == 0 || !assignedClassIds.Contains(exam.ClassId))
+                return Forbid();
+        }
         try
         {
             await _service.SaveMarksAsync(request, ct);

@@ -18,6 +18,16 @@ public interface IPortalService
 
     Task<TeacherPortalDashboardDto> GetTeacherDashboardAsync(string teacherUserGuid, CancellationToken ct = default);
     Task<IReadOnlyList<TimetableSlotDto>> GetTeacherTimetableAsync(string teacherUserGuid, CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetTeacherAssignedClassIdsAsync(string teacherUserGuid, CancellationToken ct = default);
+    Task<IReadOnlyList<TeacherAssignedBatchDto>> GetTeacherAssignedBatchesAsync(string teacherUserGuid, CancellationToken ct = default);
+}
+
+public class TeacherAssignedBatchDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string ClassId { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
 }
 
 public class StudentExamResultDto

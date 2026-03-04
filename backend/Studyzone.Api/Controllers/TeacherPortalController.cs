@@ -37,4 +37,22 @@ public class TeacherPortalController : ControllerBase
         var list = await _portal.GetTeacherTimetableAsync(userId, ct);
         return Ok(list);
     }
+
+    [HttpGet("assigned-class-ids")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetAssignedClassIds(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        var list = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
+        return Ok(list);
+    }
+
+    [HttpGet("assigned-batches")]
+    public async Task<ActionResult<IReadOnlyList<TeacherAssignedBatchDto>>> GetAssignedBatches(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        var list = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
+        return Ok(list);
+    }
 }

@@ -27,6 +27,7 @@ public class PortalService : IPortalService
     private readonly IPeriodConfigRepository _periodRepo;
     private readonly IUserManagementService _userService;
     private readonly ITeacherSalaryService _salaryService;
+    private readonly IAcademicYearRepository _academicYearRepo;
 
     public PortalService(
         IStudentRepository studentRepo,
@@ -43,7 +44,8 @@ public class PortalService : IPortalService
         ITimetableSlotRepository slotRepo,
         IPeriodConfigRepository periodRepo,
         IUserManagementService userService,
-        ITeacherSalaryService salaryService)
+        ITeacherSalaryService salaryService,
+        IAcademicYearRepository academicYearRepo)
     {
         _studentRepo = studentRepo;
         _enrollmentRepo = enrollmentRepo;
@@ -60,6 +62,7 @@ public class PortalService : IPortalService
         _periodRepo = periodRepo;
         _userService = userService;
         _salaryService = salaryService;
+        _academicYearRepo = academicYearRepo;
     }
 
     public async Task<StudentPortalProfileDto?> GetStudentProfileAsync(string userGuid, CancellationToken ct = default)
@@ -240,5 +243,56 @@ public class PortalService : IPortalService
             });
         }
         return result;
+    }
+
+    public async Task<IReadOnlyList<string>> GetTeacherAssignedClassIdsAsync(string teacherUserGuid, CancellationToken ct = default)
+    {
+        var batchIds = await GetTeacherAssignedBatchIdsAsync(teacherUserGuid, ct);
+        var classIds = new HashSet<string>();
+        foreach (var batchId in batchIds)
+        {
+            var batch = await _batchRepo.GetByIdAsync(batchId, ct);
+            if (batch != null)
+                classIds.Add(batch.ClassId.ToString());
+        }
+        return classIds.ToList();
+    }
+
+    public async Task<IReadOnlyList<TeacherAssignedBatchDto>> GetTeacherAssignedBatchesAsync(string teacherUserGuid, CancellationToken ct = default)
+    {
+        var batchIds = await GetTeacherAssignedBatchIdsAsync(teacherUserGuid, ct);
+        var result = new List<TeacherAssignedBatchDto>();
+        foreach (var batchId in batchIds)
+        {
+            var batch = await _batchRepo.GetByIdAsync(batchId, ct);
+            if (batch == null) continue;
+            var cls = await _classRepo.GetByIdAsync(batch.ClassId, ct);
+            result.Add(new TeacherAssignedBatchDto
+            {
+                Id = batch.Id.ToString(),
+                Name = batch.Name,
+                ClassId = batch.ClassId.ToString(),
+                ClassName = cls?.Name ?? ""
+            });
+        }
+        return result;
+    }
+
+    private async Task<IReadOnlyList<Guid>> GetTeacherAssignedBatchIdsAsync(string teacherUserGuid, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(teacherUserGuid, out var teacherId))
+            return Array.Empty<Guid>();
+        var batchIds = new HashSet<Guid>();
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        if (currentYear != null)
+        {
+            var myBatch = await _batchRepo.GetByClassTeacherUserIdAndAcademicYearAsync(teacherId, currentYear.Id, ct);
+            if (myBatch != null)
+                batchIds.Add(myBatch.Id);
+        }
+        var slots = await _slotRepo.GetByTeacherUserIdAsync(teacherId, ct);
+        foreach (var s in slots)
+            batchIds.Add(s.BatchId);
+        return batchIds.ToList();
     }
 }
