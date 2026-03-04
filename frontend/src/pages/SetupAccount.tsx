@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShieldCheck, Mail, Lock, Check } from "lucide-react";
+import { ShieldCheck, User, Lock, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -113,14 +113,14 @@ const SetupAccount = () => {
                             transition={{ delay: 0.3 }}
                             className="space-y-2"
                         >
-                            <label className="text-sm font-medium text-foreground">Email Address</label>
+                            <label className="text-sm font-medium text-foreground">Username</label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    type="email"
+                                    type="text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Enter your email"
+                                    placeholder="Enter your username"
                                     className="pl-10 rounded-xl h-12"
                                 />
                             </div>

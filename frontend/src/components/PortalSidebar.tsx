@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, ChevronLeft, ChevronRight, LucideIcon } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
+import { useAuth } from "@/context/AuthContext";
 
 export interface MenuItem {
   title: string;
@@ -46,6 +47,7 @@ export function PortalSidebarContent({
   const [showLogout, setShowLogout] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const collapsed = isInDrawer ? false : (controlledCollapsed ?? internalCollapsed);
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
@@ -143,7 +145,15 @@ export function PortalSidebarContent({
         )}
       </div>
 
-      <LogoutModal open={showLogout} onClose={() => setShowLogout(false)} onConfirm={() => { navigate(logoutPath); onNavigate?.(); }} />
+      <LogoutModal
+        open={showLogout}
+        onClose={() => setShowLogout(false)}
+        onConfirm={() => {
+          logout();
+          navigate(logoutPath, { replace: true });
+          onNavigate?.();
+        }}
+      />
     </>
   );
 }

@@ -325,8 +325,13 @@ export default function Teachers() {
                 <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" />
               </div>
               <div className="space-y-1">
-                <Label>Register Number</Label>
-                <Input value={form.registerNumber} onChange={e => setForm(p => ({ ...p, registerNumber: e.target.value }))} placeholder="Reg. no." disabled={!!editTeacher} />
+                <Label>Register Number (Username)</Label>
+                <Input
+                  value={form.registerNumber}
+                  onChange={e => setForm(p => ({ ...p, registerNumber: e.target.value }))}
+                  placeholder="Reg. no. used as login username"
+                  disabled={!!editTeacher}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Subject</Label>

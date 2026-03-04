@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
+import { useAuth } from "@/context/AuthContext";
 
 export type MenuItem = {
   title: string;
@@ -70,6 +71,7 @@ export function AppSidebarContent({
   const [showLogout, setShowLogout] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const collapsed = isInDrawer ? false : (controlledCollapsed ?? internalCollapsed);
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
@@ -169,7 +171,15 @@ export function AppSidebarContent({
         )}
       </div>
 
-      <LogoutModal open={showLogout} onClose={() => setShowLogout(false)} onConfirm={() => { navigate("/login"); onNavigate?.(); }} />
+      <LogoutModal
+        open={showLogout}
+        onClose={() => setShowLogout(false)}
+        onConfirm={() => {
+          logout();
+          navigate("/admin-login", { replace: true });
+          onNavigate?.();
+        }}
+      />
     </>
   );
 }
