@@ -67,6 +67,7 @@ import ParentReports from "./pages/parent/ParentReports";
 import ParentTimetable from "./pages/parent/ParentTimetable";
 import ParentAnnouncements from "./pages/parent/ParentAnnouncements";
 import ParentRequests from "./pages/parent/ParentRequests";
+import ClassTeacherAssign from "./pages/ClassTeacherAssign";
 
 const queryClient = new QueryClient();
 
@@ -118,6 +119,7 @@ const App = () => (
                 <Route path="academic-year" element={<AcademicYearPage />} />
                 <Route path="year/:yearId" element={<AcademicYearDetailPage />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="class-teacher" element={<ClassTeacherAssign />} />
               </Route>
             </Route>
 
