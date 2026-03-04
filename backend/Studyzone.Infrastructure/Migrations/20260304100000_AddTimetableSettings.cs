@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Studyzone.Infrastructure.Migrations
 {
-    [Migration("20260304100000_AddTimetableSettings")]
+    /// <inheritdoc />
     public partial class AddTimetableSettings : Migration
     {
         /// <inheritdoc />
