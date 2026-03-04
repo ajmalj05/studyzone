@@ -47,16 +47,16 @@ public class ParentManagementService : IParentManagementService
                 linkedStudents.Add(new LinkedStudentDto
                 {
                     StudentId = student.Id.ToString(),
-                    StudentName = student.Name,
+                    StudentName = student.Name ?? "",
                     AdmissionNumber = student.AdmissionNumber,
                     ClassName = className
                 });
             }
             result.Add(new ParentWithLinksDto
             {
-                Id = u.Id,
-                UserId = u.UserId,
-                Name = u.Name,
+                Id = u.Id ?? "",
+                UserId = u.UserId ?? "",
+                Name = u.Name ?? "",
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt,
                 LinkedStudents = linkedStudents

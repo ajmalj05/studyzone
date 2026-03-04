@@ -38,8 +38,11 @@ public class UserRepository : IUserRepository
     {
         var query = _db.Users.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(roleFilter))
-            query = query.Where(u => u.Role.ToLower() == roleFilter.ToLower());
-        return await query.OrderBy(u => u.Name).ToListAsync(ct);
+        {
+            var roleLower = roleFilter.Trim().ToLower();
+            query = query.Where(u => u.Role != null && u.Role.Trim().ToLower() == roleLower);
+        }
+        return await query.OrderBy(u => u.Name ?? "").ToListAsync(ct);
     }
 
     public async Task<User> AddAsync(User user, CancellationToken ct = default)
