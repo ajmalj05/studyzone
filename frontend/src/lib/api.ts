@@ -30,12 +30,14 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
     }
 
     if (!response.ok) {
-        const message =
-            (data && typeof data === 'object' && 'message' in data && typeof (data as { message: unknown }).message === 'string')
-                ? (data as { message: string }).message
-                : response.status === 404
-                    ? 'Not found. Check that VITE_API_URL points to your API (e.g. http://localhost:5000 or http://localhost:5000/api).'
-                    : 'Something went wrong';
+        let message: string;
+        if (data && typeof data === 'object' && 'message' in data && typeof (data as { message: unknown }).message === 'string') {
+            message = (data as { message: string }).message;
+        } else if (typeof data === 'string' && data) {
+            message = data;
+        } else {
+            message = 'Please try again. If the issue continues, please contact the development team.';
+        }
         throw new Error(message);
     }
 

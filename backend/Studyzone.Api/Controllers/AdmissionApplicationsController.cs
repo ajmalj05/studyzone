@@ -91,8 +91,8 @@ public class AdmissionApplicationsController : ControllerBase
             var dto = await _service.SubmitAndEnrollAsync(id, ct);
             return Ok(dto);
         }
-        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
-        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 }
 
