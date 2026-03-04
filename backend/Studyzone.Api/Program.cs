@@ -93,157 +93,26 @@ INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALU
 ON CONFLICT (""MigrationId"") DO NOTHING;");
 }
 
-async Task EnsureMissingSchemaPartsAsync(ApplicationDbContext db)
+// One-time repair: add FeePaymentStartYear if missing (fixes DBs where migration was recorded but column not applied)
+async Task EnsureStudentEnrollmentFeePaymentStartYearAsync(ApplicationDbContext db)
 {
     await db.Database.ExecuteSqlRawAsync(@"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'Applications' AND column_name = 'BatchId'
+    WHERE table_schema = 'public' AND table_name = 'StudentEnrollments' AND column_name = 'FeePaymentStartYear'
   ) THEN
-    ALTER TABLE ""Applications"" ADD COLUMN ""BatchId"" uuid NULL;
+    ALTER TABLE ""StudentEnrollments"" ADD COLUMN ""FeePaymentStartYear"" integer NULL;
   END IF;
 END $$;");
-    await db.Database.ExecuteSqlRawAsync(@"
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'PortalRequests') THEN
-    CREATE TABLE ""PortalRequests"" (
-      ""Id"" uuid NOT NULL,
-      ""UserId"" uuid NOT NULL,
-      ""Role"" text NOT NULL,
-      ""RequestType"" text NOT NULL,
-      ""Subject"" text NOT NULL,
-      ""Message"" text NOT NULL,
-      ""Status"" text NOT NULL,
-      ""AdminComment"" text NULL,
-      ""CreatedAt"" timestamp with time zone NOT NULL,
-      ""UpdatedAt"" timestamp with time zone NULL,
-      CONSTRAINT ""PK_PortalRequests"" PRIMARY KEY (""Id"")
-    );
-    CREATE INDEX ""IX_PortalRequests_UserId"" ON ""PortalRequests"" (""UserId"");
-    CREATE INDEX ""IX_PortalRequests_Role"" ON ""PortalRequests"" (""Role"");
-    CREATE INDEX ""IX_PortalRequests_Status"" ON ""PortalRequests"" (""Status"");
-  END IF;
-END $$;");
-    await db.Database.ExecuteSqlRawAsync(@"
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Notifications') THEN
-    CREATE TABLE ""Notifications"" (
-      ""Id"" uuid NOT NULL,
-      ""UserId"" uuid NOT NULL,
-      ""Type"" text NOT NULL,
-      ""Title"" text NOT NULL,
-      ""RelatedEntityId"" uuid NULL,
-      ""CreatedAt"" timestamp with time zone NOT NULL,
-      CONSTRAINT ""PK_Notifications"" PRIMARY KEY (""Id"")
-    );
-    CREATE INDEX ""IX_Notifications_UserId"" ON ""Notifications"" (""UserId"");
-    CREATE INDEX ""IX_Notifications_CreatedAt"" ON ""Notifications"" (""CreatedAt"");
-  END IF;
-END $$;");
-}
-
-// Ensure migration AddBatchClassTeacherUserId is applied (fix stale history or when EF skips it)
-const string AddBatchClassTeacherUserIdMigrationId = "20260303100000_AddBatchClassTeacherUserId";
-
-async Task EnsureBatchClassTeacherUserIdAsync(ApplicationDbContext db)
-{
-    var hasColumn = await db.Database.SqlQueryRaw<int>(@"
-SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
-WHERE table_schema = 'public' AND LOWER(table_name) = 'batches' AND LOWER(column_name) = 'classteacheruserid'").FirstOrDefaultAsync();
-    if (hasColumn != 0) return;
-
-    await db.Database.ExecuteSqlRawAsync(
-        @"DELETE FROM ""__EFMigrationsHistory"" WHERE ""MigrationId"" = {0}", AddBatchClassTeacherUserIdMigrationId);
-    await db.Database.MigrateAsync();
-    hasColumn = await db.Database.SqlQueryRaw<int>(@"
-SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
-WHERE table_schema = 'public' AND LOWER(table_name) = 'batches' AND LOWER(column_name) = 'classteacheruserid'").FirstOrDefaultAsync();
-    if (hasColumn != 0) return;
-
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Batches"" ADD COLUMN IF NOT EXISTS ""ClassTeacherUserId"" uuid NULL");
-    await db.Database.ExecuteSqlRawAsync(@"
-INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ({0}, '10.0.0') ON CONFLICT (""MigrationId"") DO NOTHING", AddBatchClassTeacherUserIdMigrationId);
-}
-
-// Ensure migration AddAcademicYearToBatchAndFeeStructure is applied (fix stale history or when EF skips it)
-const string AddAcademicYearMigrationId = "20260303120000_AddAcademicYearToBatchAndFeeStructure";
-
-async Task EnsureAcademicYearOnBatchAndFeeStructureAsync(ApplicationDbContext db)
-{
-    var batchesHasColumn = await db.Database.SqlQueryRaw<int>(@"
-SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
-WHERE table_schema = 'public' AND LOWER(table_name) = 'batches' AND LOWER(column_name) = 'academicyearid'").FirstOrDefaultAsync();
-    if (batchesHasColumn != 0) return;
-
-    await db.Database.ExecuteSqlRawAsync(
-        @"DELETE FROM ""__EFMigrationsHistory"" WHERE ""MigrationId"" = {0}", AddAcademicYearMigrationId);
-    await db.Database.MigrateAsync();
-    batchesHasColumn = await db.Database.SqlQueryRaw<int>(@"
-SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
-WHERE table_schema = 'public' AND LOWER(table_name) = 'batches' AND LOWER(column_name) = 'academicyearid'").FirstOrDefaultAsync();
-    if (batchesHasColumn != 0) return;
-
-    // Fallback: apply migration steps inline when EF did not run the migration
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Batches"" ADD COLUMN IF NOT EXISTS ""AcademicYearId"" uuid NULL");
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""FeeStructures"" ADD COLUMN IF NOT EXISTS ""AcademicYearId"" uuid NULL");
-    await db.Database.ExecuteSqlRawAsync(@"
-INSERT INTO ""AcademicYears"" (""Id"", ""Name"", ""StartDate"", ""EndDate"", ""IsCurrent"", ""IsArchived"", ""CreatedAt"")
-SELECT gen_random_uuid(), '2024-2025', '2024-04-01'::timestamptz, '2025-03-31'::timestamptz, true, false, NOW()
-WHERE NOT EXISTS (SELECT 1 FROM ""AcademicYears"" LIMIT 1)");
-    await db.Database.ExecuteSqlRawAsync(@"
-UPDATE ""Batches"" SET ""AcademicYearId"" = COALESCE(
-  (SELECT ""Id"" FROM ""AcademicYears"" WHERE ""IsCurrent"" = true LIMIT 1),
-  (SELECT ""Id"" FROM ""AcademicYears"" ORDER BY ""StartDate"" DESC LIMIT 1))
-WHERE ""AcademicYearId"" IS NULL");
-    await db.Database.ExecuteSqlRawAsync(@"
-UPDATE ""FeeStructures"" SET ""AcademicYearId"" = COALESCE(
-  (SELECT ""Id"" FROM ""AcademicYears"" WHERE ""IsCurrent"" = true LIMIT 1),
-  (SELECT ""Id"" FROM ""AcademicYears"" ORDER BY ""StartDate"" DESC LIMIT 1))
-WHERE ""AcademicYearId"" IS NULL");
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Batches"" ALTER COLUMN ""AcademicYearId"" SET NOT NULL");
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""FeeStructures"" ALTER COLUMN ""AcademicYearId"" SET NOT NULL");
-    await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_Batches_AcademicYearId"" ON ""Batches"" (""AcademicYearId"")");
-    await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Batches_ClassId_AcademicYearId_Name"" ON ""Batches"" (""ClassId"", ""AcademicYearId"", ""Name"")");
-    await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_FeeStructures_AcademicYearId"" ON ""FeeStructures"" (""AcademicYearId"")");
-    await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FeeStructures_ClassId_AcademicYearId_Name"" ON ""FeeStructures"" (""ClassId"", ""AcademicYearId"", ""Name"")");
-    await db.Database.ExecuteSqlRawAsync(@"
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Batches_AcademicYears_AcademicYearId') THEN
-    ALTER TABLE ""Batches"" ADD CONSTRAINT ""FK_Batches_AcademicYears_AcademicYearId"" FOREIGN KEY (""AcademicYearId"") REFERENCES ""AcademicYears"" (""Id"") ON DELETE RESTRICT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_FeeStructures_AcademicYears_AcademicYearId') THEN
-    ALTER TABLE ""FeeStructures"" ADD CONSTRAINT ""FK_FeeStructures_AcademicYears_AcademicYearId"" FOREIGN KEY (""AcademicYearId"") REFERENCES ""AcademicYears"" (""Id"") ON DELETE RESTRICT;
-  END IF;
-END $$");
-    await db.Database.ExecuteSqlRawAsync(@"
-INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ({0}, '10.0.0') ON CONFLICT (""MigrationId"") DO NOTHING", AddAcademicYearMigrationId);
-}
-
-// Ensure migration AddFeePaymentStartMonth is applied (when EF migration was not run yet)
-const string AddFeePaymentStartMonthMigrationId = "20260303150000_AddFeePaymentStartMonth";
-
-async Task EnsureFeePaymentStartMonthAsync(ApplicationDbContext db)
-{
-    var hasColumn = await db.Database.SqlQueryRaw<int>(@"
-SELECT COUNT(*) AS ""Value"" FROM information_schema.columns
-WHERE table_schema = 'public' AND table_name = 'StudentEnrollments' AND column_name = 'FeePaymentStartMonth'").FirstOrDefaultAsync();
-    if (hasColumn != 0) return;
-
-    await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""StudentEnrollments"" ADD COLUMN IF NOT EXISTS ""FeePaymentStartMonth"" integer NULL");
-    await db.Database.ExecuteSqlRawAsync(@"
-INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ({0}, '10.0.0') ON CONFLICT (""MigrationId"") DO NOTHING", AddFeePaymentStartMonthMigrationId);
 }
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await EnsureMigrationHistoryBaselineAsync(db);
-    await EnsureBatchClassTeacherUserIdAsync(db);
-    await EnsureAcademicYearOnBatchAndFeeStructureAsync(db);
-    await EnsureFeePaymentStartMonthAsync(db);
     await db.Database.MigrateAsync();
-    await EnsureMissingSchemaPartsAsync(db);
+    await EnsureStudentEnrollmentFeePaymentStartYearAsync(db);
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];
     var seedAdminPassword = builder.Configuration["Seed:AdminPassword"];
     var seedAdminName = builder.Configuration["Seed:AdminName"];

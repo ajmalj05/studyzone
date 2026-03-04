@@ -4,8 +4,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Studyzone.Infrastructure.Migrations
 {
-    [Migration("20260304120000_AddFeePaymentStartYear")]
-    public partial class AddFeePaymentStartYear : Migration
+    /// <summary>
+    /// Idempotent: ensures FeePaymentStartYear exists on StudentEnrollments (fixes DBs where 20260304120000 did not apply).
+    /// </summary>
+    [Migration("20260304140000_EnsureStudentEnrollmentFeePaymentStartYear")]
+    public partial class EnsureStudentEnrollmentFeePaymentStartYear : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
