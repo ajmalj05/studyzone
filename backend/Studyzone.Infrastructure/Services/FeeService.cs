@@ -315,58 +315,25 @@ public class FeeService : IFeeService
             }
         }
 
-        var charges = await _chargeRepo.GetByStudentIdAsync(student.Id, null, ct);
-        var totalCharges = charges.Sum(x => x.Amount);
-
-        var payments = await _paymentRepo.GetByStudentIdAsync(student.Id, null, null, ct);
-        var orderedPayments = payments.OrderBy(x => x.PaidAt).ToList();
-        var totalPayments = orderedPayments.Sum(x => x.Amount);
-
-        var structures = new List<FeeStructure>();
-        if (classId.HasValue && academicYearId.HasValue)
+        // Receipt is for this single payment only (one fee payment, not full ledger)
+        var particulars = new List<FeeReceiptParticularDto>
         {
-            structures = (await _structureRepo.GetByClassIdAndAcademicYearAsync(classId.Value, academicYearId.Value, ct)).ToList();
-        }
-        else
-        {
-            structures = (await _structureRepo.GetAllAsync(ct)).ToList();
-        }
-        var structureLookup = structures.ToDictionary(x => x.Id, x => x.Name);
+            new FeeReceiptParticularDto { Name = "Fees paid", Amount = payment.Amount }
+        };
 
-        var particulars = charges
-            .GroupBy(x => x.FeeStructureId)
-            .Select(g => new FeeReceiptParticularDto
+        var history = new List<FeeReceiptHistoryItemDto>
+        {
+            new FeeReceiptHistoryItemDto
             {
-                Name = structureLookup.TryGetValue(g.Key, out var name) ? name : "Fee",
-                Amount = g.Sum(x => x.Amount)
-            })
-            .OrderBy(x => x.Name)
-            .ToList();
-
-        var history = new List<FeeReceiptHistoryItemDto>();
-        decimal runningPaid = 0m;
-        FeeReceiptHistoryItemDto? targetHistory = null;
-        foreach (var p in orderedPayments)
-        {
-            runningPaid += p.Amount;
-            var dueAfter = totalCharges - runningPaid;
-            var item = new FeeReceiptHistoryItemDto
-            {
-                PaymentId = p.Id.ToString(),
-                ReceiptNumber = p.ReceiptNumber,
-                SubmissionDate = p.PaidAt,
-                FeeTerm = GetFeeTermLabel(p.PaidAt),
-                TotalAmount = p.Amount,
-                Deposit = p.Amount,
-                Due = dueAfter
-            };
-            if (p.Id == payment.Id)
-                targetHistory = item;
-            history.Add(item);
-        }
-
-        var remainingBalance = targetHistory?.Due ?? (totalCharges - totalPayments);
-        var balance = totalCharges - totalPayments;
+                PaymentId = payment.Id.ToString(),
+                ReceiptNumber = payment.ReceiptNumber,
+                SubmissionDate = payment.PaidAt,
+                FeeTerm = GetFeeTermLabel(payment.PaidAt),
+                TotalAmount = payment.Amount,
+                Deposit = payment.Amount,
+                Due = 0
+            }
+        };
 
         return new FeeReceiptDto
         {
@@ -380,11 +347,11 @@ public class FeeService : IFeeService
             PaidAt = payment.PaidAt,
             FeeTerm = GetFeeTermLabel(payment.PaidAt),
             CurrencySymbol = "₹",
-            TotalCharges = totalCharges,
-            TotalPayments = totalPayments,
-            Balance = balance,
+            TotalCharges = payment.Amount,
+            TotalPayments = payment.Amount,
+            Balance = 0,
             Deposit = payment.Amount,
-            RemainingBalance = remainingBalance,
+            RemainingBalance = 0,
             Particulars = particulars,
             History = history
         };

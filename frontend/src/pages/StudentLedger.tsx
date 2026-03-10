@@ -182,41 +182,6 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
         </tbody>
       </table>
 
-      <div class="section-title">Totals</div>
-      <table class="receipt-table">
-        <tbody>
-          <tr>
-            <td class="label">TOTAL</td>
-            <td class="text-right">${currency}${receipt.totalCharges.toLocaleString("en-IN")}</td>
-          </tr>
-          <tr>
-            <td class="label">DEPOSIT</td>
-            <td class="text-right">${currency}${receipt.deposit.toLocaleString("en-IN")}</td>
-          </tr>
-          <tr>
-            <td class="label">DUE-ABLE BALANCE</td>
-            <td class="text-right">${currency}${receipt.remainingBalance.toLocaleString("en-IN")}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="fee-statement-title">Fee Submission Statement Of ${esc(receipt.studentName)}</div>
-      <table class="receipt-table">
-        <thead>
-          <tr>
-            <th>Sr#</th>
-            <th>Submission Date</th>
-            <th>Fee Term</th>
-            <th class="text-right">Total Amount</th>
-            <th class="text-right">Deposit</th>
-            <th class="text-right">Due-able</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${historyRows}
-        </tbody>
-      </table>
-
       <div class="receipt-footer">
         <div class="receipt-footer-row">
           <div class="receipt-footer-cell">
