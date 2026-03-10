@@ -530,7 +530,7 @@ export default function Students() {
                     <Button onClick={openAdd}>Add student</Button>
                   </div>
                   <Dialog open={showForm} onOpenChange={setShowForm}>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{editingId ? "Edit student" : "Add student"}</DialogTitle>
                         <DialogDescription>Student details and guardian information.</DialogDescription>
