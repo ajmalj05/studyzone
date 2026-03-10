@@ -59,7 +59,6 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
   const feeTerm = receipt.feeTerm ?? "—";
   const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
   const particulars = receipt.particulars ?? [];
-  const history = receipt.history ?? [];
   const currency = receipt.currencySymbol ?? "₹";
 
   const printCss = `
@@ -86,7 +85,6 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
     .receipt-footer-cell { width: 32%; text-align: center; }
     .muted { color: #666; }
     .section-title { font-size: 0.9rem; font-weight: 600; margin-top: 12px; margin-bottom: 4px; }
-    .fee-statement-title { font-weight: 600; margin-top: 14px; margin-bottom: 6px; }
     .page-break { page-break-after: always; }
   `;
 
@@ -101,23 +99,6 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
           )
           .join("")
       : `<tr><td colspan="3" class="muted">No fee particulars</td></tr>`;
-
-  const historyRows =
-    history.length > 0
-      ? history
-          .map(
-            (h, index) =>
-              `<tr>
-                <td>${index + 1}</td>
-                <td>${h.submissionDate ? new Date(h.submissionDate).toLocaleDateString() : "—"}</td>
-                <td>${esc(h.feeTerm ?? "—")}</td>
-                <td class="text-right">${currency}${Number(h.totalAmount).toLocaleString("en-IN")}</td>
-                <td class="text-right">${currency}${Number(h.deposit).toLocaleString("en-IN")}</td>
-                <td class="text-right">${currency}${Number(h.due).toLocaleString("en-IN")}</td>
-              </tr>`
-          )
-          .join("")
-      : `<tr><td colspan="6" class="muted">No payment history available</td></tr>`;
 
   return `<!DOCTYPE html>
   <html>
