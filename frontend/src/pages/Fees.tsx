@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -170,146 +169,223 @@ export default function Fees() {
         <DashboardHeader title="Fee Management" />
         <CurrentAcademicYearBadge />
       </div>
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total collected (outstanding list)</CardTitle></CardHeader>
-              <CardContent><span className="text-lg font-semibold">{formatCurrency(totalCollected)}</span></CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle></CardHeader>
-              <CardContent><span className="text-lg font-semibold text-warning">{formatCurrency(totalOutstanding)}</span></CardContent>
-            </Card>
-          </div>
-          <Tabs defaultValue="outstanding" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="outstanding" className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Outstanding</TabsTrigger>
-              <TabsTrigger value="collect" className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Record payment</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="outstanding" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Outstanding by class</CardTitle>
-                  <CardDescription>Students with balance &gt; 0 (scoped by academic year)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All classes</SelectItem>
-                          {classes.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        className="w-full sm:w-64"
-                        placeholder="Search student"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={recalculateOutstanding}
-                      disabled={recalculating}
-                    >
-                      {recalculating ? "Generating..." : "Generate outstanding"}
-                    </Button>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead
-                          className="cursor-pointer select-none"
-                          onClick={() => handleSort("student")}
-                        >
-                          Student
-                        </TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Fee start</TableHead>
-                        <TableHead>Charges</TableHead>
-                        <TableHead>Payments</TableHead>
-                        <TableHead
-                          className="cursor-pointer select-none"
-                          onClick={() => handleSort("balance")}
-                        >
-                          Balance
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedOutstanding.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                            No outstanding records for the selected filters.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        sortedOutstanding.map((o) => (
-                          <TableRow key={o.studentId}>
-                            <TableCell>{o.studentName}</TableCell>
-                            <TableCell>{o.className ?? "—"}</TableCell>
-                            <TableCell>
-                              {o.feePaymentStartMonth != null &&
-                              o.feePaymentStartMonth >= 1 &&
-                              o.feePaymentStartMonth <= 12
-                                ? o.feePaymentStartYear != null
-                                  ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}`
-                                  : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]
-                                : "—"}
-                            </TableCell>
-                            <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
-                            <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
-                            <TableCell className="font-medium text-warning">{formatCurrency(o.balance)}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="collect" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Record payment</CardTitle>
-                  <CardDescription>Collect fee and generate receipt number.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={() => setPaymentModalOpen(true)}>Record payment</Button>
-                  <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Record payment</DialogTitle>
-                        <DialogDescription>Select student, amount and mode.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleRecordPayment} className="space-y-3">
-                        <div className="space-y-1">
-                          <Label>Student</Label>
-                          <Select value={paymentForm.studentId} onValueChange={(v) => setPaymentForm((f) => ({ ...f, studentId: v }))} required>
-                            <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                            <SelectContent>{students.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</SelectItem>))}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="1" step="0.01" value={paymentForm.amount} onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))} placeholder="Amount" required /></div>
-                        <div className="space-y-1"><Label>Mode</Label><Select value={paymentForm.mode} onValueChange={(v) => setPaymentForm((f) => ({ ...f, mode: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Cheque">Cheque</SelectItem><SelectItem value="UPI">UPI</SelectItem><SelectItem value="BankTransfer">Bank transfer</SelectItem><SelectItem value="Card">Card</SelectItem></SelectContent></Select></div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setPaymentModalOpen(false)}>Cancel</Button>
-                          <Button type="submit">Record</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total collected (outstanding list)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <span className="text-lg font-semibold">{formatCurrency(totalCollected)}</span>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Outstanding
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <span className="text-lg font-semibold text-warning">
+                {formatCurrency(totalOutstanding)}
+              </span>
+            </CardContent>
+          </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Outstanding by class
+            </CardTitle>
+            <CardDescription>
+              Students with balance &gt; 0 (scoped by academic year)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={classFilter || "all"}
+                  onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All classes</SelectItem>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="w-full sm:w-64"
+                  placeholder="Search student"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={recalculateOutstanding}
+                  disabled={recalculating}
+                >
+                  {recalculating ? "Generating..." : "Generate outstanding"}
+                </Button>
+                <Button onClick={() => setPaymentModalOpen(true)}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Record payment
+                </Button>
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("student")}
+                  >
+                    Student
+                  </TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Fee start</TableHead>
+                  <TableHead>Charges</TableHead>
+                  <TableHead>Payments</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("balance")}
+                  >
+                    Balance
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedOutstanding.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-sm text-muted-foreground"
+                    >
+                      No outstanding records for the selected filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedOutstanding.map((o) => (
+                    <TableRow key={o.studentId}>
+                      <TableCell>{o.studentName}</TableCell>
+                      <TableCell>{o.className ?? "—"}</TableCell>
+                      <TableCell>
+                        {o.feePaymentStartMonth != null &&
+                        o.feePaymentStartMonth >= 1 &&
+                        o.feePaymentStartMonth <= 12
+                          ? o.feePaymentStartYear != null
+                            ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}`
+                            : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]
+                          : "—"}
+                      </TableCell>
+                      <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
+                      <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
+                      <TableCell className="font-medium text-warning">
+                        {formatCurrency(o.balance)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Record payment</DialogTitle>
+                  <DialogDescription>
+                    Select student, amount and mode.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleRecordPayment} className="space-y-3">
+                  <div className="space-y-1">
+                    <Label>Student</Label>
+                    <Select
+                      value={paymentForm.studentId}
+                      onValueChange={(v) =>
+                        setPaymentForm((f) => ({ ...f, studentId: v }))
+                      }
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select student" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {students.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} ({s.admissionNumber})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Amount (₹)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={paymentForm.amount}
+                      onChange={(e) =>
+                        setPaymentForm((f) => ({
+                          ...f,
+                          amount: e.target.value,
+                        }))
+                      }
+                      placeholder="Amount"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Mode</Label>
+                    <Select
+                      value={paymentForm.mode}
+                      onValueChange={(v) =>
+                        setPaymentForm((f) => ({ ...f, mode: v }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="BankTransfer">
+                          Bank transfer
+                        </SelectItem>
+                        <SelectItem value="Card">Card</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setPaymentModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">Record</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

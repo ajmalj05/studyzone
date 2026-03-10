@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\Studyzone.Api.csproj": {}
+    "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\Studyzone.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\Studyzone.Api.csproj": {
+    "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\Studyzone.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\Studyzone.Api.csproj",
+        "projectUniqueName": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\Studyzone.Api.csproj",
         "projectName": "Studyzone.Api",
-        "projectPath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\Studyzone.Api.csproj",
+        "projectPath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\Studyzone.Api.csproj",
         "packagesPath": "C:\\Users\\ajmal\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\obj\\",
+        "outputPath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ajmal\\AppData\\Roaming\\NuGet\\NuGet.Config"
