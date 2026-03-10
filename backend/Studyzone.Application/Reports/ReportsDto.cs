@@ -50,6 +50,27 @@ public class AttendanceReportDto
     public IReadOnlyList<AttendanceReportRowDto> Rows { get; set; } = Array.Empty<AttendanceReportRowDto>();
 }
 
+public class StudentAttendanceRecordDto
+{
+    public DateTime Date { get; set; }
+    public int? PeriodNumber { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+public class StudentAttendanceDetailDto
+{
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string? ClassName { get; set; }
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public int PresentDays { get; set; }
+    public int AbsentDays { get; set; }
+    public int TotalDays { get; set; }
+    public double Percentage { get; set; }
+    public IReadOnlyList<StudentAttendanceRecordDto> Records { get; set; } = Array.Empty<StudentAttendanceRecordDto>();
+}
+
 public class AcademicReportRowDto
 {
     public string StudentId { get; set; } = string.Empty;

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Studyzone.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be5a931ee3725dd0473ac94849fe5be33b426ee9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+95eab38cf30e01e667a8d744c0d85bdf04075eb2")]
 [assembly: System.Reflection.AssemblyProductAttribute("Studyzone.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Studyzone.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -168,6 +168,64 @@ public class ReportsService : IReportsService
         return new AttendanceReportDto { From = from, To = to, ClassId = classId, Rows = rows.OrderBy(x => x.ClassName).ThenBy(x => x.StudentName).ToList() };
     }
 
+    public async Task<StudentAttendanceDetailDto?> GetStudentAttendanceDetailAsync(string studentId, DateTime from, DateTime to, string? academicYearId = null, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(studentId, out var sid))
+            return null;
+
+        AcademicYear? year = null;
+        if (!string.IsNullOrWhiteSpace(academicYearId) && Guid.TryParse(academicYearId, out var yearGuid))
+            year = await _academicYearRepo.GetByIdAsync(yearGuid, ct);
+        if (year == null)
+            year = await _academicYearRepo.GetCurrentAsync(ct);
+
+        var student = await _studentRepo.GetByIdAsync(sid, ct);
+        if (student == null)
+            return null;
+
+        string? className = null;
+        if (year != null)
+        {
+            var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(sid, year.Id, ct);
+            if (enr?.ClassId.HasValue == true)
+            {
+                var cls = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
+                className = cls?.Name;
+            }
+        }
+
+        var records = await _attendanceRepo.GetByStudentAndDateRangeAsync(sid, from, to, ct);
+        var presentDays = records.Count(r => r.Status == "Present" || r.Status == "Late");
+        var absentDays = records.Count(r => r.Status == "Absent");
+        var totalDays = presentDays + absentDays;
+        var percentage = totalDays > 0 ? Math.Round(presentDays * 100.0 / totalDays, 2) : 0;
+
+        var recordDtos = records
+            .OrderBy(r => r.Date)
+            .ThenBy(r => r.PeriodNumber)
+            .Select(r => new StudentAttendanceRecordDto
+            {
+                Date = r.Date,
+                PeriodNumber = r.PeriodNumber,
+                Status = r.Status
+            })
+            .ToList();
+
+        return new StudentAttendanceDetailDto
+        {
+            StudentId = student.Id.ToString(),
+            StudentName = student.Name,
+            ClassName = className,
+            From = from,
+            To = to,
+            PresentDays = presentDays,
+            AbsentDays = absentDays,
+            TotalDays = totalDays,
+            Percentage = percentage,
+            Records = recordDtos
+        };
+    }
+
     public async Task<AcademicReportDto?> GetAcademicReportAsync(string examId, CancellationToken ct = default)
     {
         if (!Guid.TryParse(examId, out var eid))

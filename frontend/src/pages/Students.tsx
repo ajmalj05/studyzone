@@ -329,10 +329,6 @@ export default function Students() {
         });
         toast({ title: "Success", description: "Student updated." });
       } else {
-        if (!form.admissionNumber.trim()) {
-          toast({ title: "Validation", description: "Admission number is required for new students.", variant: "destructive" });
-          return;
-        }
         if (!form.classId?.trim()) {
           toast({ title: "Validation", description: "Class is required when adding a student.", variant: "destructive" });
           return;
@@ -340,7 +336,7 @@ export default function Students() {
         await fetchApi("/Students", {
           method: "POST",
           body: JSON.stringify({
-            admissionNumber: form.admissionNumber,
+            admissionNumber: form.admissionNumber.trim() || undefined,
             name: form.name,
             dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
             gender: form.gender || undefined,
@@ -537,7 +533,7 @@ export default function Students() {
                       </DialogHeader>
                       <form onSubmit={handleSave} className="space-y-3">
                         {!editingId && (
-                          <div className="space-y-1"><Label>Admission number *</Label><Input value={form.admissionNumber} onChange={(e) => setForm((f) => ({ ...f, admissionNumber: e.target.value }))} required /></div>
+                          <div className="space-y-1"><Label>Admission number</Label><Input value={form.admissionNumber} onChange={(e) => setForm((f) => ({ ...f, admissionNumber: e.target.value }))} placeholder="Auto (001, 002, …) if left blank" /></div>
                         )}
                         {currentYear && (
                           <div className="space-y-1">

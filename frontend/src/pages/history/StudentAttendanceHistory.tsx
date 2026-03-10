@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ interface ClassDto {
 }
 
 const StudentAttendanceHistory = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [classId, setClassId] = useState("");
   const [fromDate, setFromDate] = useState(() => {
@@ -154,7 +156,15 @@ const StudentAttendanceHistory = () => {
                 </thead>
                 <tbody>
                   {filteredRows.map((r) => (
-                    <tr key={r.studentId} className="border-b border-border/50 last:border-0 hover:bg-muted/10">
+                    <tr
+                      key={r.studentId}
+                      className="border-b border-border/50 last:border-0 hover:bg-muted/10 cursor-pointer"
+                      onClick={() =>
+                        navigate(
+                          `/admin/history/student-attendance/${r.studentId}?from=${fromDate}&to=${toDate}`
+                        )
+                      }
+                    >
                       <td className="px-6 py-4 font-medium text-foreground">{r.studentName}</td>
                       <td className="px-6 py-4 text-muted-foreground">{r.className ?? "—"}</td>
                       <td className="px-6 py-4 text-right">{r.presentDays}</td>

@@ -119,10 +119,13 @@ public class StudentService : IStudentService
             var cls = await _classRepo.GetByIdAsync(cid.Value, ct);
             admissionNumber = cls != null
                 ? await _admissionNumberGenerator.GenerateNextAsync(currentYear.Name, cls.Code, ct)
-                : $"STZ-{currentYear.Name}-{Guid.NewGuid():N}"[..Math.Min(50, 15 + currentYear.Name.Length + 36)];
+                : await _admissionNumberGenerator.GenerateNextAsync("", "", ct);
         }
         if (string.IsNullOrWhiteSpace(admissionNumber))
-            admissionNumber = $"STZ-{currentYear.Name}-{addedStudent.Id:N}"[..Math.Min(60, 15 + currentYear.Name.Length + 32)];
+            admissionNumber = await _admissionNumberGenerator.GenerateNextAsync("", "", ct);
+
+        addedStudent.AdmissionNumber = admissionNumber;
+        await _studentRepo.UpdateAsync(addedStudent, ct);
 
         var enrollment = new StudentEnrollment
         {

@@ -42,7 +42,6 @@ const menuItems: MenuItem[] = [
   },
   { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
   { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
-  { title: "Student Requests", icon: MessageSquare, path: "/admin/requests/student" },
   { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
   { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
   {

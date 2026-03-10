@@ -43,6 +43,7 @@ import AdminParentRequests from "./pages/AdminParentRequests";
 
 // History Module
 import StudentAttendanceHistory from "./pages/history/StudentAttendanceHistory";
+import StudentAttendanceDetail from "./pages/history/StudentAttendanceDetail";
 import TeacherAttendanceHistory from "./pages/history/TeacherAttendanceHistory";
 
 // Teacher Portal
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="requests/teacher" element={<AdminTeacherRequests />} />
                 <Route path="requests/parent" element={<AdminParentRequests />} />
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
+                <Route path="history/student-attendance/:studentId" element={<StudentAttendanceDetail />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
                 <Route path="enquiry" element={<Enquiry />} />
                 <Route path="admission" element={<Admission />} />

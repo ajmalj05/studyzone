@@ -44,6 +44,15 @@ public class ReportsController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpGet("attendance/student")]
+    public async Task<ActionResult<StudentAttendanceDetailDto>> GetStudentAttendanceDetail([FromQuery] string studentId, [FromQuery] DateTime from, [FromQuery] DateTime to, [FromQuery] string? academicYearId, CancellationToken ct)
+    {
+        var dto = await _service.GetStudentAttendanceDetailAsync(studentId, from, to, academicYearId, ct);
+        if (dto == null)
+            return NotFound();
+        return Ok(dto);
+    }
+
     [HttpGet("academic")]
     public async Task<ActionResult<AcademicReportDto?>> GetAcademic([FromQuery] string examId, CancellationToken ct)
     {
