@@ -202,6 +202,16 @@ public class FeeService : IFeeService
         var totalCharges = charges.Sum(x => x.Amount);
         var payments = await _paymentRepo.GetByStudentIdAsync(sid, null, null, ct);
         var totalPayments = payments.Sum(x => x.Amount);
+
+        var structureIds = charges.Select(c => c.FeeStructureId).Distinct().ToList();
+        var structureNames = new Dictionary<Guid, string>();
+        foreach (var structId in structureIds)
+        {
+            var s = await _structureRepo.GetByIdAsync(structId, ct);
+            if (s != null)
+                structureNames[structId] = s.Name;
+        }
+
         return new FeeLedgerDto
         {
             StudentId = studentId,
@@ -212,7 +222,14 @@ public class FeeService : IFeeService
             Balance = totalCharges - totalPayments,
             FeePaymentStartMonth = enr?.FeePaymentStartMonth,
             FeePaymentStartYear = enr?.FeePaymentStartYear,
-            Charges = charges.Select(x => new FeeChargeDto { Id = x.Id.ToString(), Period = x.Period, Amount = x.Amount, Description = x.Description }).ToList(),
+            Charges = charges.Select(x => new FeeChargeDto
+            {
+                Id = x.Id.ToString(),
+                Period = x.Period,
+                Amount = x.Amount,
+                Description = x.Description,
+                ParticularName = structureNames.TryGetValue(x.FeeStructureId, out var name) ? name : null
+            }).ToList(),
             Payments = payments.Select(x => new PaymentDto
             {
                 Id = x.Id.ToString(),
@@ -551,5 +568,85 @@ public class FeeService : IFeeService
             }
         }
         return new GenerateChargesResult { ChargesAdded = added };
+    }
+
+    public async Task<AddAdmissionFeeResult> AddAdmissionFeeAsync(AddAdmissionFeeRequest request, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(request.StudentId, out var studentId))
+            throw new ArgumentException("Invalid student id.", nameof(request));
+        if (request.Amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero.", nameof(request));
+
+        var student = await _studentRepo.GetByIdAsync(studentId, ct)
+            ?? throw new InvalidOperationException("Student not found.");
+
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct)
+            ?? throw new InvalidOperationException("No academic year is set. Set the current academic year in settings.");
+
+        var structures = await _structureRepo.GetByAcademicYearAsync(currentYear.Id, ct);
+        var admissionStructure = structures.FirstOrDefault(s =>
+            s.Name.IndexOf("Admission", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            string.Equals(s.Frequency, "Once", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(s.Frequency, "One-time", StringComparison.OrdinalIgnoreCase));
+
+        if (admissionStructure == null)
+        {
+            var classes = await _classRepo.GetAllAsync(ct);
+            var firstClass = classes.FirstOrDefault();
+            if (firstClass == null)
+                throw new InvalidOperationException("No class exists. Create at least one class in the system, then try again.");
+            admissionStructure = new FeeStructure
+            {
+                Id = Guid.NewGuid(),
+                ClassId = firstClass.Id,
+                AcademicYearId = currentYear.Id,
+                Name = "Admission Fee",
+                Amount = 0,
+                Frequency = "Once",
+                EffectiveFrom = DateTime.UtcNow.Date,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _structureRepo.AddAsync(admissionStructure, ct);
+        }
+
+        var year = DateTime.UtcNow.Year;
+        var period = $"ADM-{year}";
+        var existingCharges = await _chargeRepo.GetByStudentIdAsync(studentId, null, ct);
+        if (existingCharges.Any(c => c.FeeStructureId == admissionStructure.Id && c.Period == period))
+            throw new InvalidOperationException($"Admission fee for {year} is already added for this student.");
+
+        var charge = new FeeCharge
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            FeeStructureId = admissionStructure.Id,
+            Period = period,
+            Amount = request.Amount,
+            Description = $"{admissionStructure.Name} {period}",
+            CreatedAt = DateTime.UtcNow
+        };
+        await _chargeRepo.AddAsync(charge, ct);
+
+        string? paymentId = null;
+        string? receiptNumber = null;
+        if (request.RecordPayment)
+        {
+            var paymentRequest = new RecordPaymentRequest
+            {
+                StudentId = request.StudentId,
+                Amount = request.Amount,
+                Mode = request.PaymentMode
+            };
+            var payment = await RecordPaymentAsync(paymentRequest, ct);
+            paymentId = payment.Id;
+            receiptNumber = payment.ReceiptNumber;
+        }
+
+        return new AddAdmissionFeeResult
+        {
+            ChargeId = charge.Id.ToString(),
+            PaymentId = paymentId,
+            ReceiptNumber = receiptNumber
+        };
     }
 }

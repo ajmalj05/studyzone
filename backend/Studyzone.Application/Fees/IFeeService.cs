@@ -14,4 +14,5 @@ public interface IFeeService
     Task<IReadOnlyList<FeeLedgerDto>> RecalculateOutstandingAsync(string? classId, string? academicYearId, CancellationToken ct = default);
     Task<GenerateChargesResult> GenerateChargesForStudentAsync(GenerateChargesRequest request, CancellationToken ct = default);
     Task<FeeReceiptDto?> GetReceiptAsync(string paymentId, CancellationToken ct = default);
+    Task<AddAdmissionFeeResult> AddAdmissionFeeAsync(AddAdmissionFeeRequest request, CancellationToken ct = default);
 }

@@ -18,11 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto } from "@/types/fees";
+import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto, AddAdmissionFeeResult } from "@/types/fees";
 
 interface SchoolProfileDto {
   id: string;
@@ -33,8 +42,8 @@ interface SchoolProfileDto {
   email?: string;
 }
 
-const esc = (value: string) =>
-  value
+const esc = (value: string | undefined | null) =>
+  String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -45,10 +54,13 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
   const schoolName = school?.name || "Studyzone Private Institute";
   const logoUrl =
     school?.logoUrl || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "/logo.png");
-  const guardianName = receipt.guardianName || "—";
-  const className = receipt.className || "—";
-  const feeTerm = receipt.feeTerm || "—";
-  const paidDate = new Date(receipt.paidAt).toLocaleDateString();
+  const guardianName = receipt.guardianName ?? "—";
+  const className = receipt.className ?? "—";
+  const feeTerm = receipt.feeTerm ?? "—";
+  const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
+  const particulars = receipt.particulars ?? [];
+  const history = receipt.history ?? [];
+  const currency = receipt.currencySymbol ?? "₹";
 
   const printCss = `
     body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11pt; }
@@ -79,11 +91,11 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
   `;
 
   const particularsRows =
-    receipt.particulars.length > 0
-      ? receipt.particulars
-          .map(
+    particulars.length > 0
+      ? particulars
+              .map(
             (p, index) =>
-              `<tr><td>${index + 1}</td><td>${esc(p.name)}</td><td class="text-right">${receipt.currencySymbol ?? "₹"}${p.amount.toLocaleString(
+              `<tr><td>${index + 1}</td><td>${esc(String(p.name))}</td><td class="text-right">${currency}${Number(p.amount).toLocaleString(
                 "en-IN"
               )}</td></tr>`
           )
@@ -91,23 +103,21 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
       : `<tr><td colspan="3" class="muted">No fee particulars</td></tr>`;
 
   const historyRows =
-    receipt.history.length > 0
-      ? receipt.history
+    history.length > 0
+      ? history
           .map(
             (h, index) =>
               `<tr>
                 <td>${index + 1}</td>
-                <td>${new Date(h.submissionDate).toLocaleDateString()}</td>
+                <td>${h.submissionDate ? new Date(h.submissionDate).toLocaleDateString() : "—"}</td>
                 <td>${esc(h.feeTerm ?? "—")}</td>
-                <td class="text-right">${receipt.currencySymbol ?? "₹"}${h.totalAmount.toLocaleString("en-IN")}</td>
-                <td class="text-right">${receipt.currencySymbol ?? "₹"}${h.deposit.toLocaleString("en-IN")}</td>
-                <td class="text-right">${receipt.currencySymbol ?? "₹"}${h.due.toLocaleString("en-IN")}</td>
+                <td class="text-right">${currency}${Number(h.totalAmount).toLocaleString("en-IN")}</td>
+                <td class="text-right">${currency}${Number(h.deposit).toLocaleString("en-IN")}</td>
+                <td class="text-right">${currency}${Number(h.due).toLocaleString("en-IN")}</td>
               </tr>`
           )
           .join("")
       : `<tr><td colspan="6" class="muted">No payment history available</td></tr>`;
-
-  const currency = receipt.currencySymbol ?? "₹";
 
   return `<!DOCTYPE html>
   <html>
@@ -224,6 +234,7 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
         </div>
       </div>
     </div>
+    <script>window.onload=function(){window.print();}</script>
   </body>
   </html>`;
 }
@@ -241,6 +252,10 @@ export default function StudentLedger() {
   const [batchFilter, setBatchFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [printing, setPrinting] = useState(false);
+  const [admissionFeeOpen, setAdmissionFeeOpen] = useState(false);
+  const [admissionFeeAmount, setAdmissionFeeAmount] = useState("");
+  const [admissionFeeRecordPayment, setAdmissionFeeRecordPayment] = useState(true);
+  const [admissionFeeSubmitting, setAdmissionFeeSubmitting] = useState(false);
 
   const loadStudents = async () => {
     try {
@@ -319,8 +334,46 @@ export default function StudentLedger() {
     }
   }, [classFilter, batchFilter, searchTerm, filteredStudents, selectedStudentId]);
 
+  const handleAddAdmissionFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId) return;
+    const amount = Number(admissionFeeAmount);
+    if (!admissionFeeAmount.trim() || isNaN(amount) || amount <= 0) {
+      toast({ title: "Validation", description: "Enter a valid amount.", variant: "destructive" });
+      return;
+    }
+    try {
+      setAdmissionFeeSubmitting(true);
+      const result = (await fetchApi("/Fees/admission-fee", {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: selectedStudentId,
+          amount,
+          recordPayment: admissionFeeRecordPayment,
+          paymentMode: "Cash",
+        }),
+      })) as AddAdmissionFeeResult;
+      toast({
+        title: "Admission fee added",
+        description: admissionFeeRecordPayment && result.receiptNumber
+          ? `Charge and payment recorded. Receipt: ${result.receiptNumber}`
+          : "Charge added. Record a payment from the ledger to print a receipt.",
+      });
+      setAdmissionFeeOpen(false);
+      setAdmissionFeeAmount("");
+      await loadLedger(selectedStudentId);
+      if (admissionFeeRecordPayment && result.paymentId) {
+        await handlePrintReceipt(result.paymentId);
+      }
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to add admission fee", variant: "destructive" });
+    } finally {
+      setAdmissionFeeSubmitting(false);
+    }
+  };
+
   const handlePrintReceipt = async (paymentId: string) => {
-    if (!paymentId || !selectedStudentId || printing) return;
+    if (!paymentId || printing) return;
     try {
       setPrinting(true);
       const [receipt, school] = await Promise.all([
@@ -333,13 +386,14 @@ export default function StudentLedger() {
       }
       if (typeof window === "undefined") return;
       const html = buildReceiptHtml(receipt, school);
-      const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
-      if (!w) return;
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      w.print();
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank", "noopener,noreferrer,width=900,height=700");
+      if (w) setTimeout(() => URL.revokeObjectURL(url), 5000);
+      else {
+        URL.revokeObjectURL(url);
+        toast({ title: "Popup blocked", description: "Allow popups for this site to print the receipt.", variant: "destructive" });
+      }
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to print receipt", variant: "destructive" });
     } finally {
@@ -418,32 +472,84 @@ export default function StudentLedger() {
               />
             </div>
             {selectedStudentId && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={generateChargesLoading}
-                onClick={async () => {
-                  setGenerateChargesLoading(true);
-                  try {
-                    const result = (await fetchApi("/Fees/generate-charges", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        studentId: selectedStudentId,
-                        academicYearId: selectedYearId || undefined,
-                      }),
-                    })) as { chargesAdded: number };
-                    toast({ title: "Charges generated", description: result.chargesAdded === 0 ? "No new charges added (all periods already have charges)." : `${result.chargesAdded} charge(s) added.` });
-                    await loadLedger(selectedStudentId);
-                  } catch (e: unknown) {
-                    toast({ title: "Error", description: (e as Error).message || "Failed to generate charges", variant: "destructive" });
-                  }
-                  setGenerateChargesLoading(false);
-                }}
-              >
-                {generateChargesLoading ? "Generating…" : "Generate outstanding"}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={generateChargesLoading}
+                  onClick={async () => {
+                    setGenerateChargesLoading(true);
+                    try {
+                      const result = (await fetchApi("/Fees/generate-charges", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          studentId: selectedStudentId,
+                          academicYearId: selectedYearId || undefined,
+                        }),
+                      })) as { chargesAdded: number };
+                      toast({ title: "Charges generated", description: result.chargesAdded === 0 ? "No new charges added (all periods already have charges)." : `${result.chargesAdded} charge(s) added.` });
+                      await loadLedger(selectedStudentId);
+                    } catch (e: unknown) {
+                      toast({ title: "Error", description: (e as Error).message || "Failed to generate charges", variant: "destructive" });
+                    }
+                    setGenerateChargesLoading(false);
+                  }}
+                >
+                  {generateChargesLoading ? "Generating…" : "Generate outstanding"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAdmissionFeeOpen(true)}
+                >
+                  Add admission fee
+                </Button>
+              </>
             )}
           </div>
+
+          <Dialog open={admissionFeeOpen} onOpenChange={setAdmissionFeeOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add admission fee</DialogTitle>
+                <DialogDescription>
+                  Enter the admission fee amount for this student. You can record payment now and print the receipt.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddAdmissionFee} className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={admissionFeeAmount}
+                    onChange={(e) => setAdmissionFeeAmount(e.target.value)}
+                    placeholder="e.g. 500"
+                    required
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="admission-record-payment"
+                    checked={admissionFeeRecordPayment}
+                    onChange={(e) => setAdmissionFeeRecordPayment(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  <Label htmlFor="admission-record-payment">Record payment now and print receipt</Label>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setAdmissionFeeOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={admissionFeeSubmitting}>
+                    {admissionFeeSubmitting ? "Adding…" : "Add admission fee"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <div className="mt-2">
             <Label className="mb-1 block">Students</Label>
             <div className="max-h-64 overflow-y-auto rounded-md border border-input bg-background">
@@ -484,8 +590,22 @@ export default function StudentLedger() {
             <div className="space-y-4">
               <p><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
               <Table>
-                <TableHeader><TableRow><TableHead>Period</TableHead><TableHead>Charge</TableHead></TableRow></TableHeader>
-                <TableBody>{ledger.charges.map((c) => (<TableRow key={c.id}><TableCell>{c.period}</TableCell><TableCell>{formatCurrency(c.amount)}</TableCell></TableRow>))}</TableBody>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Particular / Fee type</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ledger.charges.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>{c.particularName ?? c.description ?? c.period}</TableCell>
+                      <TableCell>{c.period}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(c.amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
               <Table>
                 <TableHeader>

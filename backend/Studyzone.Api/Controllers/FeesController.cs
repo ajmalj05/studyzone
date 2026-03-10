@@ -122,4 +122,16 @@ public class FeesController : ControllerBase
         if (dto == null) return NotFound();
         return Ok(dto);
     }
+
+    [HttpPost("admission-fee")]
+    public async Task<ActionResult<AddAdmissionFeeResult>> AddAdmissionFee([FromBody] AddAdmissionFeeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _service.AddAdmissionFeeAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException) { return BadRequest(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
 }

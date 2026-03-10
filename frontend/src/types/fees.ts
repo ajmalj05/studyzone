@@ -20,8 +20,14 @@ export interface FeeLedgerDto {
   balance: number;
   feePaymentStartMonth?: number;
   feePaymentStartYear?: number;
-  charges: { id: string; period: string; amount: number }[];
+  charges: { id: string; period: string; amount: number; description?: string; particularName?: string }[];
   payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode: string }[];
+}
+
+export interface AddAdmissionFeeResult {
+  chargeId: string;
+  paymentId?: string | null;
+  receiptNumber?: string | null;
 }
 
 export interface PaymentDto {

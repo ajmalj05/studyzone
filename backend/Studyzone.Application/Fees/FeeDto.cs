@@ -74,6 +74,23 @@ public class FeeChargeDto
     public string Period { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string? Description { get; set; }
+    /// <summary>Fee type / particular name (e.g. Admission Fee, Tuition).</summary>
+    public string? ParticularName { get; set; }
+}
+
+public class AddAdmissionFeeRequest
+{
+    public string StudentId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public bool RecordPayment { get; set; }
+    public string PaymentMode { get; set; } = "Cash";
+}
+
+public class AddAdmissionFeeResult
+{
+    public string ChargeId { get; set; } = string.Empty;
+    public string? PaymentId { get; set; }
+    public string? ReceiptNumber { get; set; }
 }
 
 public class GenerateChargesRequest
