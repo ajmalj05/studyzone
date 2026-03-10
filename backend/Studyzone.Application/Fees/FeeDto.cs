@@ -88,3 +88,41 @@ public class GenerateChargesResult
 {
     public int ChargesAdded { get; set; }
 }
+
+public class FeeReceiptParticularDto
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+}
+
+public class FeeReceiptHistoryItemDto
+{
+    public string PaymentId { get; set; } = string.Empty;
+    public string ReceiptNumber { get; set; } = string.Empty;
+    public DateTime SubmissionDate { get; set; }
+    public string? FeeTerm { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal Deposit { get; set; }
+    public decimal Due { get; set; }
+}
+
+public class FeeReceiptDto
+{
+    public string PaymentId { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string AdmissionNumber { get; set; } = string.Empty;
+    public string? GuardianName { get; set; }
+    public string? ClassName { get; set; }
+    public string ReceiptNumber { get; set; } = string.Empty;
+    public DateTime PaidAt { get; set; }
+    public string? FeeTerm { get; set; }
+    public string CurrencySymbol { get; set; } = "₹";
+    public decimal TotalCharges { get; set; }
+    public decimal TotalPayments { get; set; }
+    public decimal Balance { get; set; }
+    public decimal Deposit { get; set; }
+    public decimal RemainingBalance { get; set; }
+    public IReadOnlyList<FeeReceiptParticularDto> Particulars { get; set; } = Array.Empty<FeeReceiptParticularDto>();
+    public IReadOnlyList<FeeReceiptHistoryItemDto> History { get; set; } = Array.Empty<FeeReceiptHistoryItemDto>();
+}

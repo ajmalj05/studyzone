@@ -262,6 +262,117 @@ public class FeeService : IFeeService
         };
     }
 
+    private static string GetFeeTermLabel(DateTime paidAt)
+    {
+        var month = paidAt.Month;
+        if (month <= 4) return "Term 1";
+        if (month <= 8) return "Term 2";
+        return "Term 3";
+    }
+
+    public async Task<FeeReceiptDto?> GetReceiptAsync(string paymentId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(paymentId, out var pid))
+            return null;
+
+        var payment = await _paymentRepo.GetByIdAsync(pid, ct);
+        if (payment == null)
+            return null;
+
+        var student = await _studentRepo.GetByIdAsync(payment.StudentId, ct);
+        if (student == null)
+            return null;
+
+        var enrollment = await _enrollmentRepo.GetCurrentForStudentAsync(student.Id, ct);
+        string? className = null;
+        Guid? classId = null;
+        Guid? academicYearId = null;
+        if (enrollment != null)
+        {
+            classId = enrollment.ClassId;
+            academicYearId = enrollment.AcademicYearId;
+            if (enrollment.ClassId.HasValue)
+            {
+                var cls = await _classRepo.GetByIdAsync(enrollment.ClassId.Value, ct);
+                className = cls?.Name;
+            }
+        }
+
+        var charges = await _chargeRepo.GetByStudentIdAsync(student.Id, null, ct);
+        var totalCharges = charges.Sum(x => x.Amount);
+
+        var payments = await _paymentRepo.GetByStudentIdAsync(student.Id, null, null, ct);
+        var orderedPayments = payments.OrderBy(x => x.PaidAt).ToList();
+        var totalPayments = orderedPayments.Sum(x => x.Amount);
+
+        var structures = new List<FeeStructure>();
+        if (classId.HasValue && academicYearId.HasValue)
+        {
+            structures = (await _structureRepo.GetByClassIdAndAcademicYearAsync(classId.Value, academicYearId.Value, ct)).ToList();
+        }
+        else
+        {
+            structures = (await _structureRepo.GetAllAsync(ct)).ToList();
+        }
+        var structureLookup = structures.ToDictionary(x => x.Id, x => x.Name);
+
+        var particulars = charges
+            .GroupBy(x => x.FeeStructureId)
+            .Select(g => new FeeReceiptParticularDto
+            {
+                Name = structureLookup.TryGetValue(g.Key, out var name) ? name : "Fee",
+                Amount = g.Sum(x => x.Amount)
+            })
+            .OrderBy(x => x.Name)
+            .ToList();
+
+        var history = new List<FeeReceiptHistoryItemDto>();
+        decimal runningPaid = 0m;
+        FeeReceiptHistoryItemDto? targetHistory = null;
+        foreach (var p in orderedPayments)
+        {
+            runningPaid += p.Amount;
+            var dueAfter = totalCharges - runningPaid;
+            var item = new FeeReceiptHistoryItemDto
+            {
+                PaymentId = p.Id.ToString(),
+                ReceiptNumber = p.ReceiptNumber,
+                SubmissionDate = p.PaidAt,
+                FeeTerm = GetFeeTermLabel(p.PaidAt),
+                TotalAmount = p.Amount,
+                Deposit = p.Amount,
+                Due = dueAfter
+            };
+            if (p.Id == payment.Id)
+                targetHistory = item;
+            history.Add(item);
+        }
+
+        var remainingBalance = targetHistory?.Due ?? (totalCharges - totalPayments);
+        var balance = totalCharges - totalPayments;
+
+        return new FeeReceiptDto
+        {
+            PaymentId = payment.Id.ToString(),
+            StudentId = student.Id.ToString(),
+            StudentName = student.Name,
+            AdmissionNumber = string.IsNullOrWhiteSpace(enrollment?.AdmissionNumber) ? student.AdmissionNumber : enrollment!.AdmissionNumber,
+            GuardianName = student.GuardianName,
+            ClassName = className,
+            ReceiptNumber = payment.ReceiptNumber,
+            PaidAt = payment.PaidAt,
+            FeeTerm = GetFeeTermLabel(payment.PaidAt),
+            CurrencySymbol = "₹",
+            TotalCharges = totalCharges,
+            TotalPayments = totalPayments,
+            Balance = balance,
+            Deposit = payment.Amount,
+            RemainingBalance = remainingBalance,
+            Particulars = particulars,
+            History = history
+        };
+    }
+
     public async Task<IReadOnlyList<PaymentDto>> GetPaymentsByStudentAsync(string studentId, DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         if (!Guid.TryParse(studentId, out var sid)) return Array.Empty<PaymentDto>();
@@ -381,7 +492,38 @@ public class FeeService : IFeeService
         var existingCharges = await _chargeRepo.GetByStudentIdAsync(studentId, null, ct);
         var existingSet = existingCharges.Select(c => (c.FeeStructureId, c.Period)).ToHashSet();
 
+        var oneTimeStructures = structures.Where(s =>
+            string.Equals(s.Frequency, "Once", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(s.Frequency, "One-time", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(s.Frequency, "OneTime", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var recurringStructures = structures.Except(oneTimeStructures).ToList();
+
         int added = 0;
+
+        if (oneTimeStructures.Count > 0)
+        {
+            var oneTimePeriod = $"{startYear}-{startMonth:D2}";
+            foreach (var structure in oneTimeStructures)
+            {
+                if (existingSet.Contains((structure.Id, oneTimePeriod)))
+                    continue;
+                await _chargeRepo.AddAsync(new FeeCharge
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = studentId,
+                    FeeStructureId = structure.Id,
+                    Period = oneTimePeriod,
+                    Amount = structure.Amount,
+                    Description = $"{structure.Name} {oneTimePeriod}",
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+                existingSet.Add((structure.Id, oneTimePeriod));
+                added++;
+            }
+        }
+
+        structures = recurringStructures;
         for (int y = startYear; y <= endYear; y++)
         {
             int monthStart = (y == startYear) ? startMonth : 1;

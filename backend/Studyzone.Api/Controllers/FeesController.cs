@@ -114,4 +114,12 @@ public class FeesController : ControllerBase
         var list = await _service.GetPaymentsByStudentAsync(studentId, from, to, ct);
         return Ok(list);
     }
+
+    [HttpGet("receipt/{paymentId}")]
+    public async Task<ActionResult<FeeReceiptDto>> GetReceipt(string paymentId, CancellationToken ct)
+    {
+        var dto = await _service.GetReceiptAsync(paymentId, ct);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
 }

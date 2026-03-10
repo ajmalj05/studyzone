@@ -62,3 +62,38 @@ export interface BatchDto {
 }
 
 export const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+export interface FeeReceiptParticularDto {
+  name: string;
+  amount: number;
+}
+
+export interface FeeReceiptHistoryItemDto {
+  paymentId: string;
+  receiptNumber: string;
+  submissionDate: string;
+  feeTerm?: string | null;
+  totalAmount: number;
+  deposit: number;
+  due: number;
+}
+
+export interface FeeReceiptDto {
+  paymentId: string;
+  studentId: string;
+  studentName: string;
+  admissionNumber: string;
+  guardianName?: string | null;
+  className?: string | null;
+  receiptNumber: string;
+  paidAt: string;
+  feeTerm?: string | null;
+  currencySymbol?: string;
+  totalCharges: number;
+  totalPayments: number;
+  balance: number;
+  deposit: number;
+  remainingBalance: number;
+  particulars: FeeReceiptParticularDto[];
+  history: FeeReceiptHistoryItemDto[];
+}

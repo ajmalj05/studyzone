@@ -8,7 +8,7 @@ public class FeeStructure
     public AcademicYear AcademicYear { get; set; } = null!;
     public string Name { get; set; } = string.Empty; // e.g. Tuition, Lab
     public decimal Amount { get; set; }
-    public string Frequency { get; set; } = "Monthly"; // Monthly, Quarterly, HalfYearly, Yearly
+    public string Frequency { get; set; } = "Monthly"; // Monthly, Quarterly, HalfYearly, Yearly, Once
     public DateTime EffectiveFrom { get; set; }
     public DateTime? EffectiveTo { get; set; }
     public DateTime CreatedAt { get; set; }

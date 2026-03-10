@@ -134,7 +134,24 @@ export default function FeeStructures() {
                 <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                 <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
                 <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>
-                <div className="space-y-1"><Label>Frequency</Label><Select value={structureForm.frequency} onValueChange={(v) => setStructureForm((f) => ({ ...f, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem><SelectItem value="HalfYearly">Half-yearly</SelectItem><SelectItem value="Yearly">Yearly</SelectItem></SelectContent></Select></div>
+                <div className="space-y-1">
+                  <Label>Frequency</Label>
+                  <Select
+                    value={structureForm.frequency}
+                    onValueChange={(v) => setStructureForm((f) => ({ ...f, frequency: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Monthly">Monthly</SelectItem>
+                      <SelectItem value="Quarterly">Quarterly</SelectItem>
+                      <SelectItem value="HalfYearly">Half-yearly</SelectItem>
+                      <SelectItem value="Yearly">Yearly</SelectItem>
+                      <SelectItem value="Once">One-time (e.g. Admission fee)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setStructureModalOpen(false)}>Cancel</Button>
                   <Button type="submit">Add</Button>
