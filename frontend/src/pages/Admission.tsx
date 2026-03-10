@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { useAcademicYearOptional } from "@/context/AcademicYearContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { UserPlus } from "lucide-react";
 
 interface ApplicationDto {
@@ -52,7 +53,7 @@ interface BatchDto {
 
 export default function Admission() {
   const navigate = useNavigate();
-  const academicYear = useAcademicYearOptional();
+  const { selectedYearId } = useAcademicYear();
   const [applications, setApplications] = useState<ApplicationDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
@@ -92,8 +93,7 @@ export default function Admission() {
 
   const loadAllBatches = async () => {
     try {
-      const yearId = academicYear?.selectedYearId;
-      const url = yearId ? `/Batches?academicYearId=${encodeURIComponent(yearId)}` : "/Batches";
+      const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
       const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch {
@@ -108,7 +108,7 @@ export default function Admission() {
       setLoading(false);
       initialLoadDone.current = true;
     })();
-  }, [applicationClassId, applicationBatchId, academicYear?.selectedYearId]);
+  }, [applicationClassId, applicationBatchId, selectedYearId]);
 
   const batchesForApplicationClass = applicationClassId
     ? batches.filter((b) => b.classId === applicationClassId)
@@ -124,7 +124,10 @@ export default function Admission() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Admission" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Admission" />
+        <CurrentAcademicYearBadge />
+      </div>
       <div className="space-y-4">
         <Card>
           <CardHeader>

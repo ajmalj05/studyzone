@@ -30,7 +30,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Users, GraduationCap, ArrowRightLeft } from "lucide-react";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
+import { Users, ArrowRightLeft } from "lucide-react";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -56,11 +58,6 @@ interface StudentDto {
   createdAt: string;
 }
 
-interface AcademicYearOption {
-  id: string;
-  name: string;
-}
-
 interface ClassDto {
   id: string;
   name: string;
@@ -80,11 +77,10 @@ interface BatchDto {
 const STATUSES = ["Active", "Inactive", "Transferred", "Withdrawn", "Alumni"];
 
 export default function Students() {
+  const { selectedYearId, academicYears, currentYear } = useAcademicYear();
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
-  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [classFilter, setClassFilter] = useState<string>("");
@@ -112,6 +108,15 @@ export default function Students() {
   const [promoteTargetAcademicYearId, setPromoteTargetAcademicYearId] = useState("");
   const [promoteTargetClassId, setPromoteTargetClassId] = useState("");
   const [promoteTargetBatchId, setPromoteTargetBatchId] = useState("");
+  const [promotionSourceYearId, setPromotionSourceYearId] = useState("");
+  const [promotionSourceClassId, setPromotionSourceClassId] = useState("");
+  const [promotionSourceBatchId, setPromotionSourceBatchId] = useState("");
+  const [promotionSearch, setPromotionSearch] = useState("");
+  const [promotionSort, setPromotionSort] = useState<"name" | "class">("name");
+  const [promotionStudents, setPromotionStudents] = useState<StudentDto[]>([]);
+  const [promotionTotal, setPromotionTotal] = useState(0);
+  const [promotionLoading, setPromotionLoading] = useState(false);
+  const [promotionSourceBatches, setPromotionSourceBatches] = useState<BatchDto[]>([]);
   const [newClassName, setNewClassName] = useState("");
   const [newClassCode, setNewClassCode] = useState("");
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
@@ -133,7 +138,7 @@ export default function Students() {
 
   const loadBatches = async () => {
     try {
-      const url = academicYearFilter ? `/Batches?academicYearId=${encodeURIComponent(academicYearFilter)}` : "/Batches";
+      const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
       const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
     } catch (e: unknown) {
@@ -160,19 +165,56 @@ export default function Students() {
     }
   };
 
-  const loadAcademicYears = async () => {
+  const loadPromotionSourceBatches = async () => {
+    const yearId = promotionSourceYearId || selectedYearId;
+    if (!yearId) {
+      setPromotionSourceBatches([]);
+      return;
+    }
     try {
-      const list = (await fetchApi("/AcademicYears?includeArchived=true")) as { id: string; name: string }[];
-      setAcademicYears(Array.isArray(list) ? list : []);
+      if (promotionSourceClassId) {
+        const list = (await fetchApi(`/Batches/by-class/${promotionSourceClassId}?academicYearId=${encodeURIComponent(yearId)}`)) as BatchDto[];
+        setPromotionSourceBatches(list);
+      } else {
+        const list = (await fetchApi(`/Batches?academicYearId=${encodeURIComponent(yearId)}`)) as BatchDto[];
+        setPromotionSourceBatches(list);
+      }
     } catch {
-      setAcademicYears([]);
+      setPromotionSourceBatches([]);
+    }
+  };
+
+  const loadPromotionStudents = async () => {
+    const yearId = promotionSourceYearId || selectedYearId;
+    if (!yearId) {
+      setPromotionStudents([]);
+      setPromotionTotal(0);
+      return;
+    }
+    setPromotionLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("academicYearId", yearId);
+      if (promotionSourceClassId) params.set("classId", promotionSourceClassId);
+      if (promotionSourceBatchId) params.set("batchId", promotionSourceBatchId);
+      params.set("status", "Active");
+      params.set("take", "500");
+      const res = (await fetchApi(`/Students?${params.toString()}`)) as { items: StudentDto[]; total: number };
+      setPromotionStudents(res.items ?? []);
+      setPromotionTotal(res.total ?? 0);
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error).message || "Failed to load students", variant: "destructive" });
+      setPromotionStudents([]);
+      setPromotionTotal(0);
+    } finally {
+      setPromotionLoading(false);
     }
   };
 
   const loadStudents = async () => {
     try {
       const params = new URLSearchParams();
-      if (academicYearFilter) params.set("academicYearId", academicYearFilter);
+      if (selectedYearId) params.set("academicYearId", selectedYearId);
       if (classFilter) params.set("classId", classFilter);
       if (batchFilter) params.set("batchId", batchFilter);
       if (statusFilter) params.set("status", statusFilter);
@@ -188,30 +230,37 @@ export default function Students() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadClasses(), loadAcademicYears()]);
-      const current = (await fetchApi("/AcademicYears/current").catch(() => null)) as { id: string } | null;
-      if (current?.id) setAcademicYearFilter(current.id);
+      await loadClasses();
       setLoading(false);
     })();
   }, []);
 
   useEffect(() => {
     loadBatches();
-  }, [academicYearFilter]);
+  }, [selectedYearId]);
 
   useEffect(() => {
     loadPromotionBatches();
   }, [promoteTargetAcademicYearId, promoteTargetClassId]);
 
   useEffect(() => {
+    loadPromotionSourceBatches();
+  }, [promotionSourceYearId, selectedYearId, promotionSourceClassId]);
+
+  useEffect(() => {
+    loadPromotionStudents();
+    setPromoteStudentIds([]);
+  }, [selectedYearId, promotionSourceYearId, promotionSourceClassId, promotionSourceBatchId]);
+
+  useEffect(() => {
     loadStudents();
-  }, [academicYearFilter, classFilter, batchFilter, statusFilter]);
+  }, [selectedYearId, classFilter, batchFilter, statusFilter]);
 
   const batchesForClass = classFilter ? batches.filter((b) => b.classId === classFilter) : batches;
 
   const openAdd = () => {
     setEditingId(null);
-    const defaultYearId = academicYearFilter || (academicYears.length > 0 ? academicYears[0].id : "");
+    const defaultYearId = selectedYearId || (academicYears.length > 0 ? academicYears[0].id : "");
     setForm({
       admissionNumber: "",
       name: "",
@@ -238,7 +287,7 @@ export default function Students() {
       name: s.name,
       dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
       gender: s.gender ?? "",
-      academicYearId: s.academicYearId ?? academicYearFilter ?? "",
+      academicYearId: s.academicYearId ?? selectedYearId ?? "",
       classId: s.classId ?? "",
       batchId: s.batchId ?? "",
       section: s.section ?? "",
@@ -282,6 +331,10 @@ export default function Students() {
       } else {
         if (!form.admissionNumber.trim()) {
           toast({ title: "Validation", description: "Admission number is required for new students.", variant: "destructive" });
+          return;
+        }
+        if (!form.classId?.trim()) {
+          toast({ title: "Validation", description: "Class is required when adding a student.", variant: "destructive" });
           return;
         }
         await fetchApi("/Students", {
@@ -343,7 +396,7 @@ export default function Students() {
       setPromoteTargetAcademicYearId("");
       setPromoteTargetClassId("");
       setPromoteTargetBatchId("");
-      await loadStudents();
+      await loadPromotionStudents();
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Promote failed", variant: "destructive" });
     }
@@ -392,8 +445,8 @@ export default function Students() {
   const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     const academicYearId = editingBatchId
-      ? (batches.find((b) => b.id === editingBatchId)?.academicYearId ?? academicYearFilter)
-      : academicYearFilter;
+      ? (batches.find((b) => b.id === editingBatchId)?.academicYearId ?? selectedYearId)
+      : selectedYearId;
     if (!newBatchClassId || !newBatchName.trim() || !academicYearId) {
       toast({ title: "Validation", description: "Select academic year, class and batch name.", variant: "destructive" });
       return;
@@ -439,7 +492,10 @@ export default function Students() {
 
   return (
     <div className="space-y-4">
-        <DashboardHeader title="Student Management" description={`Total: ${total}`} />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <DashboardHeader title="Student Management" description={`Total: ${total}`} />
+          <CurrentAcademicYearBadge />
+        </div>
         <div className="space-y-4">
           <Tabs defaultValue="list" className="space-y-4">
             <TabsList>
@@ -448,9 +504,6 @@ export default function Students() {
               </TabsTrigger>
               <TabsTrigger value="promotion" className="flex items-center gap-2">
                 <ArrowRightLeft className="h-4 w-4" /> Promotion
-              </TabsTrigger>
-              <TabsTrigger value="classes" className="flex items-center gap-2">
-                <GraduationCap className="h-4 w-4" /> Class & Batch
               </TabsTrigger>
             </TabsList>
 
@@ -462,10 +515,6 @@ export default function Students() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-2">
-                    <Select value={academicYearFilter || "all"} onValueChange={(v) => setAcademicYearFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className="w-[160px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
-                      <SelectContent><SelectItem value="all">All years</SelectItem>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-                    </Select>
                     <Select value={classFilter || "all"} onValueChange={(v) => { setClassFilter(v === "all" ? "" : v); setBatchFilter(""); }}>
                       <SelectTrigger className="w-[140px]"><SelectValue placeholder="Class" /></SelectTrigger>
                       <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
@@ -490,12 +539,17 @@ export default function Students() {
                         {!editingId && (
                           <div className="space-y-1"><Label>Admission number *</Label><Input value={form.admissionNumber} onChange={(e) => setForm((f) => ({ ...f, admissionNumber: e.target.value }))} required /></div>
                         )}
-                        <div className="space-y-1"><Label>Academic year</Label><Select value={form.academicYearId || "all"} onValueChange={(v) => setForm((f) => ({ ...f, academicYearId: v === "all" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger><SelectContent><SelectItem value="all">—</SelectItem>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent></Select></div>
+                        {currentYear && (
+                          <div className="space-y-1">
+                            <Label>Academic year</Label>
+                            <p className="text-sm text-muted-foreground py-1.5">{currentYear.name}</p>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required /></div>
                           <div className="space-y-1"><Label>DOB</Label><Input type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} /></div>
                           <div className="space-y-1"><Label>Gender</Label><Select value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
-                          <div className="space-y-1"><Label>Class</Label><Select value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v, batchId: "" }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                          <div className="space-y-1"><Label>Class *</Label><Select value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v, batchId: "" }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                           <div className="space-y-1"><Label>Batch</Label><Select value={form.batchId} onValueChange={(v) => setForm((f) => ({ ...f, batchId: v }))}><SelectTrigger><SelectValue placeholder="Batch" /></SelectTrigger><SelectContent>{batches.filter((b) => b.classId === form.classId).map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent></Select></div>
                           <div className="space-y-1"><Label>Section</Label><Input value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} /></div>
                           <div className="space-y-1 col-span-2"><Label>Guardian name</Label><Input value={form.guardianName} onChange={(e) => setForm((f) => ({ ...f, guardianName: e.target.value }))} /></div>
@@ -538,124 +592,160 @@ export default function Students() {
             </TabsContent>
 
             <TabsContent value="promotion" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bulk promotion</CardTitle>
-                  <CardDescription>Select students and target class/batch to promote.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleBulkPromote} className="space-y-4">
-                    <div className="flex flex-wrap gap-4">
-                      <div className="space-y-1">
-                        <Label>Target academic year</Label>
-                        <Select value={promoteTargetAcademicYearId} onValueChange={setPromoteTargetAcademicYearId}>
-                          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Year" /></SelectTrigger>
-                          <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Target class</Label>
-                        <Select value={promoteTargetClassId} onValueChange={(v) => { setPromoteTargetClassId(v); setPromoteTargetBatchId(""); }}>
-                          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Class" /></SelectTrigger>
-                          <SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Target batch</Label>
-                        <Select value={promoteTargetBatchId} onValueChange={setPromoteTargetBatchId}>
-                          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Batch" /></SelectTrigger>
-                          <SelectContent>{promotionBatches.filter((b) => b.classId === promoteTargetClassId).map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-end"><Button type="submit" disabled={promoteStudentIds.length === 0}>Promote selected ({promoteStudentIds.length})</Button></div>
-                    </div>
-                    <div className="max-h-60 overflow-auto border rounded p-2">
-                      {students.filter((s) => s.status === "Active").map((s) => (
-                        <label key={s.id} className="flex items-center gap-2 py-1 cursor-pointer">
-                          <input type="checkbox" checked={promoteStudentIds.includes(s.id)} onChange={() => togglePromoteSelection(s.id)} />
-                          <span>{s.name} – {s.className ?? "—"} / {s.batchName ?? "—"}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="classes" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Classes</CardTitle>
-                  <CardDescription>Create classes (name and code). Seat limit is per batch.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button onClick={openAddClass}>Add class</Button>
-                  <Dialog open={classModalOpen} onOpenChange={setClassModalOpen}>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>{editingClassId ? "Edit class" : "Add class"}</DialogTitle>
-                        <DialogDescription>Name and code.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateClass} className="space-y-3">
-                        <div className="space-y-1"><Label>Name</Label><Input value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g. Grade 8" /></div>
-                        <div className="space-y-1"><Label>Code</Label><Input value={newClassCode} onChange={(e) => setNewClassCode(e.target.value)} placeholder="e.g. G8" /></div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setClassModalOpen(false)}>Cancel</Button>
-                          <Button type="submit">{editingClassId ? "Update class" : "Add class"}</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {classes.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell>{c.name}</TableCell><TableCell>{c.code}</TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={() => openEditClass(c)}>Edit</Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Batches</CardTitle>
-                  <CardDescription>Create batches under a class.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button onClick={openAddBatch}>Add batch</Button>
-                  <Dialog open={batchModalOpen} onOpenChange={setBatchModalOpen}>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>{editingBatchId ? "Edit batch" : "Add batch"}</DialogTitle>
-                        <DialogDescription>Class, batch name and optional section.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateBatch} className="space-y-3">
-                        <div className="space-y-1"><Label>Class</Label><Select value={newBatchClassId} onValueChange={setNewBatchClassId} disabled={!!editingBatchId}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
-                        <div className="space-y-1"><Label>Batch name</Label><Input value={newBatchName} onChange={(e) => setNewBatchName(e.target.value)} placeholder="e.g. A" /></div>
-                        <div className="space-y-1"><Label>Section</Label><Input value={newBatchSection} onChange={(e) => setNewBatchSection(e.target.value)} placeholder="Optional" /></div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setBatchModalOpen(false)}>Cancel</Button>
-                          <Button type="submit">{editingBatchId ? "Update batch" : "Add batch"}</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Class</TableHead><TableHead>Batch</TableHead><TableHead>Section</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {batches.map((b) => (
-                        <TableRow key={b.id}>
-                          <TableCell>{b.className}</TableCell><TableCell>{b.name}</TableCell><TableCell>{b.section ?? "—"}</TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={() => openEditBatch(b)}>Edit</Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              {(() => {
+                const promotionSearchLower = promotionSearch.trim().toLowerCase();
+                const filtered = promotionSearchLower
+                  ? promotionStudents.filter(
+                      (s) =>
+                        s.name.toLowerCase().includes(promotionSearchLower) ||
+                        (s.admissionNumber ?? "").toLowerCase().includes(promotionSearchLower)
+                    )
+                  : promotionStudents;
+                const sorted = [...filtered].sort((a, b) => {
+                  if (promotionSort === "name") return (a.name || "").localeCompare(b.name || "");
+                  return (a.className ?? "").localeCompare(b.className ?? "") || (a.batchName ?? "").localeCompare(b.batchName ?? "");
+                });
+                const visibleStudentIds = sorted.map((s) => s.id);
+                const effectiveSourceYearId = promotionSourceYearId || selectedYearId;
+                const sourceBatchesForClass = promotionSourceClassId
+                  ? promotionSourceBatches.filter((b) => b.classId === promotionSourceClassId)
+                  : promotionSourceBatches;
+                return (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>1. Filter and select students</CardTitle>
+                        <CardDescription>Narrow down current students by year, class, and batch; then select who to promote.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex flex-wrap gap-4 items-end">
+                          <div className="space-y-1">
+                            <Label>Source academic year</Label>
+                            <Select
+                              value={effectiveSourceYearId || "none"}
+                              onValueChange={(v) => setPromotionSourceYearId(v === "none" ? "" : v)}
+                            >
+                              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Year" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Select year</SelectItem>
+                                {academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Source class</Label>
+                            <Select
+                              value={promotionSourceClassId || "all"}
+                              onValueChange={(v) => { setPromotionSourceClassId(v === "all" ? "" : v); setPromotionSourceBatchId(""); }}
+                            >
+                              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Class" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All classes</SelectItem>
+                                {classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Source batch</Label>
+                            <Select
+                              value={promotionSourceBatchId || "all"}
+                              onValueChange={(v) => setPromotionSourceBatchId(v === "all" ? "" : v)}
+                            >
+                              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Batch" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All batches</SelectItem>
+                                {sourceBatchesForClass.map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Search by name</Label>
+                            <Input
+                              placeholder="Name or admission #"
+                              className="w-[180px]"
+                              value={promotionSearch}
+                              onChange={(e) => setPromotionSearch(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Sort</Label>
+                            <Select value={promotionSort} onValueChange={(v: "name" | "class") => setPromotionSort(v)}>
+                              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="name">Name A–Z</SelectItem>
+                                <SelectItem value="class">Class & batch</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setPromoteStudentIds(visibleStudentIds)}>
+                              Select all
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setPromoteStudentIds([])}>
+                              Clear selection
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="max-h-60 overflow-auto border rounded p-2">
+                          {promotionLoading ? (
+                            <p className="text-muted-foreground py-4 text-center">Loading students…</p>
+                          ) : sorted.length === 0 ? (
+                            <p className="text-muted-foreground py-4 text-center">
+                              {!effectiveSourceYearId ? "Select source academic year." : promotionStudents.length === 0 ? "No active students match the filters." : "No students match the search."}
+                            </p>
+                          ) : (
+                            sorted.map((s) => (
+                              <label key={s.id} className="flex items-center gap-2 py-1 cursor-pointer">
+                                <input type="checkbox" checked={promoteStudentIds.includes(s.id)} onChange={() => togglePromoteSelection(s.id)} />
+                                <span>{s.name} – {s.className ?? "—"} / {s.batchName ?? "—"}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Showing {sorted.length} of {promotionTotal} active student(s). Selected: {promoteStudentIds.length}.
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>2. Choose target and promote</CardTitle>
+                        <CardDescription>Set target academic year, class, and batch; then promote the selected students.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <form onSubmit={handleBulkPromote} className="space-y-4">
+                          <div className="flex flex-wrap gap-4 items-end">
+                            <div className="space-y-1">
+                              <Label>Target academic year</Label>
+                              <Select value={promoteTargetAcademicYearId} onValueChange={setPromoteTargetAcademicYearId}>
+                                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Year" /></SelectTrigger>
+                                <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label>Target class</Label>
+                              <Select value={promoteTargetClassId} onValueChange={(v) => { setPromoteTargetClassId(v); setPromoteTargetBatchId(""); }}>
+                                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Class" /></SelectTrigger>
+                                <SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label>Target batch</Label>
+                              <Select value={promoteTargetBatchId} onValueChange={setPromoteTargetBatchId}>
+                                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Batch" /></SelectTrigger>
+                                <SelectContent>{promotionBatches.filter((b) => b.classId === promoteTargetClassId).map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
+                              </Select>
+                            </div>
+                            <Button type="submit" disabled={promoteStudentIds.length === 0 || !promoteTargetClassId}>
+                              Promote selected ({promoteStudentIds.length})
+                            </Button>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </div>

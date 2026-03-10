@@ -6,18 +6,11 @@ import { AttendanceChart } from "@/components/AttendanceChart";
 import { RecentActivity } from "@/components/RecentActivity";
 import { QuickActions } from "@/components/QuickActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Users, GraduationCap, DollarSign, AlertCircle, ClipboardList, TrendingUp, KeyRound } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 
 interface KpiDto {
   totalStudents: number;
@@ -41,7 +34,7 @@ interface FeeSummaryDto {
 }
 
 const Index = () => {
-  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
+  const { selectedYearId } = useAcademicYear();
   const [kpis, setKpis] = useState<KpiDto | null>(null);
   const [pipeline, setPipeline] = useState<AdmissionPipelineDto | null>(null);
   const [feeSummary, setFeeSummary] = useState<FeeSummaryDto[]>([]);
@@ -71,24 +64,9 @@ const Index = () => {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader />
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="dashboard-year" className="text-sm font-medium">Academic year</Label>
-          <Select
-            value={selectedYearId || (academicYears[0]?.id ?? "")}
-            onValueChange={(v) => v && setSelectedYearId(v)}
-          >
-            <SelectTrigger id="dashboard-year" className="w-[200px] rounded-xl">
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              {academicYears.map((y) => (
-                <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader />
+        <CurrentAcademicYearBadge />
       </div>
         {/* Stat Cards - live from API */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

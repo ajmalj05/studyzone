@@ -279,6 +279,7 @@ export default function ApplicationFormPage() {
     previousClass: "",
     emirateIfInsideUae: "",
     classApplied: "",
+    classAppliedClassId: "",
     countryIfOutsideUae: "",
     syllabusPreviousSchool: "",
     secondLangPreviousSchool: "",
@@ -393,6 +394,7 @@ export default function ApplicationFormPage() {
               previousClass: (app.previousClass as string) ?? "",
               emirateIfInsideUae: (app.emirateIfInsideUae as string) ?? "",
               classApplied: (app.classApplied as string) ?? "",
+              classAppliedClassId: "",
               countryIfOutsideUae: (app.countryIfOutsideUae as string) ?? "",
               syllabusPreviousSchool: (app.syllabusPreviousSchool as string) ?? "",
               secondLangPreviousSchool: (app.secondLangPreviousSchool as string) ?? "",
@@ -485,6 +487,13 @@ export default function ApplicationFormPage() {
     }
   }, [id, isNew, enquiryId]);
 
+  // Resolve classApplied (name) to classAppliedClassId when classes are loaded (e.g. old data or from enquiry)
+  useEffect(() => {
+    if (!form.classApplied?.trim() || form.classAppliedClassId || classes.length === 0) return;
+    const match = classes.find((c) => c.name?.trim().toLowerCase() === form.classApplied.trim().toLowerCase());
+    if (match) setForm((f) => ({ ...f, classAppliedClassId: match.id }));
+  }, [classes, form.classApplied, form.classAppliedClassId]);
+
   const update = (key: keyof typeof form, value: string | string[] | boolean | SiblingRow[]) => {
     setForm((f) => ({ ...f, [key]: value }));
   };
@@ -519,7 +528,7 @@ export default function ApplicationFormPage() {
     previousSchool: form.previousSchool || undefined,
     previousClass: form.previousClass || undefined,
     emirateIfInsideUae: form.emirateIfInsideUae || undefined,
-    classApplied: form.classApplied || undefined,
+    classApplied: (form.classAppliedClassId && classes.find((c) => c.id === form.classAppliedClassId)?.name) ?? (form.classApplied || undefined),
     countryIfOutsideUae: form.countryIfOutsideUae || undefined,
     syllabusPreviousSchool: form.syllabusPreviousSchool || undefined,
     secondLangPreviousSchool: form.secondLangPreviousSchool || undefined,
@@ -620,6 +629,10 @@ export default function ApplicationFormPage() {
       toast({ title: "Validation", description: "Save the application first, then use Submit & create student.", variant: "destructive" });
       return;
     }
+    if (!form.classId?.trim()) {
+      toast({ title: "Validation", description: "Please select Allotted Class before creating student.", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
       await fetchApi(`/AdmissionApplications/${id}/submit-and-enroll`, { method: "POST" });
@@ -640,7 +653,11 @@ export default function ApplicationFormPage() {
     } catch {
       setSchoolProfile(null);
     }
-    const html = buildPrintDocumentHtml(profile ?? null, form as Record<string, unknown>, classes, batches);
+    const printForm = {
+      ...form,
+      classApplied: form.classAppliedClassId ? (classes.find((c) => c.id === form.classAppliedClassId)?.name ?? form.classApplied) : form.classApplied,
+    };
+    const html = buildPrintDocumentHtml(profile ?? null, printForm as Record<string, unknown>, classes, batches);
     const printWin = window.open("", "_blank");
     if (printWin) {
       printWin.document.write(html);
@@ -762,7 +779,7 @@ export default function ApplicationFormPage() {
               </tr>
               <tr>
                 <td className="print-label">Emirate (if inside UAE):</td><td className="print-value">{form.emirateIfInsideUae || "—"}</td>
-                <td className="print-label">Class Applied for:</td><td className="print-value">{form.classApplied || "—"}</td>
+                <td className="print-label">Class Applied for:</td><td className="print-value">{form.classAppliedClassId ? (classes.find((c) => c.id === form.classAppliedClassId)?.name ?? "—") : (form.classApplied || "—")}</td>
               </tr>
               <tr>
                 <td className="print-label">Country (if outside UAE):</td><td className="print-value">{form.countryIfOutsideUae || "—"}</td>
@@ -992,7 +1009,13 @@ export default function ApplicationFormPage() {
             </div>
             <div className="space-y-2">
               <Label>Class Applied for</Label>
-              <Input value={form.classApplied} onChange={(e) => update("classApplied", e.target.value)} />
+              <Select value={form.classAppliedClassId || "_none"} onValueChange={(v) => setForm((f) => ({ ...f, classAppliedClassId: v === "_none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">— Select class —</SelectItem>
+                  {classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Country (if outside UAE)</Label>
@@ -1229,9 +1252,9 @@ export default function ApplicationFormPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Allotted Class</Label>
+              <Label>Allotted Class *</Label>
               <Select value={form.classId} onValueChange={(v) => update("classId", v)}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select class (required to create student)" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>))}
                 </SelectContent>

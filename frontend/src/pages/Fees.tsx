@@ -31,11 +31,12 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { CreditCard, AlertCircle } from "lucide-react";
 import { FeeLedgerDto, ClassDto, StudentDto, FEE_MONTH_NAMES, formatCurrency } from "@/types/fees";
 
 export default function Fees() {
-  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
+  const { selectedYearId } = useAcademicYear();
   const [outstanding, setOutstanding] = useState<FeeLedgerDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
@@ -114,7 +115,10 @@ export default function Fees() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Fee Management" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Fee Management" />
+        <CurrentAcademicYearBadge />
+      </div>
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -140,10 +144,6 @@ export default function Fees() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
-                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
-                      <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-                    </Select>
                     <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
                       <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
                       <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>

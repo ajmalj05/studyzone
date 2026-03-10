@@ -31,6 +31,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { BookOpen, Users, DollarSign, CalendarDays, Pencil } from "lucide-react";
 
 interface ClassDto {
@@ -61,7 +62,7 @@ interface TeacherUserDto {
 
 export default function Classes() {
   const navigate = useNavigate();
-  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
+  const { selectedYearId, currentYear } = useAcademicYear();
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,7 +229,10 @@ export default function Classes() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Class & Batch Management" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Class & Batch Management" />
+        <CurrentAcademicYearBadge />
+      </div>
       <div className="space-y-4">
         <Card>
           <CardHeader>
@@ -302,14 +306,8 @@ export default function Classes() {
         <Card>
           <CardHeader>
             <CardTitle>Batches</CardTitle>
-            <CardDescription>Batches are scoped by academic year. Create and edit batches for the selected year.</CardDescription>
+            <CardDescription>Batches are scoped by academic year. Create and edit batches for the current year.</CardDescription>
             <div className="flex flex-wrap gap-2 items-center">
-              <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
-                <SelectContent>
-                  {academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
               <Select value={selectedClassId ?? "all"} onValueChange={(v) => setSelectedClassId(v === "all" ? null : v)}>
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
                 <SelectContent>
@@ -329,13 +327,10 @@ export default function Classes() {
                 </DialogHeader>
                 <form onSubmit={handleSaveBatch} className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {!editingBatchId && (
+                    {!editingBatchId && currentYear && (
                       <div className="space-y-1 sm:col-span-2">
-                        <Label>Academic year *</Label>
-                        <Select value={batchForm.academicYearId || selectedYearId} onValueChange={(v) => setBatchForm((f) => ({ ...f, academicYearId: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger>
-                          <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-                        </Select>
+                        <Label>Academic year</Label>
+                        <p className="text-sm text-muted-foreground py-1.5">{currentYear.name}</p>
                       </div>
                     )}
                     <div className="space-y-1">

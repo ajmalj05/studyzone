@@ -30,10 +30,11 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { FeeStructureDto, ClassDto, formatCurrency } from "@/types/fees";
 
 export default function FeeStructures() {
-  const { selectedYearId, academicYears, setSelectedYearId } = useAcademicYear();
+  const { selectedYearId, currentYear } = useAcademicYear();
   const [structures, setStructures] = useState<FeeStructureDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [structureForm, setStructureForm] = useState({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
@@ -106,17 +107,14 @@ export default function FeeStructures() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Fee Structures" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Fee Structures" />
+        <CurrentAcademicYearBadge />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Fee structures</CardTitle>
           <CardDescription>Define fee by class and academic year (e.g. Tuition, Lab).</CardDescription>
-          <div className="flex gap-2 pt-2">
-            <Select value={selectedYearId || (academicYears[0]?.id ?? "")} onValueChange={(v) => v && setSelectedYearId(v)}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Academic year" /></SelectTrigger>
-              <SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent>
-            </Select>
-          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={() => { setStructureForm((f) => ({ ...f, academicYearId: selectedYearId })); setStructureModalOpen(true); }}>Add fee structure</Button>
@@ -127,7 +125,12 @@ export default function FeeStructures() {
                 <DialogDescription>Define fee by class and academic year.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateStructure} className="space-y-3">
-                <div className="space-y-1"><Label>Academic year *</Label><Select value={structureForm.academicYearId || selectedYearId} onValueChange={(v) => setStructureForm((f) => ({ ...f, academicYearId: v }))}><SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger><SelectContent>{academicYears.map((y) => (<SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>))}</SelectContent></Select></div>
+                {currentYear && (
+                  <div className="space-y-1">
+                    <Label>Academic year</Label>
+                    <p className="text-sm text-muted-foreground py-1.5">{currentYear.name}</p>
+                  </div>
+                )}
                 <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                 <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
                 <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>

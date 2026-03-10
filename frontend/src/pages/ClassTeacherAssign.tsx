@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -150,21 +151,12 @@ export default function ClassTeacherAssign() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <DashboardHeader
           title="Class Teacher Mapping"
           description="Assign class teachers to batches for the current academic year."
         />
-        <div className="mt-2 text-right">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Current academic year</p>
-          <p className="text-sm font-medium">
-            {yearLoading
-              ? "Loading..."
-              : currentYear
-              ? currentYear.name
-              : "Not set – please configure a current academic year."}
-          </p>
-        </div>
+        <CurrentAcademicYearBadge />
       </div>
 
       {yearLoading ? (

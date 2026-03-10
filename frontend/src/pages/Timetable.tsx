@@ -36,6 +36,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { CalendarDays } from "lucide-react";
 
 interface PeriodConfigDto {
@@ -298,7 +299,10 @@ export default function Timetable() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Timetable" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Timetable" />
+        <CurrentAcademicYearBadge />
+      </div>
         <div className="space-y-4">
           <Card>
             <CardHeader>

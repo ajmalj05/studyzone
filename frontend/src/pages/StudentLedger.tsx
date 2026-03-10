@@ -21,6 +21,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import {
   FeeLedgerDto,
   StudentDto,
@@ -74,7 +75,10 @@ export default function StudentLedger() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Student Ledger" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DashboardHeader title="Student Ledger" />
+        <CurrentAcademicYearBadge />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Student fee ledger</CardTitle>
