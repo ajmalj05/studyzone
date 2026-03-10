@@ -42,6 +42,10 @@ export default function Fees() {
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [classFilter, setClassFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"student" | "balance">("balance");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [recalculating, setRecalculating] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ studentId: "", amount: "", mode: "Cash" });
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -55,6 +59,30 @@ export default function Fees() {
       setOutstanding(list);
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to load outstanding", variant: "destructive" });
+    }
+  };
+
+  const recalculateOutstanding = async () => {
+    try {
+      setRecalculating(true);
+      const params = new URLSearchParams();
+      if (classFilter) params.set("classId", classFilter);
+      if (selectedYearId) params.set("academicYearId", selectedYearId);
+      const url = params.toString() ? `/Fees/outstanding/recalculate?${params}` : "/Fees/outstanding/recalculate";
+      await fetchApi(url, { method: "POST" });
+      await loadOutstanding();
+      toast({
+        title: "Outstanding generated",
+        description: "Outstanding balances have been recalculated for the selected filters.",
+      });
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: (e as Error).message || "Failed to recalculate outstanding",
+        variant: "destructive",
+      });
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -104,8 +132,31 @@ export default function Fees() {
     }
   };
 
-  const totalOutstanding = outstanding.reduce((s, x) => s + x.balance, 0);
-  const totalCollected = outstanding.reduce((s, x) => s + x.totalPayments, 0);
+  const filteredOutstanding = outstanding.filter((o) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return o.studentName.toLowerCase().includes(term);
+  });
+
+  const sortedOutstanding = [...filteredOutstanding].sort((a, b) => {
+    if (sortBy === "student") {
+      const an = a.studentName.toLowerCase();
+      const bn = b.studentName.toLowerCase();
+      if (an < bn) return sortDirection === "asc" ? -1 : 1;
+      if (an > bn) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    }
+    const diff = a.balance - b.balance;
+    return sortDirection === "asc" ? diff : -diff;
+  });
+
+  const totalOutstanding = sortedOutstanding.reduce((s, x) => s + x.balance, 0);
+  const totalCollected = sortedOutstanding.reduce((s, x) => s + x.totalPayments, 0);
+
+  const handleSort = (field: "student" | "balance") => {
+    setSortDirection((prev) => (sortBy === field && prev === "desc" ? "asc" : "desc"));
+    setSortBy(field);
+  };
 
   if (loading) {
     return (
@@ -143,25 +194,80 @@ export default function Fees() {
                   <CardDescription>Students with balance &gt; 0 (scoped by academic year)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
-                      <SelectContent><SelectItem value="all">All classes</SelectItem>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
-                    </Select>
+                  <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={classFilter || "all"} onValueChange={(v) => setClassFilter(v === "all" ? "" : v)}>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by class" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All classes</SelectItem>
+                          {classes.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        className="w-full sm:w-64"
+                        placeholder="Search student"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={recalculateOutstanding}
+                      disabled={recalculating}
+                    >
+                      {recalculating ? "Generating..." : "Generate outstanding"}
+                    </Button>
                   </div>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead>Fee start</TableHead><TableHead>Charges</TableHead><TableHead>Payments</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort("student")}
+                        >
+                          Student
+                        </TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead>Fee start</TableHead>
+                        <TableHead>Charges</TableHead>
+                        <TableHead>Payments</TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none"
+                          onClick={() => handleSort("balance")}
+                        >
+                          Balance
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
-                      {outstanding.map((o) => (
-                        <TableRow key={o.studentId}>
-                          <TableCell>{o.studentName}</TableCell>
-                          <TableCell>{o.className ?? "—"}</TableCell>
-                          <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? (o.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}` : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]) : "—"}</TableCell>
-                          <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
-                          <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
-                          <TableCell className="font-medium text-warning">{formatCurrency(o.balance)}</TableCell>
+                      {sortedOutstanding.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                            No outstanding records for the selected filters.
+                          </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        sortedOutstanding.map((o) => (
+                          <TableRow key={o.studentId}>
+                            <TableCell>{o.studentName}</TableCell>
+                            <TableCell>{o.className ?? "—"}</TableCell>
+                            <TableCell>
+                              {o.feePaymentStartMonth != null &&
+                              o.feePaymentStartMonth >= 1 &&
+                              o.feePaymentStartMonth <= 12
+                                ? o.feePaymentStartYear != null
+                                  ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}`
+                                  : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]
+                                : "—"}
+                            </TableCell>
+                            <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
+                            <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
+                            <TableCell className="font-medium text-warning">{formatCurrency(o.balance)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>

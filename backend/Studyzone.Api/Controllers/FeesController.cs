@@ -89,6 +89,13 @@ public class FeesController : ControllerBase
         return Ok(list);
     }
 
+    [HttpPost("outstanding/recalculate")]
+    public async Task<ActionResult<IReadOnlyList<FeeLedgerDto>>> RecalculateOutstanding([FromQuery] string? classId, [FromQuery] string? academicYearId, CancellationToken ct)
+    {
+        var list = await _service.RecalculateOutstandingAsync(classId, academicYearId, ct);
+        return Ok(list);
+    }
+
     [HttpPost("payments")]
     public async Task<ActionResult<PaymentDto>> RecordPayment([FromBody] RecordPaymentRequest request, CancellationToken ct)
     {

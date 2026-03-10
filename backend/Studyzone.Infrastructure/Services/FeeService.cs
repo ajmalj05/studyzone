@@ -300,6 +300,32 @@ public class FeeService : IFeeService
         return result.OrderByDescending(x => x.Balance).ToList();
     }
 
+    public async Task<IReadOnlyList<FeeLedgerDto>> RecalculateOutstandingAsync(string? classId, string? academicYearId, CancellationToken ct = default)
+    {
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        if (yearId == null)
+            return new List<FeeLedgerDto>();
+
+        Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var g) ? null : g;
+        var enrollments = await _enrollmentRepo.GetByAcademicYearAsync(yearId.Value, cid, null, "Active", 0, 500, ct);
+
+        var now = DateTime.UtcNow;
+        foreach (var enr in enrollments)
+        {
+            var generateRequest = new GenerateChargesRequest
+            {
+                StudentId = enr.StudentId.ToString(),
+                AcademicYearId = yearId.Value.ToString(),
+                UpToYear = now.Year,
+                UpToMonth = now.Month
+            };
+
+            await GenerateChargesForStudentAsync(generateRequest, ct);
+        }
+
+        return await GetOutstandingByClassAsync(classId, academicYearId, ct);
+    }
+
     public async Task<GenerateChargesResult> GenerateChargesForStudentAsync(GenerateChargesRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.StudentId) || !Guid.TryParse(request.StudentId, out var studentId))

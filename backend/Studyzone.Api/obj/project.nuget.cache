@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "psP+x/HwhcI=",
+  "dgSpecHash": "JmdL4PZuWqI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\studyzone.api\\Studyzone.Api.csproj",
+  "projectFilePath": "C:\\Users\\ajmal\\Pictures\\Studyzone\\backend\\Studyzone.Api\\Studyzone.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ajmal\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\ajmal\\.nuget\\packages\\communitytoolkit.highperformance\\8.2.2\\communitytoolkit.highperformance.8.2.2.nupkg.sha512",
