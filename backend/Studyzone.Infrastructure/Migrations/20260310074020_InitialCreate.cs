@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Studyzone.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAnnouncements : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -82,23 +82,86 @@ namespace Studyzone.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     EnquiryId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    AdmissionNumber = table.Column<string>(type: "text", nullable: true),
+                    ClassId = table.Column<Guid>(type: "uuid", nullable: true),
+                    BatchId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Batch = table.Column<string>(type: "text", nullable: true),
+                    Section = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    AcademicYear = table.Column<string>(type: "text", nullable: true),
                     StudentName = table.Column<string>(type: "text", nullable: false),
+                    Gender = table.Column<string>(type: "text", nullable: true),
+                    PlaceOfBirth = table.Column<string>(type: "text", nullable: true),
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Nationality = table.Column<string>(type: "text", nullable: true),
+                    Religion = table.Column<string>(type: "text", nullable: true),
                     PreviousSchool = table.Column<string>(type: "text", nullable: true),
+                    PreviousClass = table.Column<string>(type: "text", nullable: true),
+                    EmirateIfInsideUae = table.Column<string>(type: "text", nullable: true),
+                    ClassApplied = table.Column<string>(type: "text", nullable: true),
+                    CountryIfOutsideUae = table.Column<string>(type: "text", nullable: true),
+                    SyllabusPreviousSchool = table.Column<string>(type: "text", nullable: true),
+                    SecondLangPreviousSchool = table.Column<string>(type: "text", nullable: true),
+                    DateOfLastAttendance = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    PassportNo = table.Column<string>(type: "text", nullable: true),
+                    PassportPlaceOfIssue = table.Column<string>(type: "text", nullable: true),
+                    PassportDateOfIssue = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    PassportDateOfExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ResidenceVisaNo = table.Column<string>(type: "text", nullable: true),
+                    ResidenceVisaPlaceOfIssue = table.Column<string>(type: "text", nullable: true),
+                    ResidenceVisaDateOfIssue = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ResidenceVisaDateOfExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    EmiratesIdNo = table.Column<string>(type: "text", nullable: true),
+                    EmiratesIdDateOfExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    AnySpecialNeeds = table.Column<bool>(type: "boolean", nullable: true),
+                    SpecialNeedsDetails = table.Column<string>(type: "text", nullable: true),
+                    PassportPhotoUrl = table.Column<string>(type: "text", nullable: true),
+                    SisNo = table.Column<string>(type: "text", nullable: true),
+                    RegNo = table.Column<string>(type: "text", nullable: true),
+                    CheckedBy = table.Column<string>(type: "text", nullable: true),
+                    OfficeSignature = table.Column<string>(type: "text", nullable: true),
+                    Principal = table.Column<string>(type: "text", nullable: true),
+                    ExtraCurricularSportsJson = table.Column<string>(type: "text", nullable: true),
+                    ExtraCurricularActivitiesJson = table.Column<string>(type: "text", nullable: true),
+                    FatherNameAsInPassport = table.Column<string>(type: "text", nullable: true),
+                    FatherReligion = table.Column<string>(type: "text", nullable: true),
+                    FatherNationality = table.Column<string>(type: "text", nullable: true),
+                    FatherQualification = table.Column<string>(type: "text", nullable: true),
+                    FatherMobileNumber = table.Column<string>(type: "text", nullable: true),
+                    FatherEmailAddress = table.Column<string>(type: "text", nullable: true),
+                    FatherOccupation = table.Column<string>(type: "text", nullable: true),
+                    FatherCompanyName = table.Column<string>(type: "text", nullable: true),
+                    FatherDesignation = table.Column<string>(type: "text", nullable: true),
+                    FatherPoBoxEmirate = table.Column<string>(type: "text", nullable: true),
+                    FatherOfficeTelephone = table.Column<string>(type: "text", nullable: true),
+                    FatherEmiratesIdNumber = table.Column<string>(type: "text", nullable: true),
+                    FatherAddressOfResidence = table.Column<string>(type: "text", nullable: true),
+                    FatherAddressInHomeCountry = table.Column<string>(type: "text", nullable: true),
+                    MotherNameAsInPassport = table.Column<string>(type: "text", nullable: true),
+                    MotherReligion = table.Column<string>(type: "text", nullable: true),
+                    MotherNationality = table.Column<string>(type: "text", nullable: true),
+                    MotherQualification = table.Column<string>(type: "text", nullable: true),
+                    MotherMobileNumber = table.Column<string>(type: "text", nullable: true),
+                    MotherEmailAddress = table.Column<string>(type: "text", nullable: true),
+                    MotherOccupation = table.Column<string>(type: "text", nullable: true),
+                    MotherCompanyName = table.Column<string>(type: "text", nullable: true),
+                    MotherDesignation = table.Column<string>(type: "text", nullable: true),
+                    MotherPoBoxEmirate = table.Column<string>(type: "text", nullable: true),
+                    MotherOfficeTelephone = table.Column<string>(type: "text", nullable: true),
+                    MotherEmiratesIdNumber = table.Column<string>(type: "text", nullable: true),
+                    MotherAddressOfResidence = table.Column<string>(type: "text", nullable: true),
+                    MotherAddressInHomeCountry = table.Column<string>(type: "text", nullable: true),
+                    OtherChildrenInSchoolJson = table.Column<string>(type: "text", nullable: true),
+                    DeclarationParentNameAndSignature = table.Column<string>(type: "text", nullable: true),
+                    DeclarationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     GuardianName = table.Column<string>(type: "text", nullable: true),
                     GuardianPhone = table.Column<string>(type: "text", nullable: true),
                     GuardianEmail = table.Column<string>(type: "text", nullable: true),
                     SubjectsRequired = table.Column<string>(type: "text", nullable: true),
-                    ClassApplied = table.Column<string>(type: "text", nullable: true),
-                    Status = table.Column<string>(type: "text", nullable: false),
                     InterviewDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    InterviewNotes = table.Column<string>(type: "text", nullable: true),
-                    AdmissionNumber = table.Column<string>(type: "text", nullable: true),
-                    ClassId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Batch = table.Column<string>(type: "text", nullable: true),
-                    Section = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    InterviewNotes = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -148,7 +211,6 @@ namespace Studyzone.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Code = table.Column<string>(type: "text", nullable: false),
-                    SeatLimit = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -248,24 +310,6 @@ namespace Studyzone.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "FeeStructures",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ClassId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
-                    Frequency = table.Column<string>(type: "text", nullable: false),
-                    EffectiveFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EffectiveTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FeeStructures", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "LeaveRequests",
                 columns: table => new
                 {
@@ -301,6 +345,22 @@ namespace Studyzone.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MarksEntries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    RelatedEntityId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -340,6 +400,26 @@ namespace Studyzone.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PortalRequests",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Role = table.Column<string>(type: "text", nullable: false),
+                    RequestType = table.Column<string>(type: "text", nullable: false),
+                    Subject = table.Column<string>(type: "text", nullable: false),
+                    Message = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    AdminComment = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PortalRequests", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ReceiptSequences",
                 columns: table => new
                 {
@@ -364,6 +444,23 @@ namespace Studyzone.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Roles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SchoolExpenses",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Category = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SchoolExpenses", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -398,6 +495,21 @@ namespace Studyzone.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "StudentParents",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ParentUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    IsPrimary = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StudentParents", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Students",
                 columns: table => new
                 {
@@ -407,10 +519,6 @@ namespace Studyzone.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Gender = table.Column<string>(type: "text", nullable: true),
-                    ClassId = table.Column<Guid>(type: "uuid", nullable: true),
-                    BatchId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Section = table.Column<string>(type: "text", nullable: true),
-                    Status = table.Column<string>(type: "text", nullable: false),
                     GuardianName = table.Column<string>(type: "text", nullable: true),
                     GuardianPhone = table.Column<string>(type: "text", nullable: true),
                     GuardianEmail = table.Column<string>(type: "text", nullable: true),
@@ -444,6 +552,20 @@ namespace Studyzone.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Subjects",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Code = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Subjects", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Substitutions",
                 columns: table => new
                 {
@@ -457,6 +579,59 @@ namespace Studyzone.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Substitutions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TeacherSalaries",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TeacherUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EffectiveFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EffectiveTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
+                    PayFrequency = table.Column<string>(type: "text", nullable: false),
+                    Currency = table.Column<string>(type: "text", nullable: false),
+                    Notes = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherSalaries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TeacherSalaryPayments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TeacherUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    Month = table.Column<int>(type: "integer", nullable: false),
+                    BaseAmount = table.Column<decimal>(type: "numeric", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Notes = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherSalaryPayments", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TimetableSettings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkingDayCount = table.Column<int>(type: "integer", nullable: false),
+                    PeriodsPerDay = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TimetableSettings", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -489,6 +664,10 @@ namespace Studyzone.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Role = table.Column<string>(type: "text", nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Phone = table.Column<string>(type: "text", nullable: true),
+                    Email = table.Column<string>(type: "text", nullable: true),
+                    Subject = table.Column<string>(type: "text", nullable: true),
+                    ClassesAssigned = table.Column<string>(type: "text", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -498,19 +677,52 @@ namespace Studyzone.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FeeStructures",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClassId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AcademicYearId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
+                    Frequency = table.Column<string>(type: "text", nullable: false),
+                    EffectiveFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EffectiveTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeeStructures", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeeStructures_AcademicYears_AcademicYearId",
+                        column: x => x.AcademicYearId,
+                        principalTable: "AcademicYears",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Batches",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ClassId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AcademicYearId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Section = table.Column<string>(type: "text", nullable: true),
                     SeatLimit = table.Column<int>(type: "integer", nullable: true),
+                    ClassTeacherUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Batches", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Batches_AcademicYears_AcademicYearId",
+                        column: x => x.AcademicYearId,
+                        principalTable: "AcademicYears",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Batches_Classes_ClassId",
                         column: x => x.ClassId,
@@ -534,6 +746,86 @@ namespace Studyzone.Infrastructure.Migrations
                         name: "FK_RolePermissions_Roles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "Roles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StudentEnrollments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AcademicYearId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClassId = table.Column<Guid>(type: "uuid", nullable: true),
+                    BatchId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Section = table.Column<string>(type: "text", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    AdmissionNumber = table.Column<string>(type: "text", nullable: false),
+                    JoinedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LeftAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    FeePaymentStartMonth = table.Column<int>(type: "integer", nullable: true),
+                    FeePaymentStartYear = table.Column<int>(type: "integer", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StudentEnrollments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StudentEnrollments_AcademicYears_AcademicYearId",
+                        column: x => x.AcademicYearId,
+                        principalTable: "AcademicYears",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_StudentEnrollments_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ClassSubjects",
+                columns: table => new
+                {
+                    ClassId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SubjectId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClassSubjects", x => new { x.ClassId, x.SubjectId });
+                    table.ForeignKey(
+                        name: "FK_ClassSubjects_Classes_ClassId",
+                        column: x => x.ClassId,
+                        principalTable: "Classes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ClassSubjects_Subjects_SubjectId",
+                        column: x => x.SubjectId,
+                        principalTable: "Subjects",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TeacherSalaryPaymentLines",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TeacherSalaryPaymentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    LineType = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherSalaryPaymentLines", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TeacherSalaryPaymentLines_TeacherSalaryPayments_TeacherSala~",
+                        column: x => x.TeacherSalaryPaymentId,
+                        principalTable: "TeacherSalaryPayments",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -590,9 +882,20 @@ namespace Studyzone.Infrastructure.Migrations
                 column: "Timestamp");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Batches_ClassId",
+                name: "IX_Batches_AcademicYearId",
                 table: "Batches",
-                column: "ClassId");
+                column: "AcademicYearId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Batches_ClassId_AcademicYearId_Name",
+                table: "Batches",
+                columns: new[] { "ClassId", "AcademicYearId", "Name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ClassSubjects_SubjectId",
+                table: "ClassSubjects",
+                column: "SubjectId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Documents_ApplicationId",
@@ -620,6 +923,17 @@ namespace Studyzone.Infrastructure.Migrations
                 columns: new[] { "StudentId", "Period" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_FeeStructures_AcademicYearId",
+                table: "FeeStructures",
+                column: "AcademicYearId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeeStructures_ClassId_AcademicYearId_Name",
+                table: "FeeStructures",
+                columns: new[] { "ClassId", "AcademicYearId", "Name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_LeaveRequests_Status",
                 table: "LeaveRequests",
                 column: "Status");
@@ -640,6 +954,16 @@ namespace Studyzone.Infrastructure.Migrations
                 columns: new[] { "ExamId", "StudentId", "Subject" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Notifications_CreatedAt",
+                table: "Notifications",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_UserId",
+                table: "Notifications",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Payments_ReceiptNumber",
                 table: "Payments",
                 column: "ReceiptNumber",
@@ -649,6 +973,21 @@ namespace Studyzone.Infrastructure.Migrations
                 name: "IX_Payments_StudentId",
                 table: "Payments",
                 column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PortalRequests_Role",
+                table: "PortalRequests",
+                column: "Role");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PortalRequests_Status",
+                table: "PortalRequests",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PortalRequests_UserId",
+                table: "PortalRequests",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ReceiptSequences_Prefix",
@@ -663,25 +1002,103 @@ namespace Studyzone.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_SchoolExpenses_Category",
+                table: "SchoolExpenses",
+                column: "Category");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SchoolExpenses_Date",
+                table: "SchoolExpenses",
+                column: "Date");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_AcademicYearId",
+                table: "StudentEnrollments",
+                column: "AcademicYearId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_BatchId",
+                table: "StudentEnrollments",
+                column: "BatchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_ClassId",
+                table: "StudentEnrollments",
+                column: "ClassId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_Status",
+                table: "StudentEnrollments",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_StudentId",
+                table: "StudentEnrollments",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_StudentId_AcademicYearId",
+                table: "StudentEnrollments",
+                columns: new[] { "StudentId", "AcademicYearId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentParents_ParentUserId",
+                table: "StudentParents",
+                column: "ParentUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentParents_StudentId",
+                table: "StudentParents",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentParents_StudentId_ParentUserId",
+                table: "StudentParents",
+                columns: new[] { "StudentId", "ParentUserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Students_AdmissionNumber",
                 table: "Students",
                 column: "AdmissionNumber",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_BatchId",
-                table: "Students",
-                column: "BatchId");
+                name: "IX_Subjects_Name",
+                table: "Subjects",
+                column: "Name");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_ClassId",
-                table: "Students",
-                column: "ClassId");
+                name: "IX_TeacherSalaries_EffectiveFrom",
+                table: "TeacherSalaries",
+                column: "EffectiveFrom");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_Status",
-                table: "Students",
-                column: "Status");
+                name: "IX_TeacherSalaries_TeacherUserId",
+                table: "TeacherSalaries",
+                column: "TeacherUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherSalaryPaymentLines_TeacherSalaryPaymentId",
+                table: "TeacherSalaryPaymentLines",
+                column: "TeacherSalaryPaymentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherSalaryPayments_TeacherUserId",
+                table: "TeacherSalaryPayments",
+                column: "TeacherUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherSalaryPayments_TeacherUserId_Year_Month",
+                table: "TeacherSalaryPayments",
+                columns: new[] { "TeacherUserId", "Year", "Month" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherSalaryPayments_Year_Month",
+                table: "TeacherSalaryPayments",
+                columns: new[] { "Year", "Month" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_TimetableSlots_BatchId",
@@ -704,9 +1121,6 @@ namespace Studyzone.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AcademicYears");
-
-            migrationBuilder.DropTable(
                 name: "AdmissionApprovals");
 
             migrationBuilder.DropTable(
@@ -726,6 +1140,9 @@ namespace Studyzone.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Batches");
+
+            migrationBuilder.DropTable(
+                name: "ClassSubjects");
 
             migrationBuilder.DropTable(
                 name: "CustomFieldDefinitions");
@@ -752,10 +1169,16 @@ namespace Studyzone.Infrastructure.Migrations
                 name: "MarksEntries");
 
             migrationBuilder.DropTable(
+                name: "Notifications");
+
+            migrationBuilder.DropTable(
                 name: "Payments");
 
             migrationBuilder.DropTable(
                 name: "PeriodConfigs");
+
+            migrationBuilder.DropTable(
+                name: "PortalRequests");
 
             migrationBuilder.DropTable(
                 name: "ReceiptSequences");
@@ -764,19 +1187,34 @@ namespace Studyzone.Infrastructure.Migrations
                 name: "RolePermissions");
 
             migrationBuilder.DropTable(
+                name: "SchoolExpenses");
+
+            migrationBuilder.DropTable(
                 name: "Schools");
 
             migrationBuilder.DropTable(
                 name: "SiblingGroups");
 
             migrationBuilder.DropTable(
-                name: "Students");
+                name: "StudentEnrollments");
+
+            migrationBuilder.DropTable(
+                name: "StudentParents");
 
             migrationBuilder.DropTable(
                 name: "StudentStatusHistories");
 
             migrationBuilder.DropTable(
                 name: "Substitutions");
+
+            migrationBuilder.DropTable(
+                name: "TeacherSalaries");
+
+            migrationBuilder.DropTable(
+                name: "TeacherSalaryPaymentLines");
+
+            migrationBuilder.DropTable(
+                name: "TimetableSettings");
 
             migrationBuilder.DropTable(
                 name: "TimetableSlots");
@@ -788,7 +1226,19 @@ namespace Studyzone.Infrastructure.Migrations
                 name: "Classes");
 
             migrationBuilder.DropTable(
+                name: "Subjects");
+
+            migrationBuilder.DropTable(
                 name: "Roles");
+
+            migrationBuilder.DropTable(
+                name: "AcademicYears");
+
+            migrationBuilder.DropTable(
+                name: "Students");
+
+            migrationBuilder.DropTable(
+                name: "TeacherSalaryPayments");
         }
     }
 }

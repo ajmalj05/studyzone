@@ -72,69 +72,10 @@ builder.Services.AddCors(o =>
 
 var app = builder.Build();
 
-async Task EnsureMigrationHistoryBaselineAsync(ApplicationDbContext db)
-{
-    await db.Database.ExecuteSqlRawAsync(@"
-CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
-  ""MigrationId"" varchar(150) NOT NULL PRIMARY KEY,
-  ""ProductVersion"" varchar(32) NOT NULL
-);");
-    var historyCount = await db.Database.SqlQueryRaw<int>(
-        @"SELECT COUNT(*) AS ""Value"" FROM ""__EFMigrationsHistory""").FirstOrDefaultAsync();
-    if (historyCount != 0) return;
-    var hasAcademicYears = await db.Database.SqlQueryRaw<int>(
-        @"SELECT COUNT(*) AS ""Value"" FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AcademicYears'").FirstOrDefaultAsync();
-    if (hasAcademicYears == 0) return;
-    await db.Database.ExecuteSqlRawAsync(@"
-INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
-  ('20260228115049_AddAnnouncements', '10.0.0'),
-  ('20260228122352_AddTeacherSalary', '10.0.0'),
-  ('20260228140000_AddBatchIdToApplication', '10.0.0')
-ON CONFLICT (""MigrationId"") DO NOTHING;");
-}
-
-// One-time repair: add FeePaymentStartYear if missing (fixes DBs where migration was recorded but column not applied)
-async Task EnsureStudentEnrollmentFeePaymentStartYearAsync(ApplicationDbContext db)
-{
-    await db.Database.ExecuteSqlRawAsync(@"
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'StudentEnrollments' AND column_name = 'FeePaymentStartYear'
-  ) THEN
-    ALTER TABLE ""StudentEnrollments"" ADD COLUMN ""FeePaymentStartYear"" integer NULL;
-  END IF;
-END $$;");
-}
-
-// One-time repair: create StudentParents table if missing (fixes DBs where migration was skipped or not applied)
-async Task EnsureStudentParentsTableAsync(ApplicationDbContext db)
-{
-    await db.Database.ExecuteSqlRawAsync(@"
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'StudentParents') THEN
-    CREATE TABLE ""StudentParents"" (
-      ""Id"" uuid NOT NULL,
-      ""StudentId"" uuid NOT NULL,
-      ""ParentUserId"" uuid NOT NULL,
-      ""IsPrimary"" boolean NOT NULL DEFAULT false,
-      ""CreatedAt"" timestamp with time zone NOT NULL,
-      CONSTRAINT ""PK_StudentParents"" PRIMARY KEY (""Id"")
-    );
-    CREATE INDEX ""IX_StudentParents_ParentUserId"" ON ""StudentParents"" (""ParentUserId"");
-    CREATE INDEX ""IX_StudentParents_StudentId"" ON ""StudentParents"" (""StudentId"");
-    CREATE UNIQUE INDEX ""IX_StudentParents_StudentId_ParentUserId"" ON ""StudentParents"" (""StudentId"", ""ParentUserId"");
-  END IF;
-END $$;");
-}
-
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await EnsureMigrationHistoryBaselineAsync(db);
     await db.Database.MigrateAsync();
-    await EnsureStudentEnrollmentFeePaymentStartYearAsync(db);
-    await EnsureStudentParentsTableAsync(db);
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];
     var seedAdminPassword = builder.Configuration["Seed:AdminPassword"];
     var seedAdminName = builder.Configuration["Seed:AdminName"];
