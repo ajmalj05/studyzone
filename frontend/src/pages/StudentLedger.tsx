@@ -239,6 +239,121 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
   </html>`;
 }
 
+function buildLedgerPrintHtml(
+  ledger: FeeLedgerDto,
+  school: SchoolProfileDto | null,
+  student?: StudentDto | null
+): string {
+  const schoolName = school?.name || "Studyzone Private Institute";
+  const logoUrl =
+    school?.logoUrl || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "/logo.png");
+  const admissionNumber = student?.admissionNumber ?? "—";
+  const currency = "₹";
+
+  const printCss = `
+    body { margin: 0; padding: 0; font-family: system-ui, sans-serif; font-size: 11pt; }
+    .ledger-document { max-width: 210mm; margin: 0 auto; padding: 10mm 8mm; }
+    .ledger-header { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+    .ledger-logo { height: 52px; width: 52px; object-fit: contain; }
+    .ledger-school-name { margin: 0; font-size: 1.25rem; font-weight: 700; }
+    .ledger-title { margin: 4px 0 0; font-size: 0.9rem; color: #555; }
+    .ledger-contact { margin: 2px 0 0; font-size: 0.75rem; color: #555; }
+    .ledger-section { margin-top: 14px; }
+    .ledger-section-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+    .ledger-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 6px; }
+    .ledger-table th, .ledger-table td { border: 1px solid #333; padding: 5px 8px; text-align: left; }
+    .ledger-table th { background: #f0f0f0; font-weight: 600; }
+    .text-right { text-align: right; }
+    .ledger-summary { margin-bottom: 12px; padding: 8px 10px; background: #f8f8f8; border: 1px solid #ddd; font-size: 0.9rem; }
+    .ledger-footer { margin-top: 20px; font-size: 0.8rem; color: #666; }
+  `;
+
+  const chargesRows =
+    (ledger.charges ?? []).length > 0
+      ? (ledger.charges ?? [])
+          .map(
+            (c) =>
+              `<tr>
+                <td>${esc(c.particularName ?? c.description ?? c.period)}</td>
+                <td>${esc(c.period)}</td>
+                <td class="text-right">${currency}${Number(c.amount).toLocaleString("en-IN")}</td>
+              </tr>`
+          )
+          .join("")
+      : "<tr><td colspan=\"3\" class=\"text-right\">No charges</td></tr>";
+
+  const paymentsRows =
+    (ledger.payments ?? []).length > 0
+      ? (ledger.payments ?? [])
+          .map(
+            (p) =>
+              `<tr>
+                <td>${p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</td>
+                <td>${esc(p.receiptNumber)}</td>
+                <td>${esc(p.mode)}</td>
+                <td class="text-right">${currency}${Number(p.amount).toLocaleString("en-IN")}</td>
+              </tr>`
+          )
+          .join("")
+      : "<tr><td colspan=\"4\" class=\"text-right\">No payments</td></tr>";
+
+  return `<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Student Fee Ledger - ${esc(ledger.studentName)}</title>
+    <style>${printCss}</style>
+  </head>
+  <body>
+    <div class="ledger-document">
+      <div class="ledger-header">
+        <img src="${esc(logoUrl)}" alt="School" class="ledger-logo" />
+        <div>
+          <h1 class="ledger-school-name">${esc(schoolName)}</h1>
+          <p class="ledger-title">Student Fee Ledger</p>
+          <p class="ledger-contact">${esc(school?.address ?? "")}${school?.phone ? " | " + esc(school.phone) : ""}${school?.email ? " | " + esc(school.email) : ""}</p>
+        </div>
+      </div>
+
+      <div class="ledger-section">
+        <p><strong>Student:</strong> ${esc(ledger.studentName)} &nbsp;|&nbsp; <strong>Registration No:</strong> ${esc(admissionNumber)} &nbsp;|&nbsp; <strong>Class:</strong> ${esc(ledger.className ?? "—")}</p>
+      </div>
+
+      <div class="ledger-summary">
+        <strong>Total charges:</strong> ${currency}${Number(ledger.totalCharges).toLocaleString("en-IN")} &nbsp;|&nbsp;
+        <strong>Total payments:</strong> ${currency}${Number(ledger.totalPayments).toLocaleString("en-IN")} &nbsp;|&nbsp;
+        <strong>Balance:</strong> ${currency}${Number(ledger.balance).toLocaleString("en-IN")}
+      </div>
+
+      <div class="ledger-section">
+        <div class="ledger-section-title">Charges</div>
+        <table class="ledger-table">
+          <thead>
+            <tr><th>Particular / Fee type</th><th>Period</th><th class="text-right">Amount</th></tr>
+          </thead>
+          <tbody>${chargesRows}</tbody>
+        </table>
+      </div>
+
+      <div class="ledger-section">
+        <div class="ledger-section-title">Payments</div>
+        <table class="ledger-table">
+          <thead>
+            <tr><th>Date</th><th>Receipt</th><th>Mode</th><th class="text-right">Amount</th></tr>
+          </thead>
+          <tbody>${paymentsRows}</tbody>
+        </table>
+      </div>
+
+      <div class="ledger-footer">
+        Printed on ${new Date().toLocaleString()} &nbsp;|&nbsp; ${esc(schoolName)}
+      </div>
+    </div>
+    <script>window.onload=function(){window.print();}</script>
+  </body>
+  </html>`;
+}
+
 export default function StudentLedger() {
   const { selectedYearId } = useAcademicYear();
   const [students, setStudents] = useState<StudentDto[]>([]);
@@ -369,6 +484,28 @@ export default function StudentLedger() {
       toast({ title: "Error", description: (err as Error).message || "Failed to add admission fee", variant: "destructive" });
     } finally {
       setAdmissionFeeSubmitting(false);
+    }
+  };
+
+  const handlePrintLedger = async () => {
+    if (!ledger || printing) return;
+    try {
+      setPrinting(true);
+      const school = (await fetchApi("/SchoolProfile").catch(() => null)) as SchoolProfileDto | null;
+      const selectedStudent = filteredStudents.find((s) => s.id === selectedStudentId) ?? null;
+      const html = buildLedgerPrintHtml(ledger, school, selectedStudent);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank", "noopener,noreferrer,width=900,height=700");
+      if (w) setTimeout(() => URL.revokeObjectURL(url), 5000);
+      else {
+        URL.revokeObjectURL(url);
+        toast({ title: "Popup blocked", description: "Allow popups for this site to print the ledger.", variant: "destructive" });
+      }
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error).message || "Failed to print ledger", variant: "destructive" });
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -588,7 +725,18 @@ export default function StudentLedger() {
           </div>
           {ledger && (
             <div className="space-y-4">
-              <p><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm"><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={printing}
+                  onClick={handlePrintLedger}
+                >
+                  Print full ledger
+                </Button>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
