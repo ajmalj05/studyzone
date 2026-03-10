@@ -42,6 +42,23 @@ export interface StudentDto {
   name: string;
   admissionNumber: string;
   className?: string;
+  academicYearId?: string;
+  academicYearName?: string;
+  classId?: string;
+  batchId?: string;
+  batchName?: string;
+  section?: string;
+  status?: string;
+}
+
+export interface BatchDto {
+  id: string;
+  classId: string;
+  className: string;
+  academicYearId?: string;
+  name: string;
+  section?: string;
+  seatLimit?: number;
 }
 
 export const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;

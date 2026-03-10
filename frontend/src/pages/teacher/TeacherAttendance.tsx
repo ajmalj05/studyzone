@@ -27,6 +27,7 @@ const TeacherAttendance = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [hasExistingRecords, setHasExistingRecords] = useState(false);
 
   // My attendance (teacher self)
   const [selfDate, setSelfDate] = useState(new Date().toISOString().slice(0, 10));
@@ -36,11 +37,14 @@ const TeacherAttendance = () => {
   const [currentSelfStatus, setCurrentSelfStatus] = useState<string | null>(null);
 
   const effectiveBatchId = myBatch?.id ?? null;
+  const today = new Date().toISOString().slice(0, 10);
+  const isToday = date === today;
 
   useEffect(() => {
     if (!effectiveBatchId) {
       setStudents([]);
       setStatusByStudent({});
+      setHasExistingRecords(false);
       return;
     }
     setLoading(true);
@@ -58,6 +62,7 @@ const TeacherAttendance = () => {
         att.forEach((a) => {
           if (a.studentId) map[a.studentId] = a.status;
         });
+        setHasExistingRecords(att.length > 0);
         list.forEach((s) => {
           if (!(s.id in map)) map[s.id] = "Present";
         });
@@ -124,6 +129,7 @@ const TeacherAttendance = () => {
   };
 
   const batchDisplayName = myBatch ? `${myBatch.className} – ${myBatch.name}` : null;
+  const isEditable = !!myBatch && !loading && isToday && !hasExistingRecords;
 
   return (
     <div className="space-y-4">
@@ -164,6 +170,21 @@ const TeacherAttendance = () => {
               <CardTitle className="text-lg">
                 {batchDisplayName ? `${batchDisplayName} — ${date}` : "Student attendance"}
               </CardTitle>
+              {!isToday && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  You can view attendance for any date, but only today&apos;s date can be marked.
+                </p>
+              )}
+              {isToday && hasExistingRecords && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Attendance for today has already been submitted and can&apos;t be changed.
+                </p>
+              )}
+              {isToday && !hasExistingRecords && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  You can mark attendance for today. Once submitted, it can&apos;t be edited.
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -171,25 +192,34 @@ const TeacherAttendance = () => {
               ) : (
                 <>
                   <div className="space-y-3">
+                    {students.length > 0 && (
+                      <div className="grid grid-cols-[1.2fr_2fr_auto] items-center px-4 py-2 text-xs font-medium text-muted-foreground">
+                        <span>Student ID</span>
+                        <span>Student Name</span>
+                        <span className="text-center">Status</span>
+                      </div>
+                    )}
                     {students.map((s, i) => (
                       <motion.div
                         key={s.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3"
+                        className="grid grid-cols-[1.2fr_2fr_auto] items-center rounded-xl bg-muted/50 px-4 py-3 gap-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full gradient-primary text-primary-foreground text-sm font-bold">
-                            {s.admissionNumber || s.name.charAt(0)}
-                          </div>
-                          <span className="font-medium text-foreground text-sm">{s.name}</span>
-                        </div>
-                        <div className="flex gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {s.admissionNumber || "—"}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">{s.name}</span>
+                        <div className="flex justify-end gap-2">
                           <Button
                             size="sm"
+                            disabled={!isEditable}
                             variant={statusByStudent[s.id] === "Present" ? "default" : "outline"}
-                            onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Present" }))}
+                            onClick={() => {
+                              if (!isEditable) return;
+                              setStatusByStudent((p) => ({ ...p, [s.id]: "Present" }));
+                            }}
                             className={
                               statusByStudent[s.id] === "Present"
                                 ? "rounded-xl text-xs bg-success text-success-foreground hover:bg-success/90"
@@ -200,16 +230,24 @@ const TeacherAttendance = () => {
                           </Button>
                           <Button
                             size="sm"
+                            disabled={!isEditable}
                             variant={statusByStudent[s.id] === "Absent" ? "destructive" : "outline"}
-                            onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Absent" }))}
+                            onClick={() => {
+                              if (!isEditable) return;
+                              setStatusByStudent((p) => ({ ...p, [s.id]: "Absent" }));
+                            }}
                             className="rounded-xl text-xs"
                           >
                             Absent
                           </Button>
                           <Button
                             size="sm"
+                            disabled={!isEditable}
                             variant={statusByStudent[s.id] === "Late" ? "secondary" : "outline"}
-                            onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Late" }))}
+                            onClick={() => {
+                              if (!isEditable) return;
+                              setStatusByStudent((p) => ({ ...p, [s.id]: "Late" }));
+                            }}
                             className="rounded-xl text-xs"
                           >
                             Late
@@ -223,7 +261,7 @@ const TeacherAttendance = () => {
                       <Button
                         className="gradient-primary text-primary-foreground rounded-xl px-8"
                         onClick={handleSubmit}
-                        disabled={saving}
+                        disabled={!isEditable || saving}
                       >
                         {saving ? "Saving..." : "Submit Attendance"}
                       </Button>
