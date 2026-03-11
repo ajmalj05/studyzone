@@ -41,13 +41,29 @@ import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { StudentFeeOfferDto, StudentDto } from "@/types/fees";
-import { Pencil, Trash2, Percent, Banknote } from "lucide-react";
+import { StudentFeeOfferDto, StudentDto, ClassDto, BatchDto } from "@/types/fees";
+import { Pencil, Trash2, Percent, Banknote, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 export default function FeeOffers() {
   const { selectedYearId, currentYear } = useAcademicYear();
   const [offers, setOffers] = useState<StudentFeeOfferDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
+  const [classes, setClasses] = useState<ClassDto[]>([]);
+  const [batches, setBatches] = useState<BatchDto[]>([]);
   const [form, setForm] = useState({
     studentId: "",
     academicYearId: "",
@@ -55,6 +71,10 @@ export default function FeeOffers() {
     value: "",
     reason: "",
   });
+  const [studentClassFilter, setStudentClassFilter] = useState("");
+  const [studentBatchFilter, setStudentBatchFilter] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentComboboxOpen, setStudentComboboxOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<StudentFeeOfferDto | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -76,15 +96,34 @@ export default function FeeOffers() {
 
   const loadStudents = async () => {
     try {
-      const res = (await fetchApi("/Students?take=500")) as { items: StudentDto[] };
+      const params = new URLSearchParams({ take: "500" });
+      if (selectedYearId) params.set("academicYearId", selectedYearId);
+      const res = (await fetchApi(`/Students?${params.toString()}`)) as { items: StudentDto[] };
       setStudents(res.items ?? []);
     } catch (_) {}
+  };
+
+  const loadClasses = async () => {
+    try {
+      const list = (await fetchApi("/Classes")) as ClassDto[];
+      setClasses(list);
+    } catch (_) {}
+  };
+
+  const loadBatches = async () => {
+    try {
+      const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
+      setBatches(list);
+    } catch (_) {
+      setBatches([]);
+    }
   };
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadOffers(), loadStudents()]);
+      await Promise.all([loadOffers(), loadStudents(), loadClasses(), loadBatches()]);
       setLoading(false);
     })();
   }, [selectedYearId]);
@@ -98,6 +137,10 @@ export default function FeeOffers() {
       value: "",
       reason: "",
     });
+    setStudentClassFilter("");
+    setStudentBatchFilter("");
+    setStudentSearch("");
+    setStudentComboboxOpen(false);
     setModalOpen(true);
   };
 
@@ -256,23 +299,114 @@ export default function FeeOffers() {
                     <p className="text-sm text-muted-foreground py-1.5">{currentYear.name}</p>
                   </div>
                 )}
+                {!editingOffer && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>Filter by class</Label>
+                        <Select
+                          value={studentClassFilter || "__all__"}
+                          onValueChange={(v) => {
+                            const value = v === "__all__" ? "" : v;
+                            setStudentClassFilter(value);
+                            setStudentBatchFilter("");
+                            const stillInList = !form.studentId || students.some((s) => s.id === form.studentId && (!value || s.classId === value));
+                            if (!stillInList) setForm((f) => ({ ...f, studentId: "" }));
+                          }}
+                        >
+                          <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All classes</SelectItem>
+                            {classes.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Filter by batch</Label>
+                        <Select
+                          value={studentBatchFilter || "__all__"}
+                          onValueChange={(v) => {
+                            const value = v === "__all__" ? "" : v;
+                            setStudentBatchFilter(value);
+                            const stillInList = !form.studentId || students.some((s) => s.id === form.studentId && (!value || s.batchId === value));
+                            if (!stillInList) setForm((f) => ({ ...f, studentId: "" }));
+                          }}
+                        >
+                          <SelectTrigger><SelectValue placeholder="All batches" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All batches</SelectItem>
+                            {(studentClassFilter ? batches.filter((b) => b.classId === studentClassFilter) : batches).map((b) => (
+                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1">
                   <Label>Student</Label>
-                  <Select
-                    value={form.studentId}
-                    onValueChange={(v) => setForm((f) => ({ ...f, studentId: v }))}
-                    required
-                    disabled={!!editingOffer}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                    <SelectContent>
-                      {students.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} ({s.admissionNumber})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {editingOffer ? (
+                    <p className="text-sm py-2">{editingOffer.studentName}</p>
+                  ) : (
+                    <Popover open={studentComboboxOpen} onOpenChange={setStudentComboboxOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={studentComboboxOpen}
+                          className={cn("w-full justify-between font-normal", !form.studentId && "text-muted-foreground")}
+                        >
+                          {form.studentId
+                            ? (() => {
+                                const s = students.find((x) => x.id === form.studentId);
+                                return s ? `${s.name} (${s.admissionNumber})${s.className ? ` – ${s.className} / ${s.batchName ?? ""}` : ""}` : "Select student";
+                              })()
+                            : "Select student"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Search by name or admission number..."
+                            value={studentSearch}
+                            onValueChange={setStudentSearch}
+                          />
+                          <CommandList>
+                            <CommandEmpty>No student found.</CommandEmpty>
+                            <CommandGroup>
+                              {(() => {
+                                const byClass = studentClassFilter ? students.filter((s) => s.classId === studentClassFilter) : students;
+                                const byBatch = studentBatchFilter ? byClass.filter((s) => s.batchId === studentBatchFilter) : byClass;
+                                const term = studentSearch.trim().toLowerCase();
+                                const filtered = term
+                                  ? byBatch.filter((s) => (s.name?.toLowerCase().includes(term) || (s.admissionNumber ?? "").toLowerCase().includes(term)))
+                                  : byBatch;
+                                return filtered.map((s) => (
+                                  <CommandItem
+                                    key={s.id}
+                                    value={s.id}
+                                    onSelect={() => {
+                                      setForm((f) => ({ ...f, studentId: s.id }));
+                                      setStudentComboboxOpen(false);
+                                      setStudentSearch("");
+                                    }}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", form.studentId === s.id ? "opacity-100" : "opacity-0")} />
+                                    {s.name} ({s.admissionNumber}){s.className ? ` – ${s.className} / ${s.batchName ?? ""}` : ""}
+                                  </CommandItem>
+                                ));
+                              })()}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>Offer type</Label>
