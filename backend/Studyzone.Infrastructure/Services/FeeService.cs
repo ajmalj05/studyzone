@@ -8,6 +8,7 @@ namespace Studyzone.Infrastructure.Services;
 public class FeeService : IFeeService
 {
     private readonly IFeeStructureRepository _structureRepo;
+    private readonly IStudentFeeOfferRepository _offerRepo;
     private readonly IFeeChargeRepository _chargeRepo;
     private readonly IPaymentRepository _paymentRepo;
     private readonly IReceiptSequenceRepository _receiptSeqRepo;
@@ -19,6 +20,7 @@ public class FeeService : IFeeService
 
     public FeeService(
         IFeeStructureRepository structureRepo,
+        IStudentFeeOfferRepository offerRepo,
         IFeeChargeRepository chargeRepo,
         IPaymentRepository paymentRepo,
         IReceiptSequenceRepository receiptSeqRepo,
@@ -29,6 +31,7 @@ public class FeeService : IFeeService
         INotificationService notificationService)
     {
         _structureRepo = structureRepo;
+        _offerRepo = offerRepo;
         _chargeRepo = chargeRepo;
         _paymentRepo = paymentRepo;
         _receiptSeqRepo = receiptSeqRepo;
@@ -37,6 +40,16 @@ public class FeeService : IFeeService
         _academicYearRepo = academicYearRepo;
         _classRepo = classRepo;
         _notificationService = notificationService;
+    }
+
+    private static decimal ApplyOffer(decimal baseAmount, StudentFeeOffer? offer)
+    {
+        if (offer == null) return baseAmount;
+        if (string.Equals(offer.OfferType, "PercentageDiscount", StringComparison.OrdinalIgnoreCase))
+            return Math.Round(baseAmount * (1 - offer.Value / 100m), 2);
+        if (string.Equals(offer.OfferType, "FixedDiscount", StringComparison.OrdinalIgnoreCase))
+            return Math.Max(0, baseAmount - offer.Value);
+        return baseAmount;
     }
 
     public async Task<FeeStructureDto?> GetStructureByIdAsync(string id, CancellationToken ct = default)
@@ -151,6 +164,43 @@ public class FeeService : IFeeService
             Frequency = added.Frequency,
             EffectiveFrom = added.EffectiveFrom
         };
+    }
+
+    public async Task<FeeStructureDto?> UpdateStructureAsync(string id, UpdateFeeStructureRequest request, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(id, out var guid)) return null;
+        var e = await _structureRepo.GetByIdAsync(guid, ct);
+        if (e == null) return null;
+        e.Name = request.Name;
+        e.Amount = request.Amount;
+        e.Frequency = request.Frequency;
+        await _structureRepo.UpdateAsync(e, ct);
+        var c = await _classRepo.GetByIdAsync(e.ClassId, ct);
+        var ay = await _academicYearRepo.GetByIdAsync(e.AcademicYearId, ct);
+        return new FeeStructureDto
+        {
+            Id = e.Id.ToString(),
+            ClassId = e.ClassId.ToString(),
+            ClassName = c?.Name ?? "",
+            AcademicYearId = e.AcademicYearId.ToString(),
+            AcademicYearName = ay?.Name,
+            Name = e.Name,
+            Amount = e.Amount,
+            Frequency = e.Frequency,
+            EffectiveFrom = e.EffectiveFrom
+        };
+    }
+
+    public async Task<bool> DeleteStructureAsync(string id, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(id, out var guid)) return false;
+        var e = await _structureRepo.GetByIdAsync(guid, ct);
+        if (e == null) return false;
+        var chargeCount = await _chargeRepo.CountByFeeStructureIdAsync(guid, ct);
+        if (chargeCount > 0)
+            throw new InvalidOperationException($"Cannot delete fee structure: {chargeCount} charge(s) already exist. Remove or reassign charges first.");
+        await _structureRepo.DeleteAsync(e, ct);
+        return true;
     }
 
     private async Task<Guid?> ResolveAcademicYearIdAsync(string? academicYearId, CancellationToken ct)
@@ -476,6 +526,8 @@ public class FeeService : IFeeService
         var existingCharges = await _chargeRepo.GetByStudentIdAsync(studentId, null, ct);
         var existingSet = existingCharges.Select(c => (c.FeeStructureId, c.Period)).ToHashSet();
 
+        var offer = yearId.HasValue ? await _offerRepo.GetByStudentAndAcademicYearAsync(studentId, yearId.Value, ct) : null;
+
         var oneTimeStructures = structures.Where(s =>
             string.Equals(s.Frequency, "Once", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(s.Frequency, "One-time", StringComparison.OrdinalIgnoreCase) ||
@@ -492,13 +544,14 @@ public class FeeService : IFeeService
             {
                 if (existingSet.Contains((structure.Id, oneTimePeriod)))
                     continue;
+                var chargeAmount = ApplyOffer(structure.Amount, offer);
                 await _chargeRepo.AddAsync(new FeeCharge
                 {
                     Id = Guid.NewGuid(),
                     StudentId = studentId,
                     FeeStructureId = structure.Id,
                     Period = oneTimePeriod,
-                    Amount = structure.Amount,
+                    Amount = chargeAmount,
                     Description = $"{structure.Name} {oneTimePeriod}",
                     CreatedAt = DateTime.UtcNow
                 }, ct);
@@ -507,34 +560,94 @@ public class FeeService : IFeeService
             }
         }
 
-        structures = recurringStructures;
-        for (int y = startYear; y <= endYear; y++)
+        foreach (var structure in recurringStructures)
         {
-            int monthStart = (y == startYear) ? startMonth : 1;
-            int monthEnd = (y == endYear) ? endMonth : 12;
-            for (int m = monthStart; m <= monthEnd; m++)
+            var periods = GetRecurringPeriods(structure.Frequency, startYear, startMonth, endYear, endMonth);
+            foreach (var period in periods)
             {
-                var period = $"{y}-{m:D2}";
-                foreach (var structure in structures)
+                if (existingSet.Contains((structure.Id, period)))
+                    continue;
+                var chargeAmount = ApplyOffer(structure.Amount, offer);
+                await _chargeRepo.AddAsync(new FeeCharge
                 {
-                    if (existingSet.Contains((structure.Id, period)))
-                        continue;
-                    await _chargeRepo.AddAsync(new FeeCharge
-                    {
-                        Id = Guid.NewGuid(),
-                        StudentId = studentId,
-                        FeeStructureId = structure.Id,
-                        Period = period,
-                        Amount = structure.Amount,
-                        Description = $"{structure.Name} {period}",
-                        CreatedAt = DateTime.UtcNow
-                    }, ct);
-                    existingSet.Add((structure.Id, period));
-                    added++;
-                }
+                    Id = Guid.NewGuid(),
+                    StudentId = studentId,
+                    FeeStructureId = structure.Id,
+                    Period = period,
+                    Amount = chargeAmount,
+                    Description = $"{structure.Name} {period}",
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+                existingSet.Add((structure.Id, period));
+                added++;
             }
         }
         return new GenerateChargesResult { ChargesAdded = added };
+    }
+
+    /// <summary>
+    /// Returns period strings for the given frequency and date range.
+    /// Monthly: "2024-04". Quarterly: "2024-Q2" (Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec).
+    /// Half-yearly: "2024-H1" (Jan-Jun), "2024-H2" (Jul-Dec). Yearly: "2024".
+    /// </summary>
+    private static IEnumerable<string> GetRecurringPeriods(string frequency, int startYear, int startMonth, int endYear, int endMonth)
+    {
+        if (string.Equals(frequency, "Monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            for (int y = startYear; y <= endYear; y++)
+            {
+                int mStart = (y == startYear) ? startMonth : 1;
+                int mEnd = (y == endYear) ? endMonth : 12;
+                for (int m = mStart; m <= mEnd; m++)
+                    yield return $"{y}-{m:D2}";
+            }
+            yield break;
+        }
+
+        if (string.Equals(frequency, "Quarterly", StringComparison.OrdinalIgnoreCase))
+        {
+            int startQ = (startMonth - 1) / 3 + 1;
+            int endQ = (endMonth - 1) / 3 + 1;
+            for (int y = startYear; y <= endYear; y++)
+            {
+                int qStart = (y == startYear) ? startQ : 1;
+                int qEnd = (y == endYear) ? endQ : 4;
+                for (int q = qStart; q <= qEnd; q++)
+                    yield return $"{y}-Q{q}";
+            }
+            yield break;
+        }
+
+        if (string.Equals(frequency, "HalfYearly", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(frequency, "Half-yearly", StringComparison.OrdinalIgnoreCase))
+        {
+            int startH = startMonth <= 6 ? 1 : 2;
+            int endH = endMonth <= 6 ? 1 : 2;
+            for (int y = startYear; y <= endYear; y++)
+            {
+                int hStart = (y == startYear) ? startH : 1;
+                int hEnd = (y == endYear) ? endH : 2;
+                for (int h = hStart; h <= hEnd; h++)
+                    yield return $"{y}-H{h}";
+            }
+            yield break;
+        }
+
+        if (string.Equals(frequency, "Yearly", StringComparison.OrdinalIgnoreCase))
+        {
+            for (int y = startYear; y <= endYear; y++)
+                yield return $"{y}";
+            yield break;
+        }
+
+        // Default: treat as Monthly for unknown frequency
+        for (int y = startYear; y <= endYear; y++)
+        {
+            int mStart = (y == startYear) ? startMonth : 1;
+            int mEnd = (y == endYear) ? endMonth : 12;
+            for (int m = mStart; m <= mEnd; m++)
+                yield return $"{y}-{m:D2}";
+        }
     }
 
     public async Task<AddAdmissionFeeResult> AddAdmissionFeeAsync(AddAdmissionFeeRequest request, CancellationToken ct = default)
@@ -582,13 +695,16 @@ public class FeeService : IFeeService
         if (existingCharges.Any(c => c.FeeStructureId == admissionStructure.Id && c.Period == period))
             throw new InvalidOperationException($"Admission fee for {year} is already added for this student.");
 
+        var admissionOffer = await _offerRepo.GetByStudentAndAcademicYearAsync(studentId, currentYear.Id, ct);
+        var chargeAmount = ApplyOffer(request.Amount, admissionOffer);
+
         var charge = new FeeCharge
         {
             Id = Guid.NewGuid(),
             StudentId = studentId,
             FeeStructureId = admissionStructure.Id,
             Period = period,
-            Amount = request.Amount,
+            Amount = chargeAmount,
             Description = $"{admissionStructure.Name} {period}",
             CreatedAt = DateTime.UtcNow
         };
@@ -601,7 +717,7 @@ public class FeeService : IFeeService
             var paymentRequest = new RecordPaymentRequest
             {
                 StudentId = request.StudentId,
-                Amount = request.Amount,
+                Amount = chargeAmount,
                 Mode = request.PaymentMode
             };
             var payment = await RecordPaymentAsync(paymentRequest, ct);
@@ -615,5 +731,154 @@ public class FeeService : IFeeService
             PaymentId = paymentId,
             ReceiptNumber = receiptNumber
         };
+    }
+
+    public async Task<IReadOnlyList<StudentFeeOfferDto>> GetOffersAsync(string? academicYearId, CancellationToken ct = default)
+    {
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        if (yearId == null) return Array.Empty<StudentFeeOfferDto>();
+        var list = await _offerRepo.GetByAcademicYearAsync(yearId.Value, ct);
+        var ay = await _academicYearRepo.GetByIdAsync(yearId.Value, ct);
+        var dtos = new List<StudentFeeOfferDto>();
+        foreach (var o in list)
+        {
+            string? className = null;
+            var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(o.StudentId, o.AcademicYearId, ct);
+            if (enr?.ClassId != null)
+            {
+                var c = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
+                className = c?.Name;
+            }
+            dtos.Add(new StudentFeeOfferDto
+            {
+                Id = o.Id.ToString(),
+                StudentId = o.StudentId.ToString(),
+                StudentName = o.Student?.Name ?? "",
+                ClassName = className,
+                AcademicYearId = o.AcademicYearId.ToString(),
+                AcademicYearName = ay?.Name,
+                OfferType = o.OfferType,
+                Value = o.Value,
+                Reason = o.Reason,
+                EffectiveFrom = o.EffectiveFrom,
+                EffectiveTo = o.EffectiveTo
+            });
+        }
+        return dtos;
+    }
+
+    public async Task<StudentFeeOfferDto?> GetOfferByStudentAsync(string studentId, string? academicYearId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(studentId, out var sid)) return null;
+        var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
+        if (yearId == null) return null;
+        var o = await _offerRepo.GetByStudentAndAcademicYearAsync(sid, yearId.Value, ct);
+        if (o == null) return null;
+        var student = await _studentRepo.GetByIdAsync(sid, ct);
+        var ay = await _academicYearRepo.GetByIdAsync(o.AcademicYearId, ct);
+        string? className = null;
+        var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(sid, o.AcademicYearId, ct);
+        if (enr?.ClassId != null)
+        {
+            var c = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
+            className = c?.Name;
+        }
+        return new StudentFeeOfferDto
+        {
+            Id = o.Id.ToString(),
+            StudentId = o.StudentId.ToString(),
+            StudentName = student?.Name ?? "",
+            ClassName = className,
+            AcademicYearId = o.AcademicYearId.ToString(),
+            AcademicYearName = ay?.Name,
+            OfferType = o.OfferType,
+            Value = o.Value,
+            Reason = o.Reason,
+            EffectiveFrom = o.EffectiveFrom,
+            EffectiveTo = o.EffectiveTo
+        };
+    }
+
+    public async Task<StudentFeeOfferDto> CreateOrUpdateOfferAsync(CreateFeeOfferRequest request, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(request.StudentId, out var studentId))
+            throw new ArgumentException("Invalid student id.", nameof(request));
+        var academicYearId = await ResolveAcademicYearIdAsync(
+            string.IsNullOrWhiteSpace(request.AcademicYearId) ? null : request.AcademicYearId, ct)
+            ?? throw new InvalidOperationException("Academic year is required.");
+        var existing = await _offerRepo.GetByStudentAndAcademicYearAsync(studentId, academicYearId, ct);
+        if (existing != null)
+        {
+            existing.OfferType = request.OfferType;
+            existing.Value = request.Value;
+            existing.Reason = request.Reason;
+            await _offerRepo.UpdateAsync(existing, ct);
+            var student = await _studentRepo.GetByIdAsync(studentId, ct);
+            var ay = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
+            string? className = null;
+            var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(studentId, academicYearId, ct);
+            if (enr?.ClassId != null)
+            {
+                var c = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
+                className = c?.Name;
+            }
+            return new StudentFeeOfferDto
+            {
+                Id = existing.Id.ToString(),
+                StudentId = existing.StudentId.ToString(),
+                StudentName = student?.Name ?? "",
+                ClassName = className,
+                AcademicYearId = existing.AcademicYearId.ToString(),
+                AcademicYearName = ay?.Name,
+                OfferType = existing.OfferType,
+                Value = existing.Value,
+                Reason = existing.Reason,
+                EffectiveFrom = existing.EffectiveFrom,
+                EffectiveTo = existing.EffectiveTo
+            };
+        }
+        var entity = new StudentFeeOffer
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            AcademicYearId = academicYearId,
+            OfferType = request.OfferType,
+            Value = request.Value,
+            Reason = request.Reason,
+            CreatedAt = DateTime.UtcNow
+        };
+        var added = await _offerRepo.AddAsync(entity, ct);
+        var student2 = await _studentRepo.GetByIdAsync(studentId, ct);
+        var ay2 = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
+        string? className2 = null;
+        var enr2 = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(studentId, academicYearId, ct);
+        if (enr2?.ClassId != null)
+        {
+            var c = await _classRepo.GetByIdAsync(enr2.ClassId.Value, ct);
+            className2 = c?.Name;
+        }
+        return new StudentFeeOfferDto
+        {
+            Id = added.Id.ToString(),
+            StudentId = added.StudentId.ToString(),
+            StudentName = student2?.Name ?? "",
+            ClassName = className2,
+            AcademicYearId = added.AcademicYearId.ToString(),
+            AcademicYearName = ay2?.Name,
+            OfferType = added.OfferType,
+            Value = added.Value,
+            Reason = added.Reason,
+            EffectiveFrom = added.EffectiveFrom,
+            EffectiveTo = added.EffectiveTo
+        };
+    }
+
+    public async Task<bool> DeleteOfferAsync(string id, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(id, out var guid)) return false;
+        var o = await _offerRepo.GetByIdAsync(guid, ct);
+        if (o == null) return false;
+        await _offerRepo.DeleteAsync(o, ct);
+        return true;
     }
 }

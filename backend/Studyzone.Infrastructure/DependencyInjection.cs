@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IBatchService, BatchService>();
         services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
+        services.AddScoped<IStudentFeeOfferRepository, StudentFeeOfferRepository>();
         services.AddScoped<IFeeChargeRepository, FeeChargeRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IReceiptSequenceRepository, ReceiptSequenceRepository>();

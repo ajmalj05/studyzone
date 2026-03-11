@@ -53,4 +53,10 @@ public class FeeStructureRepository : IFeeStructureRepository
         _db.FeeStructures.Update(entity);
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task DeleteAsync(FeeStructure entity, CancellationToken ct = default)
+    {
+        _db.FeeStructures.Remove(entity);
+        await _db.SaveChangesAsync(ct);
+    }
 }

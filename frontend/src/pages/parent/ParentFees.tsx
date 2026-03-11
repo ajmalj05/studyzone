@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchApi } from "@/lib/api";
+import { buildReceiptHtml, type SchoolProfileForReceipt } from "@/lib/receiptHtml";
+import type { FeeReceiptDto } from "@/types/fees";
+import { Printer } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface ParentChildDto {
   studentId: string;
@@ -17,7 +22,7 @@ interface LedgerDto {
   totalPayments: number;
   balance: number;
   charges: { period: string; amount: number }[];
-  payments: { amount: number; receiptNumber: string; paidAt: string; mode?: string }[];
+  payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode?: string }[];
 }
 
 const ParentFees = () => {
@@ -27,6 +32,35 @@ const ParentFees = () => {
   const [studentId, setStudentId] = useState(studentIdParam ?? "");
   const [ledger, setLedger] = useState<LedgerDto | null>(null);
   const [loading, setLoading] = useState(false);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+
+  const handlePrintReceipt = async (paymentId: string) => {
+    if (!paymentId || printingId) return;
+    setPrintingId(paymentId);
+    try {
+      const [receipt, school] = await Promise.all([
+        fetchApi(`/ParentPortal/receipt/${encodeURIComponent(paymentId)}`) as Promise<FeeReceiptDto>,
+        fetchApi("/SchoolProfile").catch(() => null) as Promise<SchoolProfileForReceipt | null>,
+      ]);
+      if (!receipt) {
+        toast({ title: "Error", description: "Receipt not found.", variant: "destructive" });
+        return;
+      }
+      const html = buildReceiptHtml(receipt, school);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank", "noopener,noreferrer,width=900,height=700");
+      if (w) setTimeout(() => URL.revokeObjectURL(url), 5000);
+      else {
+        URL.revokeObjectURL(url);
+        toast({ title: "Popup blocked", description: "Allow popups to print the receipt.", variant: "destructive" });
+      }
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error).message || "Failed to load receipt", variant: "destructive" });
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   useEffect(() => {
     fetchApi("/ParentPortal/my-children")
@@ -108,15 +142,36 @@ const ParentFees = () => {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow><TableHead>Date</TableHead><TableHead>Receipt</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead></TableRow>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Receipt</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-[100px]"></TableHead>
+                      </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(ledger.payments ?? []).map((p, i) => (
-                        <TableRow key={i}>
+                        <TableRow key={p.id ?? i}>
                           <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
                           <TableCell>{p.receiptNumber}</TableCell>
                           <TableCell>{p.mode ?? "—"}</TableCell>
                           <TableCell className="text-right">₹{p.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            {p.id && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={!!printingId}
+                                onClick={() => handlePrintReceipt(p.id)}
+                                className="gap-1"
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                                Print
+                              </Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

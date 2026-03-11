@@ -125,6 +125,15 @@ public class ParentPortalService : IParentPortalService
         return await _feeService.GetLedgerAsync(studentId, periodFrom, periodTo, ct);
     }
 
+    public async Task<FeeReceiptDto?> GetReceiptForParentAsync(string parentUserGuid, string paymentId, CancellationToken ct = default)
+    {
+        var receipt = await _feeService.GetReceiptAsync(paymentId, ct);
+        if (receipt == null) return null;
+        if (!await CanAccessStudentAsync(parentUserGuid, receipt.StudentId, ct))
+            return null;
+        return receipt;
+    }
+
     public async Task<IReadOnlyList<StudentExamResultDto>> GetChildResultsAsync(string parentUserGuid, string studentId, CancellationToken ct = default)
     {
         if (!await CanAccessStudentAsync(parentUserGuid, studentId, ct))

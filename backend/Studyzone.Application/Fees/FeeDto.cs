@@ -22,6 +22,13 @@ public class CreateFeeStructureRequest
     public string Frequency { get; set; } = "Monthly";
 }
 
+public class UpdateFeeStructureRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Frequency { get; set; } = "Monthly";
+}
+
 public class AddChargeRequest
 {
     public string StudentId { get; set; } = string.Empty;
@@ -121,6 +128,30 @@ public class FeeReceiptHistoryItemDto
     public decimal TotalAmount { get; set; }
     public decimal Deposit { get; set; }
     public decimal Due { get; set; }
+}
+
+public class StudentFeeOfferDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string? ClassName { get; set; }
+    public string AcademicYearId { get; set; } = string.Empty;
+    public string? AcademicYearName { get; set; }
+    public string OfferType { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+    public string? Reason { get; set; }
+    public DateTime? EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
+}
+
+public class CreateFeeOfferRequest
+{
+    public string StudentId { get; set; } = string.Empty;
+    public string AcademicYearId { get; set; } = string.Empty;
+    public string OfferType { get; set; } = "PercentageDiscount";
+    public decimal Value { get; set; }
+    public string? Reason { get; set; }
 }
 
 public class FeeReceiptDto

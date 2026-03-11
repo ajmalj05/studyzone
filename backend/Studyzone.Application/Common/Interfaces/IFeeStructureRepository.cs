@@ -11,4 +11,5 @@ public interface IFeeStructureRepository
     Task<IReadOnlyList<FeeStructure>> GetAllAsync(CancellationToken ct = default);
     Task<FeeStructure> AddAsync(FeeStructure entity, CancellationToken ct = default);
     Task UpdateAsync(FeeStructure entity, CancellationToken ct = default);
+    Task DeleteAsync(FeeStructure entity, CancellationToken ct = default);
 }

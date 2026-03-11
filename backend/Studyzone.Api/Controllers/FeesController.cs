@@ -48,6 +48,26 @@ public class FeesController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 
+    [HttpPut("structures/{id}")]
+    public async Task<ActionResult<FeeStructureDto>> UpdateStructure(string id, [FromBody] UpdateFeeStructureRequest request, CancellationToken ct)
+    {
+        var dto = await _service.UpdateStructureAsync(id, request, ct);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
+
+    [HttpDelete("structures/{id}")]
+    public async Task<ActionResult> DeleteStructure(string id, CancellationToken ct)
+    {
+        try
+        {
+            var deleted = await _service.DeleteStructureAsync(id, ct);
+            if (!deleted) return NotFound();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
     [HttpPost("charges")]
     public async Task<IActionResult> AddCharge([FromBody] AddChargeRequest request, CancellationToken ct)
     {
@@ -133,5 +153,40 @@ public class FeesController : ControllerBase
         }
         catch (ArgumentException) { return BadRequest(); }
         catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpGet("offers")]
+    public async Task<ActionResult<IReadOnlyList<StudentFeeOfferDto>>> GetOffers([FromQuery] string? academicYearId, CancellationToken ct = default)
+    {
+        var list = await _service.GetOffersAsync(academicYearId, ct);
+        return Ok(list);
+    }
+
+    [HttpGet("offers/student/{studentId}")]
+    public async Task<ActionResult<StudentFeeOfferDto>> GetOfferByStudent(string studentId, [FromQuery] string? academicYearId, CancellationToken ct = default)
+    {
+        var dto = await _service.GetOfferByStudentAsync(studentId, academicYearId, ct);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
+
+    [HttpPost("offers")]
+    public async Task<ActionResult<StudentFeeOfferDto>> CreateOrUpdateOffer([FromBody] CreateFeeOfferRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _service.CreateOrUpdateOfferAsync(request, ct);
+            return Ok(dto);
+        }
+        catch (ArgumentException) { return BadRequest(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpDelete("offers/{id}")]
+    public async Task<ActionResult> DeleteOffer(string id, CancellationToken ct)
+    {
+        var deleted = await _service.DeleteOfferAsync(id, ct);
+        if (!deleted) return NotFound();
+        return NoContent();
     }
 }

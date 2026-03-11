@@ -31,7 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto, AddAdmissionFeeResult } from "@/types/fees";
+import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto, AddAdmissionFeeResult, StudentFeeOfferDto } from "@/types/fees";
 
 interface SchoolProfileDto {
   id: string;
@@ -317,6 +317,7 @@ export default function StudentLedger() {
   const [admissionFeeAmount, setAdmissionFeeAmount] = useState("");
   const [admissionFeeRecordPayment, setAdmissionFeeRecordPayment] = useState(true);
   const [admissionFeeSubmitting, setAdmissionFeeSubmitting] = useState(false);
+  const [studentFeeOffer, setStudentFeeOffer] = useState<StudentFeeOfferDto | null>(null);
 
   const loadStudents = async () => {
     try {
@@ -371,6 +372,16 @@ export default function StudentLedger() {
     if (selectedStudentId) loadLedger(selectedStudentId);
     else setLedger(null);
   }, [selectedStudentId]);
+
+  useEffect(() => {
+    if (!selectedStudentId || !selectedYearId) {
+      setStudentFeeOffer(null);
+      return;
+    }
+    fetchApi(`/Fees/offers/student/${selectedStudentId}?academicYearId=${encodeURIComponent(selectedYearId)}`)
+      .then((o) => setStudentFeeOffer(o as StudentFeeOfferDto))
+      .catch(() => setStudentFeeOffer(null));
+  }, [selectedStudentId, selectedYearId]);
 
   const batchesForClass = classFilter ? batches.filter((b) => b.classId === classFilter) : batches;
 
@@ -672,7 +683,15 @@ export default function StudentLedger() {
           {ledger && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm"><strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}{ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}</p>
+                <p className="text-sm">
+                  <strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}
+                  {studentFeeOffer && (
+                    <span className="ml-2 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      Concession: {studentFeeOffer.offerType === "PercentageDiscount" ? `${studentFeeOffer.value}%` : `₹${Number(studentFeeOffer.value).toLocaleString("en-IN")} off`}
+                    </span>
+                  )}
+                  {ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}
+                </p>
                 <Button
                   type="button"
                   variant="outline"

@@ -48,6 +48,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<StudentParent> StudentParents => Set<StudentParent>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SchoolExpense> SchoolExpenses => Set<SchoolExpense>();
+    public DbSet<StudentFeeOffer> StudentFeeOffers => Set<StudentFeeOffer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -197,6 +198,12 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(x => x.Date);
             e.HasIndex(x => x.Category);
+        });
+        modelBuilder.Entity<StudentFeeOffer>(e =>
+        {
+            e.HasIndex(x => x.StudentId);
+            e.HasIndex(x => x.AcademicYearId);
+            e.HasIndex(x => new { x.StudentId, x.AcademicYearId }).IsUnique();
         });
     }
 }

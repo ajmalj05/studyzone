@@ -24,7 +24,7 @@ export function DashboardHeader({ title, description }: { title?: string; descri
   const initials = getInitials(user?.name, role);
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex flex-wrap items-center justify-between gap-2 pb-2">
       <div className="flex items-center gap-2 min-w-0">
         {mobileMenu?.isMobile && (
           <Button

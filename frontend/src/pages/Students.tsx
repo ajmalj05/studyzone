@@ -32,7 +32,8 @@ import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { Users, ArrowRightLeft } from "lucide-react";
+import { Users, ArrowRightLeft, Percent } from "lucide-react";
+import type { StudentFeeOfferDto } from "@/types/fees";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -125,6 +126,11 @@ export default function Students() {
   const [newBatchSection, setNewBatchSection] = useState("");
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [classModalOpen, setClassModalOpen] = useState(false);
+  const [feeOfferStudentId, setFeeOfferStudentId] = useState<string | null>(null);
+  const [feeOfferExisting, setFeeOfferExisting] = useState<StudentFeeOfferDto | null>(null);
+  const [feeOfferForm, setFeeOfferForm] = useState({ offerType: "PercentageDiscount", value: "", reason: "" });
+  const [feeOfferLoading, setFeeOfferLoading] = useState(false);
+  const [feeOfferSubmitting, setFeeOfferSubmitting] = useState(false);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
 
   const loadClasses = async () => {
@@ -431,6 +437,79 @@ export default function Students() {
     setClassModalOpen(true);
   };
 
+  useEffect(() => {
+    if (!feeOfferStudentId || !selectedYearId) {
+      setFeeOfferExisting(null);
+      setFeeOfferForm({ offerType: "PercentageDiscount", value: "", reason: "" });
+      return;
+    }
+    setFeeOfferLoading(true);
+    fetchApi(`/Fees/offers/student/${feeOfferStudentId}?academicYearId=${encodeURIComponent(selectedYearId)}`)
+      .then((o) => {
+        const offer = o as StudentFeeOfferDto;
+        setFeeOfferExisting(offer);
+        setFeeOfferForm({
+          offerType: offer.offerType || "PercentageDiscount",
+          value: String(offer.value ?? ""),
+          reason: offer.reason ?? "",
+        });
+      })
+      .catch(() => {
+        setFeeOfferExisting(null);
+        setFeeOfferForm({ offerType: "PercentageDiscount", value: "", reason: "" });
+      })
+      .finally(() => setFeeOfferLoading(false));
+  }, [feeOfferStudentId, selectedYearId]);
+
+  const handleFeeOfferSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feeOfferStudentId || !selectedYearId) return;
+    const valueNum = Number(feeOfferForm.value);
+    if (feeOfferForm.value === "" || isNaN(valueNum) || valueNum < 0) {
+      toast({ title: "Validation", description: "Enter a valid value.", variant: "destructive" });
+      return;
+    }
+    if (feeOfferForm.offerType === "PercentageDiscount" && (valueNum > 100 || valueNum <= 0)) {
+      toast({ title: "Validation", description: "Percentage must be between 1 and 100.", variant: "destructive" });
+      return;
+    }
+    setFeeOfferSubmitting(true);
+    try {
+      await fetchApi("/Fees/offers", {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: feeOfferStudentId,
+          academicYearId: selectedYearId,
+          offerType: feeOfferForm.offerType,
+          value: valueNum,
+          reason: feeOfferForm.reason.trim() || undefined,
+        }),
+      });
+      toast({ title: "Success", description: feeOfferExisting ? "Offer updated." : "Offer added." });
+      setFeeOfferStudentId(null);
+      await loadStudents();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    } finally {
+      setFeeOfferSubmitting(false);
+    }
+  };
+
+  const handleFeeOfferRemove = async () => {
+    if (!feeOfferExisting?.id) return;
+    setFeeOfferSubmitting(true);
+    try {
+      await fetchApi(`/Fees/offers/${feeOfferExisting.id}`, { method: "DELETE" });
+      toast({ title: "Success", description: "Offer removed." });
+      setFeeOfferStudentId(null);
+      await loadStudents();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    } finally {
+      setFeeOfferSubmitting(false);
+    }
+  };
+
   const openEditClass = (c: ClassDto) => {
     setEditingClassId(c.id);
     setNewClassName(c.name);
@@ -578,7 +657,14 @@ export default function Students() {
                             </Select>
                           </TableCell>
                           <TableCell>{s.guardianName ?? s.guardianPhone ?? "—"}</TableCell>
-                          <TableCell><Button size="sm" variant="outline" onClick={() => openEdit(s)}>Edit</Button></TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="outline" onClick={() => openEdit(s)}>Edit</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setFeeOfferStudentId(s.id)} className="gap-1" title="Fee offer / Concession">
+                                <Percent className="h-3.5 w-3.5" /> Offer
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -744,6 +830,62 @@ export default function Students() {
               })()}
             </TabsContent>
           </Tabs>
+
+          <Dialog open={!!feeOfferStudentId} onOpenChange={(open) => !open && setFeeOfferStudentId(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Fee offer (concession)</DialogTitle>
+                <DialogDescription>
+                  Set or edit fee concession for this student for the selected academic year. Applies to charges generated after the offer is set.
+                </DialogDescription>
+              </DialogHeader>
+              {feeOfferLoading ? (
+                <p className="text-muted-foreground py-4 text-center">Loading…</p>
+              ) : (
+                <form onSubmit={handleFeeOfferSave} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select value={feeOfferForm.offerType} onValueChange={(v) => setFeeOfferForm((f) => ({ ...f, offerType: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PercentageDiscount">Percentage discount</SelectItem>
+                        <SelectItem value="FixedDiscount">Fixed amount off per charge</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{feeOfferForm.offerType === "PercentageDiscount" ? "Percentage (e.g. 20)" : "Amount off per charge (₹)"}</Label>
+                    <Input
+                      type="number"
+                      min={feeOfferForm.offerType === "PercentageDiscount" ? 1 : 0}
+                      max={feeOfferForm.offerType === "PercentageDiscount" ? 100 : undefined}
+                      step={feeOfferForm.offerType === "PercentageDiscount" ? 1 : 0.01}
+                      placeholder={feeOfferForm.offerType === "PercentageDiscount" ? "20" : "500"}
+                      value={feeOfferForm.value}
+                      onChange={(e) => setFeeOfferForm((f) => ({ ...f, value: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reason (optional)</Label>
+                    <Input
+                      placeholder="e.g. Sibling discount, Merit"
+                      value={feeOfferForm.reason}
+                      onChange={(e) => setFeeOfferForm((f) => ({ ...f, reason: e.target.value }))}
+                    />
+                  </div>
+                  <DialogFooter>
+                    {feeOfferExisting && (
+                      <Button type="button" variant="destructive" onClick={handleFeeOfferRemove} disabled={feeOfferSubmitting}>
+                        Remove offer
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={feeOfferSubmitting}>Save</Button>
+                    <Button type="button" variant="outline" onClick={() => setFeeOfferStudentId(null)}>Cancel</Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
   );

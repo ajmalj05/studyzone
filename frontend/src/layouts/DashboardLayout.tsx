@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { AppSidebar, AppSidebarContent } from "@/components/AppSidebar";
+import { MobileBottomNav, getAdminBottomNavItems } from "@/components/MobileBottomNav";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileMenuProvider } from "@/context/MobileMenuContext";
@@ -36,9 +37,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </SheetContent>
           </Sheet>
         )}
-        <main className="flex-1 w-full min-w-0 p-3 lg:p-4 ml-0 md:ml-64">
+        <main className={`flex-1 w-full min-w-0 p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-20" : ""}`}>
           {children}
         </main>
+        {isMobile && <MobileBottomNav items={getAdminBottomNavItems()} />}
       </div>
     </MobileMenuProvider>
   );

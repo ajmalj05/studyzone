@@ -32,6 +32,11 @@ public class FeeChargeRepository : IFeeChargeRepository
         return await query.SumAsync(x => x.Amount, ct);
     }
 
+    public async Task<int> CountByFeeStructureIdAsync(Guid feeStructureId, CancellationToken ct = default)
+    {
+        return await _db.FeeCharges.AsNoTracking().CountAsync(x => x.FeeStructureId == feeStructureId, ct);
+    }
+
     public async Task<FeeCharge> AddAsync(FeeCharge entity, CancellationToken ct = default)
     {
         _db.FeeCharges.Add(entity);

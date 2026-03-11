@@ -6,7 +6,8 @@ import { AttendanceChart } from "@/components/AttendanceChart";
 import { RecentActivity } from "@/components/RecentActivity";
 import { QuickActions } from "@/components/QuickActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, GraduationCap, DollarSign, AlertCircle, ClipboardList, TrendingUp, KeyRound } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Users, GraduationCap, DollarSign, AlertCircle, ClipboardList, TrendingUp, KeyRound, ChevronDown } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -39,6 +40,7 @@ const Index = () => {
   const [pipeline, setPipeline] = useState<AdmissionPipelineDto | null>(null);
   const [feeSummary, setFeeSummary] = useState<FeeSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loginsOpen, setLoginsOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -75,6 +77,35 @@ const Index = () => {
           <StatCard title="Total Revenue" value={loading ? 0 : Math.round(kpis?.revenueCollected ?? 0)} prefix="₹" icon={DollarSign} color="bg-info" />
           <StatCard title="Pending Fees" value={loading ? 0 : Math.round(kpis?.pendingDues ?? 0)} prefix="₹" icon={AlertCircle} color="bg-warning" />
         </div>
+
+        {/* Quick Actions - prominent above charts */}
+        <QuickActions />
+
+        {/* How portal logins work - collapsible, easy to find */}
+        <Collapsible open={loginsOpen} onOpenChange={setLoginsOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  How portal logins work
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${loginsOpen ? "rotate-180" : ""}`} />
+                </CardTitle>
+                <CardDescription>How teachers and parents get and use their logins</CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="text-sm space-y-3 pt-0">
+                <div>
+                  <span className="font-medium text-foreground">Teachers:</span> Admin creates the teacher (Teachers page) with a <strong>Register Number</strong> (used as Login ID), name, phone, subject. Initial password can be set by admin or the teacher can use <strong>Verify Profile</strong> → <strong>Setup Account</strong> to set or change it.
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Parents:</span> Admin creates the parent in <strong>Parent Management</strong> with <strong>Login ID</strong>, <strong>password</strong>, and name, and links students. Parents use the main <strong>Login</strong> page with role &quot;Parent&quot; and those credentials.
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Fee Summary & Admission Pipeline */}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -126,28 +157,7 @@ const Index = () => {
           <AttendanceChart academicYearId={selectedYearId || undefined} />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <RecentActivity />
-          </div>
-          <QuickActions />
-        </div>
-
-        {/* How logins work */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" /> How portal logins work</CardTitle>
-            <CardDescription>How teachers and parents get and use their logins</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm space-y-3">
-            <div>
-              <span className="font-medium text-foreground">Teachers:</span> Admin creates the teacher (Teachers page) with a <strong>Register Number</strong> (used as Login ID), name, phone, subject. Initial password can be set by admin or the teacher can use <strong>Verify Profile</strong> → <strong>Setup Account</strong> to set or change it.
-            </div>
-            <div>
-              <span className="font-medium text-foreground">Parents:</span> Admin creates the parent in <strong>Parent Management</strong> with <strong>Login ID</strong>, <strong>password</strong>, and name, and links students. Parents use the main <strong>Login</strong> page with role &quot;Parent&quot; and those credentials.
-            </div>
-          </CardContent>
-        </Card>
+        <RecentActivity />
     </div>
   );
 };

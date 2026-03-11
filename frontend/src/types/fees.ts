@@ -38,6 +38,20 @@ export interface PaymentDto {
   mode: string;
 }
 
+export interface StudentFeeOfferDto {
+  id: string;
+  studentId: string;
+  studentName: string;
+  className?: string | null;
+  academicYearId: string;
+  academicYearName?: string | null;
+  offerType: string;
+  value: number;
+  reason?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+}
+
 export interface ClassDto {
   id: string;
   name: string;

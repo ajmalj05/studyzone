@@ -32,6 +32,17 @@ import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { FeeStructureDto, ClassDto, formatCurrency } from "@/types/fees";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function FeeStructures() {
   const { selectedYearId, currentYear } = useAcademicYear();
@@ -39,6 +50,10 @@ export default function FeeStructures() {
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [structureForm, setStructureForm] = useState({ classId: "", academicYearId: "", name: "", amount: "", frequency: "Monthly" });
   const [structureModalOpen, setStructureModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", amount: "", frequency: "Monthly" });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadStructures = async () => {
@@ -97,6 +112,50 @@ export default function FeeStructures() {
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
     }
+  };
+
+  const handleUpdateStructure = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId || !editForm.name.trim() || !editForm.amount || Number(editForm.amount) <= 0) {
+      toast({ title: "Validation", description: "Name and amount required.", variant: "destructive" });
+      return;
+    }
+    try {
+      await fetchApi(`/Fees/structures/${editingId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          amount: Number(editForm.amount),
+          frequency: editForm.frequency,
+        }),
+      });
+      toast({ title: "Success", description: "Fee structure updated." });
+      setEditingId(null);
+      setEditForm({ name: "", amount: "", frequency: "Monthly" });
+      await loadStructures();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteStructure = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await fetchApi(`/Fees/structures/${deleteId}`, { method: "DELETE" });
+      toast({ title: "Success", description: "Fee structure deleted." });
+      setDeleteId(null);
+      await loadStructures();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openEdit = (s: FeeStructureDto) => {
+    setEditingId(s.id);
+    setEditForm({ name: s.name, amount: String(s.amount), frequency: s.frequency || "Monthly" });
   };
 
   if (loading) {
@@ -160,13 +219,89 @@ export default function FeeStructures() {
             </DialogContent>
           </Dialog>
           <Table>
-            <TableHeader><TableRow><TableHead>Class</TableHead><TableHead>Name</TableHead><TableHead>Amount</TableHead><TableHead>Frequency</TableHead></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Class</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Frequency</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {structures.map((s) => (
-                <TableRow key={s.id}><TableCell>{s.className}</TableCell><TableCell>{s.name}</TableCell><TableCell>{formatCurrency(s.amount)}</TableCell><TableCell>{s.frequency}</TableCell></TableRow>
+                <TableRow key={s.id}>
+                  <TableCell>{s.className}</TableCell>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{formatCurrency(s.amount)}</TableCell>
+                  <TableCell>{s.frequency}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteId(s.id)} aria-label="Delete">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          <Dialog open={!!editingId} onOpenChange={(open) => { if (!open) setEditingId(null); }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit fee structure</DialogTitle>
+                <DialogDescription>Update name, amount or frequency.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleUpdateStructure} className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Name</Label>
+                  <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Amount (₹)</Label>
+                  <Input type="number" min="0" step="0.01" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Frequency</Label>
+                  <Select value={editForm.frequency} onValueChange={(v) => setEditForm((f) => ({ ...f, frequency: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Monthly">Monthly</SelectItem>
+                      <SelectItem value="Quarterly">Quarterly</SelectItem>
+                      <SelectItem value="HalfYearly">Half-yearly</SelectItem>
+                      <SelectItem value="Yearly">Yearly</SelectItem>
+                      <SelectItem value="Once">One-time (e.g. Admission fee)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+                  <Button type="submit">Save</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete fee structure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This cannot be undone. If any charges use this structure, deletion will be blocked.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteStructure} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleting ? "Deleting…" : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>

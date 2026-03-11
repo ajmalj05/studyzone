@@ -15,6 +15,7 @@ import Teachers from "./pages/Teachers";
 import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
 import FeeStructures from "./pages/FeeStructures";
+import FeeOffers from "./pages/FeeOffers";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -106,6 +107,7 @@ const App = () => (
                 <Route path="fees" element={<Fees />} />
                 <Route path="fees/ledger" element={<StudentLedger />} />
                 <Route path="fees/structures" element={<FeeStructures />} />
+                <Route path="fees/offers" element={<FeeOffers />} />
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="exams" element={<Exams />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />

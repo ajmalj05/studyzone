@@ -14,8 +14,8 @@ export function QuickActions() {
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground">Quick Actions</h3>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {actions.map((action, index) => (
           <Button
             key={index}

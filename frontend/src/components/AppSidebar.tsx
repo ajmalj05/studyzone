@@ -17,46 +17,88 @@ export type MenuItem = {
   subItems?: { title: string; path: string }[];
 };
 
-const menuItems: MenuItem[] = [
-  { title: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
-  { title: "Enquiry", icon: MessageSquare, path: "/admin/enquiry" },
-  { title: "Admission", icon: ClipboardList, path: "/admin/admission" },
-  { title: "Academic Year", icon: Calendar, path: "/admin/academic-year" },
-  { title: "Students", icon: Users, path: "/admin/students" },
-  { title: "Classes", icon: BookOpen, path: "/admin/classes" },
-  { title: "Subjects", icon: Library, path: "/admin/subjects" },
-  { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
-  { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
-  { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
-  { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
-  { title: "Expenses", icon: Receipt, path: "/admin/expenses" },
+type SidebarSection = { label: string; items: MenuItem[] };
+
+const sidebarSections: SidebarSection[] = [
   {
-    title: "Fees",
-    icon: DollarSign,
-    path: "#",
-    subItems: [
-      { title: "Fee Management", path: "/admin/fees" },
-      { title: "Student Ledger", path: "/admin/fees/ledger" },
-      { title: "Fee Structures", path: "/admin/fees/structures" },
+    label: "Main",
+    items: [{ title: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" }],
+  },
+  {
+    label: "Admissions",
+    items: [
+      { title: "Enquiry", icon: MessageSquare, path: "/admin/enquiry" },
+      { title: "Admission", icon: ClipboardList, path: "/admin/admission" },
+      { title: "Academic Year", icon: Calendar, path: "/admin/academic-year" },
     ],
   },
-  { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
-  { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
-  { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
-  { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
   {
-    title: "History",
-    icon: FileText,
-    path: "#",
-    subItems: [
-      { title: "Student Attendance", path: "/admin/history/student-attendance" },
-      { title: "Teacher Attendance", path: "/admin/history/teacher-attendance" }
-    ]
+    label: "People",
+    items: [
+      { title: "Students", icon: Users, path: "/admin/students" },
+      { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
+      { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
+      { title: "Parent Portal", icon: UserCheck, path: "/admin/parents" },
+    ],
   },
-  { title: "Parent Portal", icon: UserCheck, path: "/admin/parents" },
-  { title: "Communication", icon: MessageSquare, path: "/admin/communication" },
-  { title: "Reports", icon: BarChart3, path: "/admin/reports" },
-  { title: "Settings", icon: Settings, path: "/admin/settings" },
+  {
+    label: "Academics",
+    items: [
+      { title: "Classes", icon: BookOpen, path: "/admin/classes" },
+      { title: "Subjects", icon: Library, path: "/admin/subjects" },
+      { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
+      { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      {
+        title: "Fees",
+        icon: DollarSign,
+        path: "#",
+        subItems: [
+          { title: "Fee Management", path: "/admin/fees" },
+          { title: "Student Ledger", path: "/admin/fees/ledger" },
+          { title: "Fee Structures", path: "/admin/fees/structures" },
+          { title: "Fee offers", path: "/admin/fees/offers" },
+        ],
+      },
+      { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
+      { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
+      { title: "Expenses", icon: Receipt, path: "/admin/expenses" },
+    ],
+  },
+  {
+    label: "Attendance",
+    items: [
+      {
+        title: "History",
+        icon: FileText,
+        path: "#",
+        subItems: [
+          { title: "Student Attendance", path: "/admin/history/student-attendance" },
+          { title: "Teacher Attendance", path: "/admin/history/teacher-attendance" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Requests",
+    items: [
+      { title: "Student Requests", icon: MessageSquare, path: "/admin/requests/student" },
+      { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
+      { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
+    ],
+  },
+  {
+    label: "Other",
+    items: [
+      { title: "Communication", icon: MessageSquare, path: "/admin/communication" },
+      { title: "Reports", icon: BarChart3, path: "/admin/reports" },
+      { title: "Settings", icon: Settings, path: "/admin/settings" },
+    ],
+  },
 ];
 
 export interface AppSidebarContentProps {
@@ -108,59 +150,68 @@ export function AppSidebarContent({
         </div>
 
         <nav className="sidebar-nav-scroll flex-1 space-y-1 px-3 overflow-y-auto">
-          {menuItems.map((item, index) => {
-            const isActive = location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path));
-            const isExpanded = expandedMenu === item.title;
+          {sidebarSections.map((section) => (
+            <div key={section.label} className="space-y-1">
+              {!collapsed && (
+                <div className="text-xs uppercase text-sidebar-foreground/40 px-4 pt-4 pb-1 font-medium">
+                  {section.label}
+                </div>
+              )}
+              {collapsed && section.label !== "Main" && <div className="pt-2" />}
+              {section.items.map((item, index) => {
+                const isActive = location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path));
+                const isExpanded = expandedMenu === item.title;
+                return (
+                  <div key={item.title}>
+                    <motion.button
+                      initial={isInDrawer ? false : { x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: isInDrawer ? 0 : index * 0.03, duration: 0.3 }}
+                      onClick={() => {
+                        if (item.subItems) {
+                          if (collapsed) setCollapsed(false);
+                          setExpandedMenu(isExpanded ? null : item.title);
+                        } else {
+                          handleNav(item.path);
+                        }
+                      }}
+                      className={`group flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 min-h-[44px] ${isActive ? "bg-sidebar-primary/20 text-sidebar-foreground shadow-glow backdrop-blur-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-primary/10 hover:text-sidebar-foreground"}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon className={`h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-sidebar-foreground" : ""}`} />
+                        <AnimatePresence>
+                          {!collapsed && (
+                            <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">{item.title}</motion.span>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      {!collapsed && item.subItems && (
+                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                      )}
+                    </motion.button>
 
-            return (
-              <div key={item.title}>
-                <motion.button
-                  initial={isInDrawer ? false : { x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: isInDrawer ? 0 : index * 0.05, duration: 0.3 }}
-                  onClick={() => {
-                    if (item.subItems) {
-                      if (collapsed) setCollapsed(false);
-                      setExpandedMenu(isExpanded ? null : item.title);
-                    } else {
-                      handleNav(item.path);
-                    }
-                  }}
-                  className={`group flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 min-h-[44px] ${isActive ? "bg-sidebar-primary/20 text-sidebar-foreground shadow-glow backdrop-blur-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-primary/10 hover:text-sidebar-foreground"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className={`h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-sidebar-foreground" : ""}`} />
                     <AnimatePresence>
-                      {!collapsed && (
-                        <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">{item.title}</motion.span>
+                      {!collapsed && isExpanded && item.subItems && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="mt-1 flex flex-col gap-1 pl-11 pr-2">
+                            {item.subItems.map(subItem => (
+                              <button
+                                key={subItem.path}
+                                onClick={() => handleNav(subItem.path)}
+                                className={`flex w-full items-center rounded-lg px-3 py-2 text-sm min-h-[44px] transition-all duration-200 ${location.pathname === subItem.path ? "bg-sidebar-primary/20 text-sidebar-foreground font-semibold" : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-primary/10"}`}
+                              >
+                                {subItem.title}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
-                  {!collapsed && item.subItems && (
-                    <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
-                  )}
-                </motion.button>
-
-                <AnimatePresence>
-                  {!collapsed && isExpanded && item.subItems && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <div className="mt-1 flex flex-col gap-1 pl-11 pr-2">
-                        {item.subItems.map(subItem => (
-                          <button
-                            key={subItem.path}
-                            onClick={() => handleNav(subItem.path)}
-                            className={`flex w-full items-center rounded-lg px-3 py-2 text-sm min-h-[44px] transition-all duration-200 ${location.pathname === subItem.path ? "bg-sidebar-primary/20 text-sidebar-foreground font-semibold" : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-primary/10"}`}
-                          >
-                            {subItem.title}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 pb-4">

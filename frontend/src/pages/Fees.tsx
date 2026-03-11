@@ -31,7 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { CreditCard, AlertCircle } from "lucide-react";
+import { CreditCard, AlertCircle, Banknote } from "lucide-react";
 import { FeeLedgerDto, ClassDto, StudentDto, FEE_MONTH_NAMES, formatCurrency } from "@/types/fees";
 
 export default function Fees() {
@@ -157,6 +157,11 @@ export default function Fees() {
     setSortBy(field);
   };
 
+  const openRecordPaymentForRow = (o: FeeLedgerDto) => {
+    setPaymentForm({ studentId: o.studentId, amount: String(o.balance), mode: "Cash" });
+    setPaymentModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">Loading...</div>
@@ -264,13 +269,14 @@ export default function Fees() {
                   >
                     Balance
                   </TableHead>
+                  <TableHead className="w-[90px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedOutstanding.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center text-sm text-muted-foreground"
                     >
                       No outstanding records for the selected filters.
@@ -294,6 +300,18 @@ export default function Fees() {
                       <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
                       <TableCell className="font-medium text-warning">
                         {formatCurrency(o.balance)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRecordPaymentForRow(o)}
+                          className="gap-1"
+                        >
+                          <Banknote className="h-3.5 w-3.5" />
+                          Pay
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -323,11 +341,17 @@ export default function Fees() {
                         <SelectValue placeholder="Select student" />
                       </SelectTrigger>
                       <SelectContent>
-                        {students.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} ({s.admissionNumber})
-                          </SelectItem>
-                        ))}
+                        {sortedOutstanding.length > 0
+                          ? sortedOutstanding.map((o) => (
+                              <SelectItem key={o.studentId} value={o.studentId}>
+                                {o.studentName} — {formatCurrency(o.balance)} due
+                              </SelectItem>
+                            ))
+                          : students.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} ({s.admissionNumber})
+                              </SelectItem>
+                            ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -56,6 +56,16 @@ public class ParentPortalController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpGet("receipt/{paymentId}")]
+    public async Task<ActionResult<object>> GetReceipt(string paymentId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        var dto = await _service.GetReceiptForParentAsync(userId, paymentId, ct);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
+
     [HttpGet("children/{studentId}/results")]
     public async Task<ActionResult<IReadOnlyList<object>>> GetChildResults(string studentId, CancellationToken ct)
     {
