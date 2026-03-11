@@ -86,7 +86,6 @@ const sidebarSections: SidebarSection[] = [
   {
     label: "Requests",
     items: [
-      { title: "Student Requests", icon: MessageSquare, path: "/admin/requests/student" },
       { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
       { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
     ],

@@ -76,7 +76,7 @@ export function NotificationDropdown() {
   }));
 
   return (
-    <div className="relative">
+    <div className="relative shrink-0 inline-block">
       <button onClick={() => setOpen(!open)} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-card transition-all hover:shadow-card-hover">
         <Bell className="h-5 w-5 text-muted-foreground" />
         {displayItems.length > 0 && (
@@ -90,7 +90,7 @@ export function NotificationDropdown() {
         {open && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-12 z-50 w-80 rounded-2xl bg-card shadow-card-hover border border-border overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl bg-card shadow-card-hover border border-border overflow-hidden origin-top-right">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">Notifications</h3>
                 <span className="text-xs text-muted-foreground">{displayItems.length} new</span>
