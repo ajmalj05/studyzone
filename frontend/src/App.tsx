@@ -12,6 +12,7 @@ import { ParentLayout } from "./layouts/ParentLayout";
 import Index from "./pages/Index";
 import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
+import TeacherOfferLetter from "./pages/TeacherOfferLetter";
 import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
 import FeeStructures from "./pages/FeeStructures";
@@ -102,6 +103,7 @@ const App = () => (
                 <Route path="dashboard" element={<Index />} />
                 <Route path="students" element={<Students />} />
                 <Route path="teachers" element={<Teachers />} />
+                <Route path="teachers/offer-letter" element={<TeacherOfferLetter />} />
                 <Route path="payroll" element={<AdminSalary />} />
                 <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />

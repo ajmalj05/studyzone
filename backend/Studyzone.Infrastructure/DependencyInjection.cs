@@ -18,6 +18,7 @@ using Studyzone.Application.Reports;
 using Studyzone.Application.TeacherSalary;
 using Studyzone.Application.Expenses;
 using Studyzone.Application.Requests;
+using Studyzone.Application.TeacherOfferLetter;
 using Studyzone.Application.Notifications;
 using Studyzone.Application.Subjects;
 using Studyzone.Infrastructure.Persistence;
@@ -110,6 +111,7 @@ public static class DependencyInjection
         services.AddScoped<IRequestsService, RequestsService>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<ITeacherOfferLetterService, TeacherOfferLetterService>();
         return services;
     }
 }

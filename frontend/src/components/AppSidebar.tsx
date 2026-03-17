@@ -36,7 +36,15 @@ const sidebarSections: SidebarSection[] = [
     label: "People",
     items: [
       { title: "Students", icon: Users, path: "/admin/students" },
-      { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
+      {
+        title: "Teachers",
+        icon: GraduationCap,
+        path: "#",
+        subItems: [
+          { title: "Teacher List", path: "/admin/teachers" },
+          { title: "Offer Letter", path: "/admin/teachers/offer-letter" },
+        ],
+      },
       { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
       { title: "Parent Portal", icon: UserCheck, path: "/admin/parents" },
     ],
