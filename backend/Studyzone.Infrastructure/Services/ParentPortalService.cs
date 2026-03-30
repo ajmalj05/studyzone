@@ -63,7 +63,8 @@ public class ParentPortalService : IParentPortalService
             var ledger = await _feeService.GetLedgerAsync(c.StudentId, null, null, ct);
             totalPending += ledger.Balance;
         }
-        var notices = await _announcementService.GetNoticeBoardAsync(null, null, null, 10, ct);
+        // Parents see "All" and "Parents" targeted announcements
+        var notices = await _announcementService.GetNoticeBoardAsync(null, null, null, "parent", 10, ct);
         return new ParentDashboardDto
         {
             ParentName = user?.Name,
@@ -166,6 +167,7 @@ public class ParentPortalService : IParentPortalService
 
     public async Task<IReadOnlyList<AnnouncementDto>> GetAnnouncementsAsync(string parentUserGuid, int take = 50, CancellationToken ct = default)
     {
-        return await _announcementService.GetNoticeBoardAsync(null, null, null, take, ct);
+        // Parents see "All" and "Parents" targeted announcements
+        return await _announcementService.GetNoticeBoardAsync(null, null, null, "parent", take, ct);
     }
 }

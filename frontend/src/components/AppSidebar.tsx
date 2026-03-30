@@ -92,6 +92,12 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
+    label: "Communication",
+    items: [
+      { title: "Communication", icon: MessageSquare, path: "/admin/communication" },
+    ],
+  },
+  {
     label: "Requests",
     items: [
       { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
@@ -101,7 +107,6 @@ const sidebarSections: SidebarSection[] = [
   {
     label: "Other",
     items: [
-      { title: "Communication", icon: MessageSquare, path: "/admin/communication" },
       { title: "Reports", icon: BarChart3, path: "/admin/reports" },
       { title: "Settings", icon: Settings, path: "/admin/settings" },
     ],

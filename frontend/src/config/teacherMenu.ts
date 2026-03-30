@@ -1,5 +1,5 @@
 import {
-    LayoutDashboard, Users, ClipboardCheck, BookOpen, FileText, DollarSign, Bell, UserCircle, Calendar, PenLine, MessageSquare, BookMarked
+    LayoutDashboard, Users, ClipboardCheck, BookOpen, FileText, DollarSign, Bell, UserCircle, Calendar, PenLine, BookMarked, MessageSquare
 } from "lucide-react";
 
 export const getTeacherMenu = () => [
@@ -11,7 +11,6 @@ export const getTeacherMenu = () => [
     { title: "Add Marks", icon: PenLine, path: "/teacher/marks" },
     { title: "Exam Timetable", icon: Calendar, path: "/teacher/timetable" },
     { title: "Payroll", icon: DollarSign, path: "/teacher/payroll" },
-    { title: "Requests", icon: MessageSquare, path: "/teacher/requests" },
     {
         title: "History",
         icon: FileText,
@@ -21,6 +20,7 @@ export const getTeacherMenu = () => [
             { title: "Teacher Attendance", path: "/teacher/history/teacher-attendance" }
         ]
     },
+    { title: "Requests", icon: MessageSquare, path: "/teacher/requests" },
     { title: "Notices", icon: Bell, path: "/teacher/notices" },
     { title: "Profile", icon: UserCircle, path: "/teacher/profile" },
 ];

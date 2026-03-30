@@ -17,12 +17,14 @@ public class AnnouncementRepository : IAnnouncementRepository
     public async Task<IReadOnlyList<Announcement>> GetAllAsync(int skip, int take, CancellationToken ct = default) =>
         await _db.Announcements.AsNoTracking().OrderByDescending(x => x.CreatedAt).Skip(skip).Take(take).ToListAsync(ct);
 
-    public async Task<IReadOnlyList<Announcement>> GetForNoticeBoardAsync(Guid? classId, Guid? userId, Guid? studentId, int take, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Announcement>> GetForNoticeBoardAsync(Guid? classId, Guid? userId, Guid? studentId, string? userRole, int take, CancellationToken ct = default)
     {
         var query = _db.Announcements.AsNoTracking().Where(a =>
             a.AudienceType == "All"
             || (a.AudienceType == "Class" && a.TargetId == classId)
-            || (a.AudienceType == "Individual" && (a.TargetId == userId || a.TargetId == studentId)));
+            || (a.AudienceType == "Individual" && (a.TargetId == userId || a.TargetId == studentId))
+            || (a.AudienceType == "Teachers" && userRole == "teacher")
+            || (a.AudienceType == "Parents" && userRole == "parent"));
         return await query.OrderByDescending(x => x.CreatedAt).Take(take).ToListAsync(ct);
     }
 

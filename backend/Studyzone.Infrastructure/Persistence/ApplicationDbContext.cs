@@ -50,6 +50,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SchoolExpense> SchoolExpenses => Set<SchoolExpense>();
     public DbSet<StudentFeeOffer> StudentFeeOffers => Set<StudentFeeOffer>();
     public DbSet<TeacherOfferLetter> TeacherOfferLetters => Set<TeacherOfferLetter>();
+    public DbSet<OfferLetterFieldConfig> OfferLetterFieldConfigs => Set<OfferLetterFieldConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -210,6 +211,12 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(x => x.CandidateName);
             e.HasIndex(x => x.CreatedAt);
+        });
+        modelBuilder.Entity<OfferLetterFieldConfig>(e =>
+        {
+            e.HasIndex(x => x.FieldKey).IsUnique();
+            e.HasIndex(x => x.Section);
+            e.HasIndex(x => x.DisplayOrder);
         });
     }
 }

@@ -7,8 +7,43 @@ const API_URL = raw.replace(/\/+$/, '').endsWith('/api') ? raw.replace(/\/+$/, '
 
 export { API_URL };
 
+// Helper function to check if JWT token is expired
+const isTokenExpired = (token: string): boolean => {
+    try {
+        // JWT tokens have 3 parts separated by dots: header.payload.signature
+        const parts = token.split('.');
+        if (parts.length !== 3) return true; // Invalid token format
+
+        // Decode the payload (middle part)
+        const payload = JSON.parse(atob(parts[1]));
+        
+        // Check if exp exists and is in the past
+        if (payload.exp) {
+            // exp is in seconds, Date.now() is in milliseconds
+            return payload.exp * 1000 < Date.now();
+        }
+        
+        return false; // No expiration, treat as valid
+    } catch {
+        return true; // Invalid token, treat as expired
+    }
+};
+
+// Helper to logout and redirect
+const handleAuthFailure = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+};
+
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token');
+
+    // Check token expiration before making API call
+    if (token && isTokenExpired(token)) {
+        handleAuthFailure();
+        throw new Error('Session expired. Please login again.');
+    }
 
     const headers = {
         'Content-Type': 'application/json',
@@ -21,6 +56,12 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
         ...options,
         headers,
     });
+
+    // Handle 401 Unauthorized - token expired or invalid (fallback)
+    if (response.status === 401) {
+        handleAuthFailure();
+        throw new Error('Session expired. Please login again.');
+    }
 
     let data: unknown;
     try {

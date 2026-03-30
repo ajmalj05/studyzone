@@ -37,7 +37,8 @@ public class AnnouncementsController : ControllerBase
         Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var c) ? null : c;
         Guid? uid = string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var u) ? null : u;
         Guid? sid = string.IsNullOrWhiteSpace(studentId) || !Guid.TryParse(studentId, out var s) ? null : s;
-        var list = await _service.GetNoticeBoardAsync(cid, uid, sid, take, ct);
+        var userRole = User.FindFirstValue(ClaimTypes.Role)?.ToLowerInvariant();
+        var list = await _service.GetNoticeBoardAsync(cid, uid, sid, userRole, take, ct);
         return Ok(list);
     }
 

@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Send, Megaphone } from "lucide-react";
+import { Send, Megaphone, Printer } from "lucide-react";
+import { openAnnouncementPdf, SchoolInfo } from "@/lib/announcementPdf";
 
 interface ClassDto {
   id: string;
@@ -43,7 +44,9 @@ export default function Communication() {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [printing, setPrinting] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", body: "", audienceType: "All", targetId: "" });
+  const [school, setSchool] = useState<SchoolInfo>({ name: "Studyzone School" });
 
   useEffect(() => {
     (async () => {
@@ -62,6 +65,27 @@ export default function Communication() {
     })();
   }, []);
 
+  // Fetch school info
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await fetchApi("/Schools/my") as SchoolInfo;
+        if (s) setSchool(s);
+      } catch (_) {
+        // use default
+      }
+    })();
+  }, []);
+
+  const handlePrint = (announcement: AnnouncementDto) => {
+    setPrinting(announcement.id);
+    try {
+      openAnnouncementPdf(announcement, school);
+    } finally {
+      setTimeout(() => setPrinting(null), 500);
+    }
+  };
+
   const handleSend = async () => {
     if (!form.title.trim()) {
       toast({ title: "Error", description: "Enter a title", variant: "destructive" });
@@ -75,7 +99,7 @@ export default function Communication() {
           title: form.title,
           body: form.body,
           audienceType: form.audienceType,
-          targetId: form.audienceType !== "All" ? form.targetId || undefined : undefined,
+          targetId: form.audienceType !== "All" && form.audienceType !== "Teachers" && form.audienceType !== "Parents" ? form.targetId || undefined : undefined,
         }),
       });
       toast({ title: "Sent", description: "Announcement published." });
@@ -99,7 +123,7 @@ export default function Communication() {
               <Megaphone className="h-5 w-5" />
               Compose Announcement
             </CardTitle>
-            <CardDescription>Send an in-app announcement to all, a class, or an individual.</CardDescription>
+            <CardDescription>Send an in-app announcement to all, teachers, parents, a class, or an individual.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -131,6 +155,8 @@ export default function Communication() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">All</SelectItem>
+                    <SelectItem value="Teachers">Teachers</SelectItem>
+                    <SelectItem value="Parents">Parents</SelectItem>
                     <SelectItem value="Class">Class</SelectItem>
                     <SelectItem value="Individual">Individual</SelectItem>
                   </SelectContent>
@@ -170,7 +196,7 @@ export default function Communication() {
         <Card>
           <CardHeader>
             <CardTitle>Notice Board / Recent Announcements</CardTitle>
-            <CardDescription>All published announcements. Visible to students on the portal based on audience.</CardDescription>
+            <CardDescription>All published announcements. Visible to users on the portal based on audience.</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -183,6 +209,7 @@ export default function Communication() {
                     <TableHead>Audience</TableHead>
                     <TableHead>Target</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -192,6 +219,17 @@ export default function Communication() {
                       <TableCell>{a.audienceType}</TableCell>
                       <TableCell>{a.targetName ?? a.targetId ?? "—"}</TableCell>
                       <TableCell>{new Date(a.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handlePrint(a)}
+                          disabled={printing === a.id}
+                        >
+                          <Printer className="h-4 w-4 mr-1" />
+                          {printing === a.id ? "Opening..." : "Print PDF"}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
