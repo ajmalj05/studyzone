@@ -46,9 +46,9 @@ public class AnnouncementService : IAnnouncementService
         return dtos;
     }
 
-    public async Task<IReadOnlyList<AnnouncementDto>> GetNoticeBoardAsync(Guid? classId, Guid? userId, Guid? studentId, int take = 50, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AnnouncementDto>> GetNoticeBoardAsync(Guid? classId, Guid? userId, Guid? studentId, string? userRole, int take = 50, CancellationToken ct = default)
     {
-        var list = await _repo.GetForNoticeBoardAsync(classId, userId, studentId, take, ct);
+        var list = await _repo.GetForNoticeBoardAsync(classId, userId, studentId, userRole, take, ct);
         var dtos = new List<AnnouncementDto>();
         foreach (var e in list)
             dtos.Add(await MapToDtoAsync(e, ct));

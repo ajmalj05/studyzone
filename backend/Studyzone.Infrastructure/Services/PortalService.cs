@@ -174,7 +174,8 @@ public class PortalService : IPortalService
             return Array.Empty<AnnouncementDto>();
         var enr = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
         var classId = enr?.ClassId;
-        return await _announcementService.GetNoticeBoardAsync(classId, uid, studentId, take, ct);
+        // Pass null for userRole since this is student portal - students see "All", "Class", "Individual", but not "Teachers"/"Parents" targeted announcements
+        return await _announcementService.GetNoticeBoardAsync(classId, uid, studentId, null, take, ct);
     }
 
     public async Task<TeacherPortalDashboardDto> GetTeacherDashboardAsync(string teacherUserGuid, CancellationToken ct = default)
@@ -205,7 +206,8 @@ public class PortalService : IPortalService
             });
         }
 
-        var notices = await _announcementService.GetNoticeBoardAsync(null, teacherId, null, 10, ct);
+        // Teachers see "All" and "Teachers" targeted announcements
+        var notices = await _announcementService.GetNoticeBoardAsync(null, teacherId, null, "teacher", 10, ct);
         var salary = await _salaryService.GetCurrentForTeacherAsync(teacherUserGuid, ct);
 
         return new TeacherPortalDashboardDto

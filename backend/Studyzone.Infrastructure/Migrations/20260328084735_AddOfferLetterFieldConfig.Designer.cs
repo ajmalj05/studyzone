@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Studyzone.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Studyzone.Infrastructure.Persistence;
 namespace Studyzone.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328084735_AddOfferLetterFieldConfig")]
+    partial class AddOfferLetterFieldConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -49,7 +52,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AcademicYears", (string)null);
+                    b.ToTable("AcademicYears");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.AdmissionApproval", b =>
@@ -79,7 +82,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AdmissionApprovals", (string)null);
+                    b.ToTable("AdmissionApprovals");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.AdmissionNumberSequence", b =>
@@ -104,7 +107,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("AcademicYearName", "ClassCode")
                         .IsUnique();
 
-                    b.ToTable("AdmissionNumberSequences", (string)null);
+                    b.ToTable("AdmissionNumberSequences");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Announcement", b =>
@@ -140,7 +143,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.ToTable("Announcements", (string)null);
+                    b.ToTable("Announcements");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Application", b =>
@@ -400,7 +403,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Applications", (string)null);
+                    b.ToTable("Applications");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.AttendanceRecord", b =>
@@ -440,7 +443,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("StudentId", "Date");
 
-                    b.ToTable("AttendanceRecords", (string)null);
+                    b.ToTable("AttendanceRecords");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.AuditLog", b =>
@@ -478,7 +481,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Timestamp");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Batch", b =>
@@ -516,7 +519,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("ClassId", "AcademicYearId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Batches", (string)null);
+                    b.ToTable("Batches");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Class", b =>
@@ -538,7 +541,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Classes", (string)null);
+                    b.ToTable("Classes");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.ClassSubject", b =>
@@ -553,7 +556,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("SubjectId");
 
-                    b.ToTable("ClassSubjects", (string)null);
+                    b.ToTable("ClassSubjects");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.CustomFieldDefinition", b =>
@@ -582,7 +585,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CustomFieldDefinitions", (string)null);
+                    b.ToTable("CustomFieldDefinitions");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Document", b =>
@@ -623,7 +626,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("ApplicationId");
 
-                    b.ToTable("Documents", (string)null);
+                    b.ToTable("Documents");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Enquiry", b =>
@@ -676,7 +679,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Enquiries", (string)null);
+                    b.ToTable("Enquiries");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Exam", b =>
@@ -704,7 +707,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Exams", (string)null);
+                    b.ToTable("Exams");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.FeeCharge", b =>
@@ -738,7 +741,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("StudentId", "Period");
 
-                    b.ToTable("FeeCharges", (string)null);
+                    b.ToTable("FeeCharges");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.FeeStructure", b =>
@@ -780,7 +783,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("ClassId", "AcademicYearId", "Name")
                         .IsUnique();
 
-                    b.ToTable("FeeStructures", (string)null);
+                    b.ToTable("FeeStructures");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.LeaveRequest", b =>
@@ -827,7 +830,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("TeacherUserId");
 
-                    b.ToTable("LeaveRequests", (string)null);
+                    b.ToTable("LeaveRequests");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.MarksEntry", b =>
@@ -861,7 +864,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("ExamId", "StudentId", "Subject");
 
-                    b.ToTable("MarksEntries", (string)null);
+                    b.ToTable("MarksEntries");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Notification", b =>
@@ -893,7 +896,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.OfferLetterFieldConfig", b =>
@@ -947,7 +950,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Section");
 
-                    b.ToTable("OfferLetterFieldConfigs", (string)null);
+                    b.ToTable("OfferLetterFieldConfigs");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Payment", b =>
@@ -989,7 +992,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.PeriodConfig", b =>
@@ -1018,7 +1021,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PeriodConfigs", (string)null);
+                    b.ToTable("PeriodConfigs");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.PortalRequest", b =>
@@ -1067,7 +1070,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PortalRequests", (string)null);
+                    b.ToTable("PortalRequests");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.ReceiptSequence", b =>
@@ -1088,7 +1091,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("Prefix")
                         .IsUnique();
 
-                    b.ToTable("ReceiptSequences", (string)null);
+                    b.ToTable("ReceiptSequences");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Role", b =>
@@ -1109,7 +1112,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.RolePermission", b =>
@@ -1130,7 +1133,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("RoleId", "PermissionKey")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions", (string)null);
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.School", b =>
@@ -1163,7 +1166,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Schools", (string)null);
+                    b.ToTable("Schools");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.SchoolExpense", b =>
@@ -1198,7 +1201,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Date");
 
-                    b.ToTable("SchoolExpenses", (string)null);
+                    b.ToTable("SchoolExpenses");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.SiblingGroup", b =>
@@ -1215,7 +1218,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SiblingGroups", (string)null);
+                    b.ToTable("SiblingGroups");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Student", b =>
@@ -1276,7 +1279,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("AdmissionNumber")
                         .IsUnique();
 
-                    b.ToTable("Students", (string)null);
+                    b.ToTable("Students");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.StudentEnrollment", b =>
@@ -1338,7 +1341,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("StudentId", "AcademicYearId")
                         .IsUnique();
 
-                    b.ToTable("StudentEnrollments", (string)null);
+                    b.ToTable("StudentEnrollments");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.StudentFeeOffer", b =>
@@ -1381,7 +1384,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("StudentId", "AcademicYearId")
                         .IsUnique();
 
-                    b.ToTable("StudentFeeOffers", (string)null);
+                    b.ToTable("StudentFeeOffers");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.StudentParent", b =>
@@ -1411,7 +1414,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("StudentId", "ParentUserId")
                         .IsUnique();
 
-                    b.ToTable("StudentParents", (string)null);
+                    b.ToTable("StudentParents");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.StudentStatusHistory", b =>
@@ -1438,7 +1441,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StudentStatusHistories", (string)null);
+                    b.ToTable("StudentStatusHistories");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Subject", b =>
@@ -1461,7 +1464,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("Subjects", (string)null);
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Substitution", b =>
@@ -1487,7 +1490,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Substitutions", (string)null);
+                    b.ToTable("Substitutions");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TeacherOfferLetter", b =>
@@ -1579,7 +1582,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.ToTable("TeacherOfferLetters", (string)null);
+                    b.ToTable("TeacherOfferLetters");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TeacherSalary", b =>
@@ -1623,7 +1626,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("TeacherUserId");
 
-                    b.ToTable("TeacherSalaries", (string)null);
+                    b.ToTable("TeacherSalaries");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TeacherSalaryPayment", b =>
@@ -1669,7 +1672,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("TeacherUserId", "Year", "Month")
                         .IsUnique();
 
-                    b.ToTable("TeacherSalaryPayments", (string)null);
+                    b.ToTable("TeacherSalaryPayments");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TeacherSalaryPaymentLine", b =>
@@ -1696,7 +1699,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("TeacherSalaryPaymentId");
 
-                    b.ToTable("TeacherSalaryPaymentLines", (string)null);
+                    b.ToTable("TeacherSalaryPaymentLines");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TimetableSettings", b =>
@@ -1713,7 +1716,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TimetableSettings", (string)null);
+                    b.ToTable("TimetableSettings");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.TimetableSlot", b =>
@@ -1756,7 +1759,7 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.HasIndex("BatchId", "DayOfWeek", "PeriodOrder");
 
-                    b.ToTable("TimetableSlots", (string)null);
+                    b.ToTable("TimetableSlots");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.User", b =>
@@ -1807,7 +1810,7 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.Batch", b =>

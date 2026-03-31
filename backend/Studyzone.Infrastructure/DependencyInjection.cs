@@ -112,6 +112,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ITeacherOfferLetterService, TeacherOfferLetterService>();
+        services.AddScoped<IOfferLetterFieldConfigService, OfferLetterFieldConfigService>();
         return services;
     }
 }

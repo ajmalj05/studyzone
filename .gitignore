@@ -4,3 +4,23 @@
 .env.*.local
 backend/.env
 frontend/.env
+
+# .NET build artifacts
+**/bin/
+**/obj/
+*.dll
+*.pdb
+*.exe
+
+# Node.js
+**/node_modules/
+frontend/package-lock.json
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Misc
+*.log

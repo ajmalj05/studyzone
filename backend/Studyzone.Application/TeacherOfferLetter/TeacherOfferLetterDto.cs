@@ -59,3 +59,34 @@ public class CreateTeacherOfferLetterRequest
 }
 
 public class UpdateTeacherOfferLetterRequest : CreateTeacherOfferLetterRequest { }
+
+public class OfferLetterFieldConfigDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string FieldKey { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string? DefaultValue { get; set; }
+    public bool IsVisible { get; set; }
+    public bool ShowInPdf { get; set; }
+    public bool IsRequired { get; set; }
+    public int DisplayOrder { get; set; }
+    public string FieldType { get; set; } = "text";
+    public string? Section { get; set; }
+    public string CreatedAt { get; set; } = string.Empty;
+    public string? UpdatedAt { get; set; }
+}
+
+public class CreateOfferLetterFieldConfigRequest
+{
+    public string FieldKey { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string? DefaultValue { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public bool ShowInPdf { get; set; } = true;
+    public bool IsRequired { get; set; } = false;
+    public int DisplayOrder { get; set; } = 0;
+    public string FieldType { get; set; } = "text";
+    public string? Section { get; set; }
+}
+
+public class UpdateOfferLetterFieldConfigRequest : CreateOfferLetterFieldConfigRequest { }
