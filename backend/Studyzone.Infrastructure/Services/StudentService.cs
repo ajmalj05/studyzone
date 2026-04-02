@@ -139,6 +139,7 @@ public class StudentService : IStudentService
             JoinedAt = DateTime.UtcNow,
             FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null,
             FeePaymentStartYear = request.FeePaymentStartYear is >= 2000 and <= 2100 ? request.FeePaymentStartYear : null,
+            BusFeeAmount = request.BusFeeAmount > 0 ? request.BusFeeAmount : null,
             CreatedAt = DateTime.UtcNow
         };
         await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -180,6 +181,7 @@ public class StudentService : IStudentService
                 enr.Section = request.Section;
                 enr.FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null;
                 enr.FeePaymentStartYear = request.FeePaymentStartYear is >= 2000 and <= 2100 ? request.FeePaymentStartYear : null;
+                enr.BusFeeAmount = request.BusFeeAmount > 0 ? request.BusFeeAmount : null;
                 await _enrollmentRepo.UpdateAsync(enr, ct);
             }
         }
@@ -261,6 +263,7 @@ public class StudentService : IStudentService
                 JoinedAt = DateTime.UtcNow,
                 FeePaymentStartMonth = request.TargetFeePaymentStartMonth is >= 1 and <= 12 ? request.TargetFeePaymentStartMonth : null,
                 FeePaymentStartYear = request.TargetFeePaymentStartYear is >= 2000 and <= 2100 ? request.TargetFeePaymentStartYear : null,
+                BusFeeAmount = request.TargetBusFeeAmount > 0 ? request.TargetBusFeeAmount : null,
                 CreatedAt = DateTime.UtcNow
             };
             await _enrollmentRepo.AddAsync(enrollment, ct);
@@ -316,7 +319,8 @@ public class StudentService : IStudentService
             AcademicYearId = enr?.AcademicYearId.ToString(),
             AcademicYearName = academicYearName,
             FeePaymentStartMonth = enr?.FeePaymentStartMonth,
-            FeePaymentStartYear = enr?.FeePaymentStartYear
+            FeePaymentStartYear = enr?.FeePaymentStartYear,
+            BusFeeAmount = enr?.BusFeeAmount
         };
     }
 }

@@ -18,5 +18,7 @@ public class StudentEnrollment
     public int? FeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due (e.g. 2024). Null = not set.</summary>
     public int? FeePaymentStartYear { get; set; }
+    /// <summary>Optional monthly bus fee for this enrollment. Null or 0 = no bus fee.</summary>
+    public decimal? BusFeeAmount { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -9,7 +9,7 @@ public class StudentFeeOffer
     public AcademicYear AcademicYear { get; set; } = null!;
     /// <summary>e.g. "PercentageDiscount" or "FixedDiscount"</summary>
     public string OfferType { get; set; } = "PercentageDiscount";
-    /// <summary>e.g. 20 for 20%, or 500 for ₹500 off per charge</summary>
+    /// <summary>e.g. 20 for 20%, or 500 for AED 500 off per charge</summary>
     public decimal Value { get; set; }
     public string? Reason { get; set; }
     public DateTime? EffectiveFrom { get; set; }

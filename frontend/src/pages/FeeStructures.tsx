@@ -192,7 +192,7 @@ export default function FeeStructures() {
                 )}
                 <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                 <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
-                <div className="space-y-1"><Label>Amount (₹)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>
+                <div className="space-y-1"><Label>Amount (AED)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>
                 <div className="space-y-1">
                   <Label>Frequency</Label>
                   <Select
@@ -262,7 +262,7 @@ export default function FeeStructures() {
                   <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Amount (₹)</Label>
+                  <Label>Amount (AED)</Label>
                   <Input type="number" min="0" step="0.01" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))} />
                 </div>
                 <div className="space-y-1">

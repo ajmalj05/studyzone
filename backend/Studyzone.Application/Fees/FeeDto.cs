@@ -165,7 +165,7 @@ public class FeeReceiptDto
     public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime PaidAt { get; set; }
     public string? FeeTerm { get; set; }
-    public string CurrencySymbol { get; set; } = "₹";
+    public string CurrencySymbol { get; set; } = "AED ";
     public decimal TotalCharges { get; set; }
     public decimal TotalPayments { get; set; }
     public decimal Balance { get; set; }

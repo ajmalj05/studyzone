@@ -146,7 +146,7 @@ export default function AdminSalary() {
     }
   };
 
-  const formatPayrollCurrency = (amount: number) => `₹${Number(amount).toLocaleString("en-IN")}`;
+  const formatPayrollCurrency = (amount: number) => `AED ${Number(amount).toLocaleString("en-AE")}`;
   const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleString("en", { month: "short" });
 
   return (
@@ -279,7 +279,7 @@ export default function AdminSalary() {
                 <Input value={lineForm.description} onChange={(e) => setLineForm((f) => ({ ...f, description: e.target.value }))} placeholder="e.g. Tax, Bonus" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Amount (₹)</label>
+                <label className="text-sm font-medium">Amount (AED)</label>
                 <Input type="number" min="0" step="0.01" value={lineForm.amount} onChange={(e) => setLineForm((f) => ({ ...f, amount: e.target.value }))} placeholder="0" />
               </div>
             </div>

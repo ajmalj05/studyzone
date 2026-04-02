@@ -9,6 +9,8 @@ public class TeacherSalaryService : ITeacherSalaryService
 {
     private readonly ITeacherSalaryRepository _repo;
     private readonly IUserManagementService _userService;
+    private static string NormalizeCurrency(string? currency) =>
+        string.Equals(currency, "INR", StringComparison.OrdinalIgnoreCase) ? "AED" : (currency ?? "AED");
 
     public TeacherSalaryService(ITeacherSalaryRepository repo, IUserManagementService userService)
     {
@@ -51,7 +53,7 @@ public class TeacherSalaryService : ITeacherSalaryService
             EffectiveTo = request.EffectiveTo?.Date,
             Amount = request.Amount,
             PayFrequency = request.PayFrequency ?? "Monthly",
-            Currency = request.Currency ?? "INR",
+            Currency = NormalizeCurrency(request.Currency),
             Notes = request.Notes
         };
         var added = await _repo.AddAsync(entity, ct);
@@ -67,7 +69,7 @@ public class TeacherSalaryService : ITeacherSalaryService
         existing.EffectiveTo = request.EffectiveTo?.Date;
         existing.Amount = request.Amount;
         existing.PayFrequency = request.PayFrequency ?? "Monthly";
-        existing.Currency = request.Currency ?? "INR";
+        existing.Currency = NormalizeCurrency(request.Currency);
         existing.Notes = request.Notes;
         var updated = await _repo.UpdateAsync(existing, ct);
         return (await MapAsync(updated, ct))!;
@@ -94,7 +96,7 @@ public class TeacherSalaryService : ITeacherSalaryService
             EffectiveTo = e.EffectiveTo,
             Amount = e.Amount,
             PayFrequency = e.PayFrequency,
-            Currency = e.Currency,
+            Currency = NormalizeCurrency(e.Currency),
             Notes = e.Notes,
             CreatedAt = e.CreatedAt
         };

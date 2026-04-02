@@ -66,10 +66,9 @@ const sidebarSections: SidebarSection[] = [
         icon: DollarSign,
         path: "#",
         subItems: [
-          { title: "Fee Management", path: "/admin/fees" },
-          { title: "Student Ledger", path: "/admin/fees/ledger" },
-          { title: "Fee Structures", path: "/admin/fees/structures" },
-          { title: "Fee offers", path: "/admin/fees/offers" },
+          { title: "Dashboard", path: "/admin/fees" },
+          { title: "Setup", path: "/admin/fees/setup" },
+          { title: "Student Billing", path: "/admin/fees/billing" },
         ],
       },
       { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },

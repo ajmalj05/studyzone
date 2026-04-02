@@ -41,9 +41,9 @@ export function RevenueChart({ academicYearId }: RevenueChartProps) {
         <>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             <span className="text-muted-foreground">Collected:</span>
-            <span className="font-medium">₹{Math.round(data?.totalCollection ?? 0).toLocaleString("en-IN")}</span>
+            <span className="font-medium">AED {Math.round(data?.totalCollection ?? 0).toLocaleString("en-AE")}</span>
             <span className="text-muted-foreground">Outstanding:</span>
-            <span className="font-medium text-warning">₹{Math.round(data?.totalOutstanding ?? 0).toLocaleString("en-IN")}</span>
+            <span className="font-medium text-warning">AED {Math.round(data?.totalOutstanding ?? 0).toLocaleString("en-AE")}</span>
           </div>
           <div className="mt-3 h-56">
             {chartData.length === 0 ? (
@@ -60,7 +60,7 @@ export function RevenueChart({ academicYearId }: RevenueChartProps) {
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "12px",
                     }}
-                    formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Outstanding"]}
+                    formatter={(value: number) => [`AED ${value.toLocaleString("en-AE")}`, "Outstanding"]}
                   />
                   <Bar dataKey="outstanding" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>

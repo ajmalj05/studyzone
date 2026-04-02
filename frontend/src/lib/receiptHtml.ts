@@ -26,7 +26,7 @@ export function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileFo
   const feeTerm = receipt.feeTerm ?? "—";
   const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
   const particulars = receipt.particulars ?? [];
-  const currency = receipt.currencySymbol ?? "₹";
+  const currency = receipt.currencySymbol ?? "AED ";
 
   const printCss = `
     body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11pt; }
@@ -58,7 +58,7 @@ export function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileFo
       ? particulars
           .map(
             (p, index) =>
-              `<tr><td>${index + 1}</td><td>${esc(String(p.name))}</td><td class="text-right">${currency}${Number(p.amount).toLocaleString("en-IN")}</td></tr>`
+              `<tr><td>${index + 1}</td><td>${esc(String(p.name))}</td><td class="text-right">${currency}${Number(p.amount).toLocaleString("en-AE")}</td></tr>`
           )
           .join("")
       : `<tr><td colspan="3" class="muted">No fee particulars</td></tr>`;
@@ -99,15 +99,15 @@ export function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileFo
         </tr>
         <tr>
           <td class="label">Class</td><td class="value">${esc(className)}</td>
-          <td class="label">Total Amount</td><td class="value text-right">${currency}${receipt.totalCharges.toLocaleString("en-IN")}</td>
+          <td class="label">Total Amount</td><td class="value text-right">${currency}${receipt.totalCharges.toLocaleString("en-AE")}</td>
         </tr>
         <tr>
           <td class="label"></td><td class="value"></td>
-          <td class="label">Deposit Amount</td><td class="value text-right">${currency}${receipt.deposit.toLocaleString("en-IN")}</td>
+          <td class="label">Deposit Amount</td><td class="value text-right">${currency}${receipt.deposit.toLocaleString("en-AE")}</td>
         </tr>
         <tr>
           <td class="label"></td><td class="value"></td>
-          <td class="label">Remaining Balance</td><td class="value text-right">${currency}${receipt.remainingBalance.toLocaleString("en-IN")}</td>
+          <td class="label">Remaining Balance</td><td class="value text-right">${currency}${receipt.remainingBalance.toLocaleString("en-AE")}</td>
         </tr>
       </table>
       <div class="section-title">Fee particulars</div>

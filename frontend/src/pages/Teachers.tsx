@@ -138,7 +138,7 @@ export default function Teachers() {
               effectiveTo: salaryForm.salaryEffectiveTo ? salaryForm.salaryEffectiveTo + "T00:00:00Z" : null,
               amount,
               payFrequency: salaryForm.salaryPayFrequency,
-              currency: "INR",
+              currency: "AED",
               notes: salaryForm.salaryNotes || undefined,
             }),
           });

@@ -111,15 +111,15 @@ const ParentFees = () => {
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Charges</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">₹{ledger.totalCharges.toLocaleString()}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalCharges.toLocaleString("en-AE")}</span></CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Paid</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">₹{ledger.totalPayments.toLocaleString()}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalPayments.toLocaleString("en-AE")}</span></CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Balance Due</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">₹{ledger.balance.toLocaleString()}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.balance.toLocaleString("en-AE")}</span></CardContent>
                 </Card>
               </div>
               <Card>
@@ -131,7 +131,7 @@ const ParentFees = () => {
                     </TableHeader>
                     <TableBody>
                       {(ledger.charges ?? []).map((c, i) => (
-                        <TableRow key={i}><TableCell>{c.period}</TableCell><TableCell className="text-right">₹{c.amount.toLocaleString()}</TableCell></TableRow>
+                        <TableRow key={i}><TableCell>{c.period}</TableCell><TableCell className="text-right">AED {c.amount.toLocaleString("en-AE")}</TableCell></TableRow>
                       ))}
                     </TableBody>
                   </Table>
@@ -156,7 +156,7 @@ const ParentFees = () => {
                           <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
                           <TableCell>{p.receiptNumber}</TableCell>
                           <TableCell>{p.mode ?? "—"}</TableCell>
-                          <TableCell className="text-right">₹{p.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">AED {p.amount.toLocaleString("en-AE")}</TableCell>
                           <TableCell>
                             {p.id && (
                               <Button

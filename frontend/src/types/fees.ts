@@ -81,7 +81,7 @@ export interface BatchDto {
   seatLimit?: number;
 }
 
-export const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+export const formatCurrency = (n: number) => `AED ${n.toLocaleString("en-AE")}`;
 
 export interface FeeReceiptParticularDto {
   name: string;

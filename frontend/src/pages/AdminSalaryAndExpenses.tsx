@@ -63,7 +63,7 @@ interface TeacherDto {
 }
 
 function formatCurrency(amount: number) {
-  return `₹${Number(amount).toLocaleString("en-IN")}`;
+  return `AED ${Number(amount).toLocaleString("en-AE")}`;
 }
 
 export default function AdminSalaryAndExpenses() {

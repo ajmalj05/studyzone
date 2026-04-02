@@ -7,6 +7,7 @@ namespace Studyzone.Infrastructure.Services;
 
 public class FeeService : IFeeService
 {
+    private const string BusFeeStructureName = "Bus Fee";
     private readonly IFeeStructureRepository _structureRepo;
     private readonly IStudentFeeOfferRepository _offerRepo;
     private readonly IFeeChargeRepository _chargeRepo;
@@ -52,6 +53,26 @@ public class FeeService : IFeeService
         return baseAmount;
     }
 
+    private async Task<FeeStructure> GetOrCreateBusFeeStructureAsync(Guid classId, Guid academicYearId, CancellationToken ct)
+    {
+        var structures = await _structureRepo.GetByClassIdAndAcademicYearAsync(classId, academicYearId, ct);
+        var existing = structures.FirstOrDefault(s => string.Equals(s.Name, BusFeeStructureName, StringComparison.OrdinalIgnoreCase));
+        if (existing != null) return existing;
+
+        var created = new FeeStructure
+        {
+            Id = Guid.NewGuid(),
+            ClassId = classId,
+            AcademicYearId = academicYearId,
+            Name = BusFeeStructureName,
+            Amount = 0,
+            Frequency = "Monthly",
+            EffectiveFrom = DateTime.UtcNow.Date,
+            CreatedAt = DateTime.UtcNow
+        };
+        return await _structureRepo.AddAsync(created, ct);
+    }
+
     public async Task<FeeStructureDto?> GetStructureByIdAsync(string id, CancellationToken ct = default)
     {
         if (!Guid.TryParse(id, out var guid)) return null;
@@ -85,7 +106,9 @@ public class FeeService : IFeeService
         if (!Guid.TryParse(classId, out var cid)) return Array.Empty<FeeStructureDto>();
         var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
         if (yearId == null) return Array.Empty<FeeStructureDto>();
-        var list = await _structureRepo.GetByClassIdAndAcademicYearAsync(cid, yearId.Value, ct);
+        var list = (await _structureRepo.GetByClassIdAndAcademicYearAsync(cid, yearId.Value, ct))
+            .Where(s => !string.Equals(s.Name, BusFeeStructureName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         var c = await _classRepo.GetByIdAsync(cid, ct);
         var ay = await _academicYearRepo.GetByIdAsync(yearId.Value, ct);
         var className = c?.Name ?? "";
@@ -107,9 +130,11 @@ public class FeeService : IFeeService
     public async Task<IReadOnlyList<FeeStructureDto>> GetAllStructuresAsync(string? academicYearId, CancellationToken ct = default)
     {
         var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
-        var list = yearId.HasValue
+        var list = (yearId.HasValue
             ? await _structureRepo.GetByAcademicYearAsync(yearId.Value, ct)
-            : await _structureRepo.GetAllAsync(ct);
+            : await _structureRepo.GetAllAsync(ct))
+            .Where(s => !string.Equals(s.Name, BusFeeStructureName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         var dtos = new List<FeeStructureDto>();
         foreach (var e in list)
         {
@@ -396,7 +421,7 @@ public class FeeService : IFeeService
             ReceiptNumber = payment.ReceiptNumber,
             PaidAt = payment.PaidAt,
             FeeTerm = GetFeeTermLabel(payment.PaidAt),
-            CurrencySymbol = "₹",
+            CurrencySymbol = "AED ",
             TotalCharges = payment.Amount,
             TotalPayments = payment.Amount,
             Balance = 0,
@@ -582,6 +607,30 @@ public class FeeService : IFeeService
                 added++;
             }
         }
+
+        if (enr.BusFeeAmount.HasValue && enr.BusFeeAmount.Value > 0)
+        {
+            var busStructure = await GetOrCreateBusFeeStructureAsync(enr.ClassId.Value, enr.AcademicYearId, ct);
+            var busPeriods = GetRecurringPeriods("Monthly", startYear, startMonth, endYear, endMonth);
+            foreach (var period in busPeriods)
+            {
+                if (existingSet.Contains((busStructure.Id, period)))
+                    continue;
+                await _chargeRepo.AddAsync(new FeeCharge
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = studentId,
+                    FeeStructureId = busStructure.Id,
+                    Period = period,
+                    Amount = enr.BusFeeAmount.Value,
+                    Description = $"Bus Fee {period}",
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+                existingSet.Add((busStructure.Id, period));
+                added++;
+            }
+        }
+
         return new GenerateChargesResult { ChargesAdded = added };
     }
 

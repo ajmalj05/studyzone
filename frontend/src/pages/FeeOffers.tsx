@@ -265,7 +265,7 @@ export default function FeeOffers() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {o.offerType === "PercentageDiscount" ? `${o.value}%` : `₹${o.value.toLocaleString("en-IN")}`}
+                      {o.offerType === "PercentageDiscount" ? `${o.value}%` : `AED ${o.value.toLocaleString("en-AE")}`}
                     </TableCell>
                     <TableCell>{o.reason ?? "—"}</TableCell>
                     <TableCell>
@@ -422,7 +422,7 @@ export default function FeeOffers() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>{form.offerType === "PercentageDiscount" ? "Percentage (e.g. 20 for 20% off)" : "Amount (₹) off per charge"}</Label>
+                  <Label>{form.offerType === "PercentageDiscount" ? "Percentage (e.g. 20 for 20% off)" : "Amount (AED) off per charge"}</Label>
                   <Input
                     type="number"
                     min={form.offerType === "PercentageDiscount" ? 1 : 0}

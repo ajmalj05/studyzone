@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import { CreditCard, AlertCircle, Banknote } from "lucide-react";
 import { FeeLedgerDto, ClassDto, StudentDto, FEE_MONTH_NAMES, formatCurrency } from "@/types/fees";
 
 export default function Fees() {
+  const navigate = useNavigate();
   const { selectedYearId } = useAcademicYear();
   const [outstanding, setOutstanding] = useState<FeeLedgerDto[]>([]);
   const [classes, setClasses] = useState<ClassDto[]>([]);
@@ -171,7 +173,7 @@ export default function Fees() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Fee Management" />
+        <DashboardHeader title="Fees Dashboard" description="Track collection, outstanding balances, and jump into student billing." />
         <CurrentAcademicYearBadge />
       </div>
       <div className="space-y-4">
@@ -202,12 +204,12 @@ export default function Fees() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Outstanding by class
             </CardTitle>
             <CardDescription>
-              Students with balance &gt; 0 (scoped by academic year)
+              Monitor unpaid balances for the selected academic year.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -243,6 +245,10 @@ export default function Fees() {
                   disabled={recalculating}
                 >
                   {recalculating ? "Generating..." : "Generate outstanding"}
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/admin/fees/billing")}>
+                  <Banknote className="mr-2 h-4 w-4" />
+                  Open student billing
                 </Button>
                 <Button onClick={() => setPaymentModalOpen(true)}>
                   <CreditCard className="mr-2 h-4 w-4" />
@@ -356,7 +362,7 @@ export default function Fees() {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label>Amount (₹)</Label>
+                    <Label>Amount (AED)</Label>
                     <Input
                       type="number"
                       min="1"
