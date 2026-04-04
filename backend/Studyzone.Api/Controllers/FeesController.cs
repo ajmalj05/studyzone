@@ -129,8 +129,15 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("payments")]
-    public async Task<ActionResult<IReadOnlyList<PaymentDto>>> GetPayments([FromQuery] string studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<PaymentDto>>> GetPayments([FromQuery] string? studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            // Return all payments (we need to add a new service method for this)
+            // For now, return empty list or implement getting all payments
+            var allPayments = await _service.GetAllPaymentsAsync(from, to, ct);
+            return Ok(allPayments);
+        }
         var list = await _service.GetPaymentsByStudentAsync(studentId, from, to, ct);
         return Ok(list);
     }
