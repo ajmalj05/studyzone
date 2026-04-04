@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +39,6 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { StudentFeeOfferDto, StudentDto, ClassDto, BatchDto } from "@/types/fees";
 import { Pencil, Trash2, Percent, Banknote, Check, ChevronsUpDown } from "lucide-react";
 import {
@@ -221,19 +219,17 @@ export default function FeeOffers() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Fee offers" description="Concessions and discounts by student" />
-        <CurrentAcademicYearBadge />
-      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Fee offers (concessions)</CardTitle>
-          <CardDescription>
-            Apply percentage or fixed discount per charge for selected students. Offers apply to charges generated after the offer is set.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-8">
+          <div className="space-y-2">
+            <CardTitle>Fee offers (concessions)</CardTitle>
+            <CardDescription>
+              Apply percentage or fixed discount per charge for selected students. Offers apply to charges generated after the offer is set.
+            </CardDescription>
+          </div>
+          <Button onClick={openAdd}>Add offer</Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={openAdd}>Add offer</Button>
           <Table>
             <TableHeader>
               <TableRow>
