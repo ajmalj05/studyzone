@@ -16,7 +16,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { Calendar, Users, BookOpen, DollarSign, ArrowLeft, Search } from "lucide-react";
+import { Calendar, Users, BookOpen, ArrowLeft, Search } from "lucide-react";
 
 interface AcademicYearDto {
   id: string;
@@ -70,7 +70,7 @@ interface FeeLedgerDto {
 }
 
 function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED", maximumFractionDigits: 0 }).format(n);
 }
 
 export default function AcademicYearDetailPage() {
@@ -84,14 +84,11 @@ export default function AcademicYearDetailPage() {
   const [studentsTotal, setStudentsTotal] = useState(0);
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [structures, setStructures] = useState<FeeStructureDto[]>([]);
-  const [outstanding, setOutstanding] = useState<FeeLedgerDto[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [loadingBatches, setLoadingBatches] = useState(false);
-  const [loadingFees, setLoadingFees] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [batchSearch, setBatchSearch] = useState("");
-  const [feeSearch, setFeeSearch] = useState("");
 
   // Sync context so selected year = this page's year
   useEffect(() => {
@@ -191,25 +188,6 @@ export default function AcademicYearDetailPage() {
     }
   };
 
-  const loadFees = async () => {
-    if (!yearId) return;
-    setLoadingFees(true);
-    try {
-      const [structuresList, outstandingList] = await Promise.all([
-        fetchApi(`/Fees/structures?academicYearId=${encodeURIComponent(yearId)}`) as Promise<FeeStructureDto[]>,
-        fetchApi(`/Fees/outstanding?academicYearId=${encodeURIComponent(yearId)}`) as Promise<FeeLedgerDto[]>,
-      ]);
-      setStructures(Array.isArray(structuresList) ? structuresList : []);
-      setOutstanding(Array.isArray(outstandingList) ? outstandingList : []);
-    } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message || "Failed to load fees", variant: "destructive" });
-      setStructures([]);
-      setOutstanding([]);
-    } finally {
-      setLoadingFees(false);
-    }
-  };
-
   const filteredStudents = useMemo(() => {
     if (!studentSearch.trim()) return students;
     const q = studentSearch.trim().toLowerCase();
@@ -231,24 +209,6 @@ export default function AcademicYearDetailPage() {
         (b.section && b.section.toLowerCase().includes(q))
     );
   }, [batches, batchSearch]);
-
-  const filteredStructures = useMemo(() => {
-    if (!feeSearch.trim()) return structures;
-    const q = feeSearch.trim().toLowerCase();
-    return structures.filter(
-      (s) => s.className?.toLowerCase().includes(q) || s.name?.toLowerCase().includes(q)
-    );
-  }, [structures, feeSearch]);
-
-  const filteredOutstanding = useMemo(() => {
-    if (!feeSearch.trim()) return outstanding;
-    const q = feeSearch.trim().toLowerCase();
-    return outstanding.filter(
-      (o) =>
-        o.studentName?.toLowerCase().includes(q) ||
-        (o.className && o.className.toLowerCase().includes(q))
-    );
-  }, [outstanding, feeSearch]);
 
   if (!yearId) {
     return (
@@ -286,7 +246,6 @@ export default function AcademicYearDetailPage() {
           <TabsTrigger value="overview" className="gap-1"><Calendar className="h-4 w-4" /> Overview</TabsTrigger>
           <TabsTrigger value="students" className="gap-1" onClick={loadStudents}><Users className="h-4 w-4" /> Students</TabsTrigger>
           <TabsTrigger value="batches" className="gap-1" onClick={loadBatches}><BookOpen className="h-4 w-4" /> Batches</TabsTrigger>
-          <TabsTrigger value="fees" className="gap-1" onClick={loadFees}><DollarSign className="h-4 w-4" /> Fees</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -440,99 +399,6 @@ export default function AcademicYearDetailPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="fees" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Fee structures & outstanding</CardTitle>
-              <CardDescription>Structures and students with balance for this year. Use search to filter.</CardDescription>
-              <div className="flex items-center gap-2 pt-2">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search class, name, or student…"
-                    value={feeSearch}
-                    onChange={(e) => setFeeSearch(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {loadingFees ? (
-                <p className="text-sm text-muted-foreground">Loading fees…</p>
-              ) : (
-                <>
-                  <div>
-                    <h4 className="font-medium mb-2">Fee structures</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Frequency</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredStructures.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">
-                              {structures.length === 0 ? "No fee structures for this year." : "No matches."}
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredStructures.map((s) => (
-                            <TableRow key={s.id}>
-                              <TableCell>{s.className}</TableCell>
-                              <TableCell>{s.name}</TableCell>
-                              <TableCell>{formatCurrency(s.amount)}</TableCell>
-                              <TableCell>{s.frequency}</TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Outstanding (balance &gt; 0)</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Fee start</TableHead>
-                          <TableHead>Charges</TableHead>
-                          <TableHead>Payments</TableHead>
-                          <TableHead>Balance</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredOutstanding.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center text-muted-foreground">
-                              {outstanding.length === 0 ? "No outstanding balances." : "No matches."}
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredOutstanding.map((o) => (
-                            <TableRow key={o.studentId}>
-                              <TableCell>{o.studentName}</TableCell>
-                              <TableCell>{o.className ?? "—"}</TableCell>
-                              <TableCell>{o.feePaymentStartMonth != null && o.feePaymentStartMonth >= 1 && o.feePaymentStartMonth <= 12 ? (o.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]} ${o.feePaymentStartYear}` : FEE_MONTH_NAMES[o.feePaymentStartMonth - 1]) : "—"}</TableCell>
-                              <TableCell>{formatCurrency(o.totalCharges)}</TableCell>
-                              <TableCell>{formatCurrency(o.totalPayments)}</TableCell>
-                              <TableCell className="font-medium">{formatCurrency(o.balance)}</TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );

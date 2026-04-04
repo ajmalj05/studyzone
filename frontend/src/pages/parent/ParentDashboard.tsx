@@ -57,7 +57,7 @@ const ParentDashboard = () => {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard title="Linked Children" value={childrenCount} icon={Users} color="gradient-primary" delay={0.1} />
-            <StatCard title="Total Pending Fees" value={totalPending} prefix="₹" icon={DollarSign} color="bg-warning" delay={0.15} />
+            <StatCard title="Total Pending Fees" value={totalPending} prefix="AED " icon={DollarSign} color="bg-warning" delay={0.15} />
             <StatCard title="Announcements" value={data?.recentNotices?.length ?? 0} icon={Bell} color="bg-info" delay={0.2} />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

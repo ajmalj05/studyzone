@@ -454,7 +454,7 @@ export default function Reports() {
                           <CardTitle className="text-sm font-medium text-muted-foreground">Total Collection</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <span className="text-lg font-semibold">₹{financial.totalCollection.toLocaleString()}</span>
+                          <span className="text-lg font-semibold">AED {financial.totalCollection.toLocaleString("en-AE")}</span>
                         </CardContent>
                       </Card>
                       <Card>
@@ -462,7 +462,7 @@ export default function Reports() {
                           <CardTitle className="text-sm font-medium text-muted-foreground">Total Outstanding</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <span className="text-lg font-semibold">₹{financial.totalOutstanding.toLocaleString()}</span>
+                          <span className="text-lg font-semibold">AED {financial.totalOutstanding.toLocaleString("en-AE")}</span>
                         </CardContent>
                       </Card>
                     </div>
@@ -478,7 +478,7 @@ export default function Reports() {
                         {financial.outstandingByClass.map((r, i) => (
                           <TableRow key={i}>
                             <TableCell>{r.className || "—"}</TableCell>
-                            <TableCell className="text-right">₹{r.outstanding.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">AED {r.outstanding.toLocaleString("en-AE")}</TableCell>
                             <TableCell className="text-right">{r.studentCount}</TableCell>
                           </TableRow>
                         ))}

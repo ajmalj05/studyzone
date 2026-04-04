@@ -529,6 +529,7 @@ CREATE TABLE IF NOT EXISTS ""StudentEnrollments"" (
     ""LeftAt"" timestamp with time zone NULL,
     ""FeePaymentStartMonth"" integer NULL,
     ""FeePaymentStartYear"" integer NULL,
+    ""BusFeeAmount"" numeric NULL,
     ""CreatedAt"" timestamp with time zone NOT NULL,
     CONSTRAINT ""PK_StudentEnrollments"" PRIMARY KEY (""Id"")
 );
@@ -921,6 +922,7 @@ END $$;");
             AddColumnIfNotExists(mb, "StudentEnrollments", "LeftAt", "timestamp with time zone", true, "NULL");
             AddColumnIfNotExists(mb, "StudentEnrollments", "FeePaymentStartMonth", "integer", true, "NULL");
             AddColumnIfNotExists(mb, "StudentEnrollments", "FeePaymentStartYear", "integer", true, "NULL");
+            AddColumnIfNotExists(mb, "StudentEnrollments", "BusFeeAmount", "numeric", true, "NULL");
             AddColumnIfNotExists(mb, "StudentEnrollments", "CreatedAt", "timestamp with time zone", false, "now()");
         }
 

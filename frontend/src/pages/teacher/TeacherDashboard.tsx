@@ -90,7 +90,7 @@ const TeacherDashboard = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Today's Classes" value={d.classesTodayCount} icon={BookOpen} color="gradient-primary" delay={0.2} />
           <StatCard title="Pending Attendance" value={d.pendingAttendanceCount} icon={ClipboardCheck} color="bg-warning" delay={0.25} />
-          <StatCard title="Monthly Salary" value={salary ?? 0} prefix="₹" icon={DollarSign} color="bg-success" delay={0.3} />
+          <StatCard title="Monthly Salary" value={salary ?? 0} prefix="AED " icon={DollarSign} color="bg-success" delay={0.3} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">

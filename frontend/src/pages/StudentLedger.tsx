@@ -59,7 +59,7 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
   const feeTerm = receipt.feeTerm ?? "—";
   const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
   const particulars = receipt.particulars ?? [];
-  const currency = receipt.currencySymbol ?? "₹";
+  const currency = receipt.currencySymbol ?? "AED ";
 
   const printCss = `
     body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11pt; }
@@ -94,7 +94,7 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
               .map(
             (p, index) =>
               `<tr><td>${index + 1}</td><td>${esc(String(p.name))}</td><td class="text-right">${currency}${Number(p.amount).toLocaleString(
-                "en-IN"
+                "en-AE"
               )}</td></tr>`
           )
           .join("")
@@ -141,15 +141,15 @@ function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileDto | nul
         </tr>
         <tr>
           <td class="label">Class</td><td class="value">${esc(className)}</td>
-          <td class="label">Total Amount</td><td class="value text-right">${currency}${receipt.totalCharges.toLocaleString("en-IN")}</td>
+          <td class="label">Total Amount</td><td class="value text-right">${currency}${receipt.totalCharges.toLocaleString("en-AE")}</td>
         </tr>
         <tr>
           <td class="label"></td><td class="value"></td>
-          <td class="label">Deposit Amount</td><td class="value text-right">${currency}${receipt.deposit.toLocaleString("en-IN")}</td>
+          <td class="label">Deposit Amount</td><td class="value text-right">${currency}${receipt.deposit.toLocaleString("en-AE")}</td>
         </tr>
         <tr>
           <td class="label"></td><td class="value"></td>
-          <td class="label">Remaining Balance</td><td class="value text-right">${currency}${receipt.remainingBalance.toLocaleString("en-IN")}</td>
+          <td class="label">Remaining Balance</td><td class="value text-right">${currency}${receipt.remainingBalance.toLocaleString("en-AE")}</td>
         </tr>
       </table>
 
@@ -194,7 +194,7 @@ function buildLedgerPrintHtml(
   const logoUrl =
     school?.logoUrl || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "/logo.png");
   const admissionNumber = student?.admissionNumber ?? "—";
-  const currency = "₹";
+  const currency = "AED ";
 
   const printCss = `
     body { margin: 0; padding: 0; font-family: system-ui, sans-serif; font-size: 11pt; }
@@ -222,7 +222,7 @@ function buildLedgerPrintHtml(
               `<tr>
                 <td>${esc(c.particularName ?? c.description ?? c.period)}</td>
                 <td>${esc(c.period)}</td>
-                <td class="text-right">${currency}${Number(c.amount).toLocaleString("en-IN")}</td>
+                <td class="text-right">${currency}${Number(c.amount).toLocaleString("en-AE")}</td>
               </tr>`
           )
           .join("")
@@ -237,7 +237,7 @@ function buildLedgerPrintHtml(
                 <td>${p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</td>
                 <td>${esc(p.receiptNumber)}</td>
                 <td>${esc(p.mode)}</td>
-                <td class="text-right">${currency}${Number(p.amount).toLocaleString("en-IN")}</td>
+                <td class="text-right">${currency}${Number(p.amount).toLocaleString("en-AE")}</td>
               </tr>`
           )
           .join("")
@@ -266,9 +266,9 @@ function buildLedgerPrintHtml(
       </div>
 
       <div class="ledger-summary">
-        <strong>Total charges:</strong> ${currency}${Number(ledger.totalCharges).toLocaleString("en-IN")} &nbsp;|&nbsp;
-        <strong>Total payments:</strong> ${currency}${Number(ledger.totalPayments).toLocaleString("en-IN")} &nbsp;|&nbsp;
-        <strong>Balance:</strong> ${currency}${Number(ledger.balance).toLocaleString("en-IN")}
+        <strong>Total charges:</strong> ${currency}${Number(ledger.totalCharges).toLocaleString("en-AE")} &nbsp;|&nbsp;
+        <strong>Total payments:</strong> ${currency}${Number(ledger.totalPayments).toLocaleString("en-AE")} &nbsp;|&nbsp;
+        <strong>Balance:</strong> ${currency}${Number(ledger.balance).toLocaleString("en-AE")}
       </div>
 
       <div class="ledger-section">
@@ -504,13 +504,13 @@ export default function StudentLedger() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Student Ledger" />
+        <DashboardHeader title="Student Billing" description="Manage one student's charges, payments, concessions, and receipts." />
         <CurrentAcademicYearBadge />
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Student fee ledger</CardTitle>
-          <CardDescription>View charges, payments and balance for a student.</CardDescription>
+          <CardTitle>Student billing</CardTitle>
+          <CardDescription>View and manage charges, payments, concessions, and receipts for one student.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-wrap items-end gap-2">
@@ -612,7 +612,7 @@ export default function StudentLedger() {
               </DialogHeader>
               <form onSubmit={handleAddAdmissionFee} className="space-y-3">
                 <div className="space-y-1">
-                  <Label>Amount (₹)</Label>
+                  <Label>Amount (AED)</Label>
                   <Input
                     type="number"
                     min="0.01"
@@ -687,7 +687,7 @@ export default function StudentLedger() {
                   <strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}
                   {studentFeeOffer && (
                     <span className="ml-2 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Concession: {studentFeeOffer.offerType === "PercentageDiscount" ? `${studentFeeOffer.value}%` : `₹${Number(studentFeeOffer.value).toLocaleString("en-IN")} off`}
+                      Concession: {studentFeeOffer.offerType === "PercentageDiscount" ? `${studentFeeOffer.value}%` : `AED ${Number(studentFeeOffer.value).toLocaleString("en-AE")} off`}
                     </span>
                   )}
                   {ledger.feePaymentStartMonth != null && ledger.feePaymentStartMonth >= 1 && ledger.feePaymentStartMonth <= 12 ? <> | <strong>Fees start from:</strong> {ledger.feePaymentStartYear != null ? `${FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]} ${ledger.feePaymentStartYear}` : FEE_MONTH_NAMES[ledger.feePaymentStartMonth - 1]}</> : ""}

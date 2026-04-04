@@ -32,8 +32,7 @@ import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { Users, ArrowRightLeft, Percent } from "lucide-react";
-import type { StudentFeeOfferDto } from "@/types/fees";
+import { Users, ArrowRightLeft } from "lucide-react";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -56,6 +55,7 @@ interface StudentDto {
   guardianEmail?: string;
   feePaymentStartMonth?: number;
   feePaymentStartYear?: number;
+  busFeeAmount?: number;
   createdAt: string;
 }
 
@@ -104,6 +104,7 @@ export default function Students() {
     address: "",
     feePaymentStartMonth: "",
     feePaymentStartYear: "",
+    busFeeAmount: "",
   });
   const [promoteStudentIds, setPromoteStudentIds] = useState<string[]>([]);
   const [promoteTargetAcademicYearId, setPromoteTargetAcademicYearId] = useState("");
@@ -126,11 +127,6 @@ export default function Students() {
   const [newBatchSection, setNewBatchSection] = useState("");
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [classModalOpen, setClassModalOpen] = useState(false);
-  const [feeOfferStudentId, setFeeOfferStudentId] = useState<string | null>(null);
-  const [feeOfferExisting, setFeeOfferExisting] = useState<StudentFeeOfferDto | null>(null);
-  const [feeOfferForm, setFeeOfferForm] = useState({ offerType: "PercentageDiscount", value: "", reason: "" });
-  const [feeOfferLoading, setFeeOfferLoading] = useState(false);
-  const [feeOfferSubmitting, setFeeOfferSubmitting] = useState(false);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
 
   const loadClasses = async () => {
@@ -282,6 +278,7 @@ export default function Students() {
       address: "",
       feePaymentStartMonth: "",
       feePaymentStartYear: "",
+      busFeeAmount: "",
     });
     setShowForm(true);
   };
@@ -303,6 +300,7 @@ export default function Students() {
       address: "",
       feePaymentStartMonth: s.feePaymentStartMonth != null ? String(s.feePaymentStartMonth) : "",
       feePaymentStartYear: s.feePaymentStartYear != null ? String(s.feePaymentStartYear) : "",
+      busFeeAmount: s.busFeeAmount != null ? String(s.busFeeAmount) : "",
     });
     setShowForm(true);
   };
@@ -331,6 +329,7 @@ export default function Students() {
             address: form.address || undefined,
             feePaymentStartMonth: form.feePaymentStartMonth ? Number(form.feePaymentStartMonth) : undefined,
             feePaymentStartYear: form.feePaymentStartYear ? Number(form.feePaymentStartYear) : undefined,
+            busFeeAmount: form.busFeeAmount ? Number(form.busFeeAmount) : undefined,
           }),
         });
         toast({ title: "Success", description: "Student updated." });
@@ -356,6 +355,7 @@ export default function Students() {
             address: form.address || undefined,
             feePaymentStartMonth: form.feePaymentStartMonth ? Number(form.feePaymentStartMonth) : undefined,
             feePaymentStartYear: form.feePaymentStartYear ? Number(form.feePaymentStartYear) : undefined,
+            busFeeAmount: form.busFeeAmount ? Number(form.busFeeAmount) : undefined,
           }),
         });
         toast({ title: "Success", description: "Student added." });
@@ -435,79 +435,6 @@ export default function Students() {
     setEditingClassId(null);
     setNewClassName(""); setNewClassCode("");
     setClassModalOpen(true);
-  };
-
-  useEffect(() => {
-    if (!feeOfferStudentId || !selectedYearId) {
-      setFeeOfferExisting(null);
-      setFeeOfferForm({ offerType: "PercentageDiscount", value: "", reason: "" });
-      return;
-    }
-    setFeeOfferLoading(true);
-    fetchApi(`/Fees/offers/student/${feeOfferStudentId}?academicYearId=${encodeURIComponent(selectedYearId)}`)
-      .then((o) => {
-        const offer = o as StudentFeeOfferDto;
-        setFeeOfferExisting(offer);
-        setFeeOfferForm({
-          offerType: offer.offerType || "PercentageDiscount",
-          value: String(offer.value ?? ""),
-          reason: offer.reason ?? "",
-        });
-      })
-      .catch(() => {
-        setFeeOfferExisting(null);
-        setFeeOfferForm({ offerType: "PercentageDiscount", value: "", reason: "" });
-      })
-      .finally(() => setFeeOfferLoading(false));
-  }, [feeOfferStudentId, selectedYearId]);
-
-  const handleFeeOfferSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!feeOfferStudentId || !selectedYearId) return;
-    const valueNum = Number(feeOfferForm.value);
-    if (feeOfferForm.value === "" || isNaN(valueNum) || valueNum < 0) {
-      toast({ title: "Validation", description: "Enter a valid value.", variant: "destructive" });
-      return;
-    }
-    if (feeOfferForm.offerType === "PercentageDiscount" && (valueNum > 100 || valueNum <= 0)) {
-      toast({ title: "Validation", description: "Percentage must be between 1 and 100.", variant: "destructive" });
-      return;
-    }
-    setFeeOfferSubmitting(true);
-    try {
-      await fetchApi("/Fees/offers", {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: feeOfferStudentId,
-          academicYearId: selectedYearId,
-          offerType: feeOfferForm.offerType,
-          value: valueNum,
-          reason: feeOfferForm.reason.trim() || undefined,
-        }),
-      });
-      toast({ title: "Success", description: feeOfferExisting ? "Offer updated." : "Offer added." });
-      setFeeOfferStudentId(null);
-      await loadStudents();
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
-    } finally {
-      setFeeOfferSubmitting(false);
-    }
-  };
-
-  const handleFeeOfferRemove = async () => {
-    if (!feeOfferExisting?.id) return;
-    setFeeOfferSubmitting(true);
-    try {
-      await fetchApi(`/Fees/offers/${feeOfferExisting.id}`, { method: "DELETE" });
-      toast({ title: "Success", description: "Offer removed." });
-      setFeeOfferStudentId(null);
-      await loadStudents();
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
-    } finally {
-      setFeeOfferSubmitting(false);
-    }
   };
 
   const openEditClass = (c: ClassDto) => {
@@ -632,6 +559,7 @@ export default function Students() {
                           <div className="space-y-1"><Label>Guardian email</Label><Input type="email" value={form.guardianEmail} onChange={(e) => setForm((f) => ({ ...f, guardianEmail: e.target.value }))} /></div>
                           <div className="space-y-1"><Label>Fees start month</Label><Select value={form.feePaymentStartMonth || "none"} onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartMonth: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger><SelectContent><SelectItem value="none">Not set</SelectItem>{MONTH_NAMES.map((name, i) => (<SelectItem key={i} value={String(i + 1)}>{name}</SelectItem>))}</SelectContent></Select></div>
                           <div className="space-y-1"><Label>Fees start year</Label><Select value={form.feePaymentStartYear || "none"} onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartYear: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger><SelectContent><SelectItem value="none">Not set</SelectItem>{[new Date().getFullYear() + 1, new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}</SelectContent></Select></div>
+                          <div className="space-y-1"><Label>Bus fee (AED / month)</Label><Input type="number" min="0" step="0.01" value={form.busFeeAmount} onChange={(e) => setForm((f) => ({ ...f, busFeeAmount: e.target.value }))} placeholder="Optional" /></div>
                         </div>
                         <DialogFooter>
                           <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -641,7 +569,7 @@ export default function Students() {
                     </DialogContent>
                   </Dialog>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Admission #</TableHead><TableHead>Name</TableHead><TableHead>Class</TableHead><TableHead>Batch</TableHead><TableHead>Fee start</TableHead><TableHead>Status</TableHead><TableHead>Guardian</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Admission #</TableHead><TableHead>Name</TableHead><TableHead>Class</TableHead><TableHead>Batch</TableHead><TableHead>Fee start</TableHead><TableHead>Bus fee</TableHead><TableHead>Status</TableHead><TableHead>Guardian</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {students.map((s) => (
                         <TableRow key={s.id}>
@@ -650,6 +578,7 @@ export default function Students() {
                           <TableCell>{s.className ?? "—"}</TableCell>
                           <TableCell>{s.batchName ?? "—"}</TableCell>
                           <TableCell>{s.feePaymentStartMonth != null && s.feePaymentStartMonth >= 1 && s.feePaymentStartMonth <= 12 ? (s.feePaymentStartYear != null ? `${MONTH_NAMES[s.feePaymentStartMonth - 1]} ${s.feePaymentStartYear}` : MONTH_NAMES[s.feePaymentStartMonth - 1]) : "—"}</TableCell>
+                          <TableCell>{s.busFeeAmount != null && s.busFeeAmount > 0 ? `AED ${Number(s.busFeeAmount).toLocaleString("en-AE")}` : "—"}</TableCell>
                           <TableCell>
                             <Select value={s.status} onValueChange={(v) => handleSetStatus(s.id, v)}>
                               <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
@@ -658,12 +587,7 @@ export default function Students() {
                           </TableCell>
                           <TableCell>{s.guardianName ?? s.guardianPhone ?? "—"}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="outline" onClick={() => openEdit(s)}>Edit</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setFeeOfferStudentId(s.id)} className="gap-1" title="Fee offer / Concession">
-                                <Percent className="h-3.5 w-3.5" /> Offer
-                              </Button>
-                            </div>
+                            <Button size="sm" variant="outline" onClick={() => openEdit(s)}>Edit</Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -831,61 +755,6 @@ export default function Students() {
             </TabsContent>
           </Tabs>
 
-          <Dialog open={!!feeOfferStudentId} onOpenChange={(open) => !open && setFeeOfferStudentId(null)}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Fee offer (concession)</DialogTitle>
-                <DialogDescription>
-                  Set or edit fee concession for this student for the selected academic year. Applies to charges generated after the offer is set.
-                </DialogDescription>
-              </DialogHeader>
-              {feeOfferLoading ? (
-                <p className="text-muted-foreground py-4 text-center">Loading…</p>
-              ) : (
-                <form onSubmit={handleFeeOfferSave} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <Select value={feeOfferForm.offerType} onValueChange={(v) => setFeeOfferForm((f) => ({ ...f, offerType: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PercentageDiscount">Percentage discount</SelectItem>
-                        <SelectItem value="FixedDiscount">Fixed amount off per charge</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{feeOfferForm.offerType === "PercentageDiscount" ? "Percentage (e.g. 20)" : "Amount off per charge (₹)"}</Label>
-                    <Input
-                      type="number"
-                      min={feeOfferForm.offerType === "PercentageDiscount" ? 1 : 0}
-                      max={feeOfferForm.offerType === "PercentageDiscount" ? 100 : undefined}
-                      step={feeOfferForm.offerType === "PercentageDiscount" ? 1 : 0.01}
-                      placeholder={feeOfferForm.offerType === "PercentageDiscount" ? "20" : "500"}
-                      value={feeOfferForm.value}
-                      onChange={(e) => setFeeOfferForm((f) => ({ ...f, value: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Reason (optional)</Label>
-                    <Input
-                      placeholder="e.g. Sibling discount, Merit"
-                      value={feeOfferForm.reason}
-                      onChange={(e) => setFeeOfferForm((f) => ({ ...f, reason: e.target.value }))}
-                    />
-                  </div>
-                  <DialogFooter>
-                    {feeOfferExisting && (
-                      <Button type="button" variant="destructive" onClick={handleFeeOfferRemove} disabled={feeOfferSubmitting}>
-                        Remove offer
-                      </Button>
-                    )}
-                    <Button type="submit" disabled={feeOfferSubmitting}>Save</Button>
-                    <Button type="button" variant="outline" onClick={() => setFeeOfferStudentId(null)}>Cancel</Button>
-                  </DialogFooter>
-                </form>
-              )}
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
   );

@@ -112,10 +112,10 @@ const defaultFieldLabels: Record<string, string> = {
   refNumber: "Ref. Number",
   interviewDate: "Interview Date",
   joiningDate: "Date of Joining",
-  basicSalary: "Basic Salary (₹)",
-  housingAllowance: "Housing Allowance (₹)",
-  transportAllowance: "Transport Allowance (₹)",
-  otherAllowances: "Other Allowances (₹)",
+  basicSalary: "Basic Salary (AED)",
+  housingAllowance: "Housing Allowance (AED)",
+  transportAllowance: "Transport Allowance (AED)",
+  otherAllowances: "Other Allowances (AED)",
   visaStatus: "Visa Status",
   medical: "2. Medical",
   leave: "3. Leave",
@@ -351,8 +351,8 @@ export default function TeacherOfferLetter() {
     const transport = parseFloat(form.transportAllowance) || 0;
     const other = parseFloat(form.otherAllowances) || 0;
 
-    const currency = "₹";
-    const fmt = (n: number) => n > 0 ? `${currency}${n.toLocaleString("en-IN")}` : `${currency}–`;
+    const currency = "AED ";
+    const fmt = (n: number) => n > 0 ? `${currency}${n.toLocaleString("en-AE")}` : `${currency}-`;
     
     // Check if field should show in PDF: must be active AND have value
     const showInPdf = (key: string) => isFieldActive(key) && (form as any)[key];
@@ -531,8 +531,8 @@ export default function TeacherOfferLetter() {
           effectiveTo: null,
           amount: gross,
           payFrequency: "Monthly",
-          currency: "INR",
-          notes: `Offer letter – Gross: ₹${gross.toLocaleString("en-IN")}`,
+          currency: "AED",
+          notes: `Offer letter - Gross: AED ${gross.toLocaleString("en-AE")}`,
         }),
       });
 
@@ -571,7 +571,7 @@ export default function TeacherOfferLetter() {
 
       toast({
         title: "Teacher Created",
-        description: `${form.candidateName} registered (ID: ${form.registerNumber}) with ₹${gross.toLocaleString("en-IN")}/month.`,
+        description: `${form.candidateName} registered (ID: ${form.registerNumber}) with AED ${gross.toLocaleString("en-AE")}/month.`,
       });
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to create teacher.", variant: "destructive" });
@@ -712,7 +712,7 @@ export default function TeacherOfferLetter() {
                       <TableCell className="font-medium">{letter.candidateName}</TableCell>
                       <TableCell>{letter.designation || "—"}</TableCell>
                       <TableCell>{letter.joiningDate || "—"}</TableCell>
-                      <TableCell className="text-right">₹{Number(letter.grossSalary).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">AED {Number(letter.grossSalary).toLocaleString("en-AE")}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{new Date(letter.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -1115,7 +1115,7 @@ export default function TeacherOfferLetter() {
 
                 <div className="rounded-lg bg-muted/50 border border-border px-4 py-3 flex items-center justify-between">
                   <span className="text-sm font-semibold">Gross Salary</span>
-                  <span className="text-base font-bold text-primary">₹{gross.toLocaleString("en-IN")}</span>
+                  <span className="text-base font-bold text-primary">AED {gross.toLocaleString("en-AE")}</span>
                 </div>
 
                 {/* Visa Status */}

@@ -62,7 +62,7 @@ const Index = () => {
     })();
   }, [selectedYearId]);
 
-  const formatCurrency = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+  const formatCurrency = (n: number) => `AED ${n.toLocaleString("en-AE")}`;
 
   return (
     <div className="space-y-4">
@@ -74,8 +74,8 @@ const Index = () => {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Total Students" value={loading ? 0 : (kpis?.totalStudents ?? 0)} icon={Users} color="gradient-primary" />
           <StatCard title="Total Teachers" value={loading ? 0 : (kpis?.activeTeachers ?? 0)} icon={GraduationCap} color="bg-success" />
-          <StatCard title="Total Revenue" value={loading ? 0 : Math.round(kpis?.revenueCollected ?? 0)} prefix="₹" icon={DollarSign} color="bg-info" />
-          <StatCard title="Pending Fees" value={loading ? 0 : Math.round(kpis?.pendingDues ?? 0)} prefix="₹" icon={AlertCircle} color="bg-warning" />
+          <StatCard title="Total Revenue" value={loading ? 0 : Math.round(kpis?.revenueCollected ?? 0)} prefix="AED " icon={DollarSign} color="bg-info" />
+          <StatCard title="Pending Fees" value={loading ? 0 : Math.round(kpis?.pendingDues ?? 0)} prefix="AED " icon={AlertCircle} color="bg-warning" />
         </div>
 
         {/* Quick Actions - prominent above charts */}

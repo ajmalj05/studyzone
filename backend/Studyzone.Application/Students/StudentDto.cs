@@ -29,6 +29,8 @@ public class StudentDto
     public int? FeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due (e.g. 2024). Null = not set.</summary>
     public int? FeePaymentStartYear { get; set; }
+    /// <summary>Optional monthly bus fee for this enrollment. Null or 0 = no bus fee.</summary>
+    public decimal? BusFeeAmount { get; set; }
 }
 
 public class CreateStudentRequest
@@ -51,6 +53,8 @@ public class CreateStudentRequest
     public int? FeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due. Null = not set.</summary>
     public int? FeePaymentStartYear { get; set; }
+    /// <summary>Optional monthly bus fee for this enrollment. Null or 0 = no bus fee.</summary>
+    public decimal? BusFeeAmount { get; set; }
 }
 
 public class UpdateStudentRequest
@@ -72,6 +76,8 @@ public class UpdateStudentRequest
     public int? FeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due. Null = not set.</summary>
     public int? FeePaymentStartYear { get; set; }
+    /// <summary>Optional monthly bus fee for this enrollment. Null or 0 = no bus fee.</summary>
+    public decimal? BusFeeAmount { get; set; }
 }
 
 public class BulkPromoteRequest
@@ -85,4 +91,6 @@ public class BulkPromoteRequest
     public int? TargetFeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due for promoted enrollments. Null = not set.</summary>
     public int? TargetFeePaymentStartYear { get; set; }
+    /// <summary>Optional monthly bus fee for promoted enrollments. Null or 0 = no bus fee.</summary>
+    public decimal? TargetBusFeeAmount { get; set; }
 }

@@ -42,7 +42,7 @@ interface SchoolExpenseDto {
 const EXPENSE_CATEGORIES = ["Utilities", "Supplies", "Salaries", "Maintenance", "Other"];
 
 function formatCurrency(amount: number) {
-  return `₹${Number(amount).toLocaleString("en-IN")}`;
+  return `AED ${Number(amount).toLocaleString("en-AE")}`;
 }
 
 export default function Expenses() {
@@ -257,7 +257,7 @@ export default function Expenses() {
               <Input value={expenseForm.description} onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))} placeholder="e.g. Electricity bill" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount (₹)</label>
+              <label className="text-sm font-medium">Amount (AED)</label>
               <Input type="number" min="0" step="0.01" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))} placeholder="0" />
             </div>
           </div>

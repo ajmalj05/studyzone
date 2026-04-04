@@ -1301,6 +1301,9 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("BusFeeAmount")
+                        .HasColumnType("numeric");
+
                     b.Property<int?>("FeePaymentStartMonth")
                         .HasColumnType("integer");
 

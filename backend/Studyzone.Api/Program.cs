@@ -76,6 +76,10 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "StudentEnrollments"
+        ADD COLUMN IF NOT EXISTS "BusFeeAmount" numeric NULL;
+        """);
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];
     var seedAdminPassword = builder.Configuration["Seed:AdminPassword"];
     var seedAdminName = builder.Configuration["Seed:AdminName"];

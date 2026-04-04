@@ -57,10 +57,10 @@ const TeacherSalary = () => {
   }, [user?._id]);
 
   const formatCurrency = (amount: number, currency: string) => {
-    if (currency === "INR") return `₹${Number(amount).toLocaleString("en-IN")}`;
-    return `${currency} ${Number(amount).toLocaleString()}`;
+    if (currency === "AED") return `AED ${Number(amount).toLocaleString("en-AE")}`;
+    return `${currency} ${Number(amount).toLocaleString("en-AE")}`;
   };
-  const formatPayrollCurrency = (amount: number) => `₹${Number(amount).toLocaleString("en-IN")}`;
+  const formatPayrollCurrency = (amount: number) => `AED ${Number(amount).toLocaleString("en-AE")}`;
   const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleString("en", { month: "short" });
 
   return (

@@ -9,7 +9,7 @@ public class TeacherSalaryDto
     public DateTime? EffectiveTo { get; set; }
     public decimal Amount { get; set; }
     public string PayFrequency { get; set; } = "Monthly";
-    public string Currency { get; set; } = "INR";
+    public string Currency { get; set; } = "AED";
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -21,7 +21,7 @@ public class CreateTeacherSalaryRequest
     public DateTime? EffectiveTo { get; set; }
     public decimal Amount { get; set; }
     public string PayFrequency { get; set; } = "Monthly";
-    public string Currency { get; set; } = "INR";
+    public string Currency { get; set; } = "AED";
     public string? Notes { get; set; }
 }
 
@@ -31,6 +31,6 @@ public class UpdateTeacherSalaryRequest
     public DateTime? EffectiveTo { get; set; }
     public decimal Amount { get; set; }
     public string PayFrequency { get; set; } = "Monthly";
-    public string Currency { get; set; } = "INR";
+    public string Currency { get; set; } = "AED";
     public string? Notes { get; set; }
 }

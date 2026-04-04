@@ -13,11 +13,14 @@ public class OfferLetterFieldConfigService : IOfferLetterFieldConfigService
         _db = db;
     }
 
+    private static string NormalizeLabel(string label) =>
+        label.Replace("(\u20B9)", "(AED)").Replace("(â‚¹)", "(AED)").Replace("(Ã¢â€šÂ¹)", "(AED)");
+
     private static OfferLetterFieldConfigDto ToDto(Domain.Entities.OfferLetterFieldConfig e) => new()
     {
         Id = e.Id.ToString(),
         FieldKey = e.FieldKey,
-        Label = e.Label,
+        Label = NormalizeLabel(e.Label),
         DefaultValue = e.DefaultValue,
         IsVisible = e.IsVisible,
         ShowInPdf = e.ShowInPdf,
@@ -109,7 +112,7 @@ public class OfferLetterFieldConfigService : IOfferLetterFieldConfigService
         var existingKeys = await _db.OfferLetterFieldConfigs.Select(x => x.FieldKey).ToListAsync(ct);
         var defaults = GetDefaultConfigs();
         var toAdd = defaults.Where(x => !existingKeys.Contains(x.FieldKey)).ToList();
-        
+
         if (toAdd.Any())
         {
             _db.OfferLetterFieldConfigs.AddRange(toAdd);
@@ -121,7 +124,6 @@ public class OfferLetterFieldConfigService : IOfferLetterFieldConfigService
     {
         var defaults = new List<Domain.Entities.OfferLetterFieldConfig>
         {
-            // Candidate Details Section
             new() { FieldKey = "gender", Label = "Title", FieldType = "select", Section = "candidate", DisplayOrder = 1, IsVisible = true, ShowInPdf = true, DefaultValue = "Mr" },
             new() { FieldKey = "candidateName", Label = "Full Name", FieldType = "text", Section = "candidate", DisplayOrder = 2, IsVisible = true, ShowInPdf = true, IsRequired = true },
             new() { FieldKey = "candidateAddress", Label = "Address / Location", FieldType = "text", Section = "candidate", DisplayOrder = 3, IsVisible = true, ShowInPdf = true },
@@ -134,23 +136,18 @@ public class OfferLetterFieldConfigService : IOfferLetterFieldConfigService
             new() { FieldKey = "refNumber", Label = "Ref. Number", FieldType = "text", Section = "candidate", DisplayOrder = 10, IsVisible = true, ShowInPdf = true },
             new() { FieldKey = "interviewDate", Label = "Interview Date", FieldType = "date", Section = "candidate", DisplayOrder = 11, IsVisible = true, ShowInPdf = true },
             new() { FieldKey = "joiningDate", Label = "Date of Joining", FieldType = "date", Section = "candidate", DisplayOrder = 12, IsVisible = true, ShowInPdf = true, IsRequired = true },
-            
-            // Salary Section
-            new() { FieldKey = "basicSalary", Label = "Basic Salary (₹)", FieldType = "number", Section = "salary", DisplayOrder = 1, IsVisible = true, ShowInPdf = true, IsRequired = true },
-            new() { FieldKey = "housingAllowance", Label = "Housing Allowance (₹)", FieldType = "number", Section = "salary", DisplayOrder = 2, IsVisible = true, ShowInPdf = true },
-            new() { FieldKey = "transportAllowance", Label = "Transport Allowance (₹)", FieldType = "number", Section = "salary", DisplayOrder = 3, IsVisible = true, ShowInPdf = true },
-            new() { FieldKey = "otherAllowances", Label = "Other Allowances (₹)", FieldType = "number", Section = "salary", DisplayOrder = 4, IsVisible = true, ShowInPdf = true },
+            new() { FieldKey = "basicSalary", Label = "Basic Salary (AED)", FieldType = "number", Section = "salary", DisplayOrder = 1, IsVisible = true, ShowInPdf = true, IsRequired = true },
+            new() { FieldKey = "housingAllowance", Label = "Housing Allowance (AED)", FieldType = "number", Section = "salary", DisplayOrder = 2, IsVisible = true, ShowInPdf = true },
+            new() { FieldKey = "transportAllowance", Label = "Transport Allowance (AED)", FieldType = "number", Section = "salary", DisplayOrder = 3, IsVisible = true, ShowInPdf = true },
+            new() { FieldKey = "otherAllowances", Label = "Other Allowances (AED)", FieldType = "number", Section = "salary", DisplayOrder = 4, IsVisible = true, ShowInPdf = true },
             new() { FieldKey = "visaStatus", Label = "Visa Status", FieldType = "text", Section = "salary", DisplayOrder = 5, IsVisible = true, ShowInPdf = true },
-            
-            // Terms Section
             new() { FieldKey = "medical", Label = "2. Medical", FieldType = "textarea", Section = "terms", DisplayOrder = 1, IsVisible = true, ShowInPdf = true, DefaultValue = "Medical insurance for yourself and family." },
-            new() { FieldKey = "leave", Label = "3. Leave", FieldType = "textarea", Section = "terms", DisplayOrder = 2, IsVisible = true, ShowInPdf = true, DefaultValue = "30 calendar days of paid leave after completion of 12 calendar months of work. Leave ticket – economy class air ticket to country of origin for yourself and family." },
+            new() { FieldKey = "leave", Label = "3. Leave", FieldType = "textarea", Section = "terms", DisplayOrder = 2, IsVisible = true, ShowInPdf = true, DefaultValue = "30 calendar days of paid leave after completion of 12 calendar months of work. Leave ticket â€“ economy class air ticket to country of origin for yourself and family." },
             new() { FieldKey = "joiningExpenses", Label = "4. Joining Expenses", FieldType = "textarea", Section = "terms", DisplayOrder = 3, IsVisible = true, ShowInPdf = true, DefaultValue = "Currently non-anticipated." },
             new() { FieldKey = "probationPeriod", Label = "5. Probation Period", FieldType = "textarea", Section = "terms", DisplayOrder = 4, IsVisible = true, ShowInPdf = true, DefaultValue = "You will be on probation for a period of 6 months effective from the date of joining." },
             new() { FieldKey = "additionalNotes", Label = "Additional Notes (optional)", FieldType = "textarea", Section = "terms", DisplayOrder = 5, IsVisible = true, ShowInPdf = true },
         };
 
-        // Set IDs
         foreach (var item in defaults)
         {
             item.Id = Guid.NewGuid();
