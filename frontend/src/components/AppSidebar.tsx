@@ -61,16 +61,8 @@ const sidebarSections: SidebarSection[] = [
   {
     label: "Finance",
     items: [
-      {
-        title: "Fees",
-        icon: DollarSign,
-        path: "#",
-        subItems: [
-          { title: "Dashboard", path: "/admin/fees" },
-          { title: "Setup", path: "/admin/fees/setup" },
-          { title: "Student Billing", path: "/admin/fees/billing" },
-        ],
-      },
+      { title: "Fee Management", icon: DollarSign, path: "/admin/fees" },
+      { title: "Student Ledger", icon: Receipt, path: "/admin/fees/ledger" },
       { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
       { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
       { title: "Expenses", icon: Receipt, path: "/admin/expenses" },

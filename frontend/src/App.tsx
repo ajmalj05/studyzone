@@ -15,7 +15,6 @@ import Teachers from "./pages/Teachers";
 import TeacherOfferLetter from "./pages/TeacherOfferLetter";
 import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
-import FeeSetup from "./pages/FeeSetup";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -106,11 +105,7 @@ const App = () => (
                 <Route path="payroll" element={<AdminSalary />} />
                 <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />
-                <Route path="fees/setup" element={<FeeSetup />} />
-                <Route path="fees/billing" element={<StudentLedger />} />
-                <Route path="fees/ledger" element={<Navigate to="../fees/billing" replace />} />
-                <Route path="fees/structures" element={<Navigate to="../fees/setup" replace />} />
-                <Route path="fees/offers" element={<Navigate to="../fees/setup" replace />} />
+                <Route path="fees/ledger" element={<StudentLedger />} />
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="exams" element={<Exams />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />

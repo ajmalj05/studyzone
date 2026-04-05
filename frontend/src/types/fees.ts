@@ -1,55 +1,96 @@
-export interface FeeStructureDto {
+// Fee Management Types
+
+export interface TuitionFee {
   id: string;
   classId: string;
   className: string;
-  academicYearId?: string;
-  academicYearName?: string;
-  name: string;
   amount: number;
-  frequency: string;
+  frequency: 'Monthly' | 'Per term' | 'Annual';
+  status: 'Active' | 'Draft' | 'Inactive';
+  effectiveFrom?: string;
 }
 
-export const FEE_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export interface AdmissionFee {
+  id: string;
+  classId: string;
+  className: string;
+  amount: number;
+  chargedWhen: 'On enrollment' | 'On admission';
+  status: 'Active' | 'Draft' | 'Inactive';
+}
 
-export interface FeeLedgerDto {
+export interface BusFee {
+  id: string;
   studentId: string;
   studentName: string;
-  className?: string;
-  totalCharges: number;
-  totalPayments: number;
-  balance: number;
-  feePaymentStartMonth?: number;
-  feePaymentStartYear?: number;
-  charges: { id: string; period: string; amount: number; description?: string; particularName?: string }[];
-  payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode: string }[];
-}
-
-export interface AddAdmissionFeeResult {
-  chargeId: string;
-  paymentId?: string | null;
-  receiptNumber?: string | null;
-}
-
-export interface PaymentDto {
-  id: string;
+  classId: string;
+  className: string;
   amount: number;
+  routeNote?: string;
+  frequency: 'Monthly' | 'Per term';
+  status: 'Active' | 'Draft' | 'Inactive';
+  effectiveFrom?: string;
+}
+
+export interface StudentBillingRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  admissionNumber: string;
+  classId: string;
+  className: string;
+  batch?: string;
+  charged: number;
+  paid: number;
+  balance: number;
+  status: 'Paid' | 'Unpaid' | 'Partial' | 'No fees';
+}
+
+export interface StudentCharge {
+  id: string;
+  feeType: 'Tuition' | 'Bus' | 'Admission' | 'Manual';
+  month?: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: 'Paid' | 'Unpaid' | 'Partial';
+}
+
+export interface PaymentRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  amount: number;
+  mode: string;
   receiptNumber: string;
   paidAt: string;
-  mode: string;
+  reference?: string | null;
 }
 
-export interface StudentFeeOfferDto {
+export interface PaymentHistoryRecord {
   id: string;
-  studentId: string;
+  date: string;
+  feeType: string;
+  amount: number;
+  mode: string;
+  reference?: string;
+  receipt?: string;
+}
+
+export interface FeeReceiptDto {
+  id: string;
+  receiptNumber: string;
   studentName: string;
-  className?: string | null;
-  academicYearId: string;
-  academicYearName?: string | null;
-  offerType: string;
-  value: number;
-  reason?: string | null;
-  effectiveFrom?: string | null;
-  effectiveTo?: string | null;
+  admissionNumber?: string;
+  guardianName?: string;
+  className?: string;
+  feeTerm?: string;
+  paidAt?: string;
+  totalCharges: number;
+  deposit: number;
+  remainingBalance: number;
+  currencySymbol?: string;
+  particulars?: { name: string; amount: number }[];
 }
 
 export interface ClassDto {
@@ -61,59 +102,96 @@ export interface StudentDto {
   id: string;
   name: string;
   admissionNumber: string;
+  classId: string;
   className?: string;
-  academicYearId?: string;
-  academicYearName?: string;
-  classId?: string;
   batchId?: string;
   batchName?: string;
-  section?: string;
-  status?: string;
 }
 
 export interface BatchDto {
   id: string;
+  name: string;
   classId: string;
-  className: string;
-  academicYearId?: string;
-  name: string;
-  section?: string;
-  seatLimit?: number;
 }
 
-export const formatCurrency = (n: number) => `AED ${n.toLocaleString("en-AE")}`;
-
-export interface FeeReceiptParticularDto {
-  name: string;
-  amount: number;
-}
-
-export interface FeeReceiptHistoryItemDto {
-  paymentId: string;
-  receiptNumber: string;
-  submissionDate: string;
-  feeTerm?: string | null;
-  totalAmount: number;
-  deposit: number;
-  due: number;
-}
-
-export interface FeeReceiptDto {
-  paymentId: string;
+export interface StudentFeeOfferDto {
+  id: string;
   studentId: string;
   studentName: string;
-  admissionNumber: string;
-  guardianName?: string | null;
-  className?: string | null;
-  receiptNumber: string;
-  paidAt: string;
-  feeTerm?: string | null;
-  currencySymbol?: string;
+  className?: string;
+  academicYearId: string;
+  offerType: 'PercentageDiscount' | 'FixedDiscount';
+  value: number;
+  reason?: string;
+}
+
+export interface FeeLedgerDto {
+  studentId: string;
+  studentName: string;
+  className?: string;
+  feePaymentStartMonth?: number;
+  feePaymentStartYear?: number;
   totalCharges: number;
   totalPayments: number;
   balance: number;
-  deposit: number;
-  remainingBalance: number;
-  particulars: FeeReceiptParticularDto[];
-  history: FeeReceiptHistoryItemDto[];
+}
+
+export const FEE_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export const MONTHS_2026 = [
+  'April 2026', 'March 2026', 'February 2026', 'January 2026',
+  'December 2025', 'November 2025', 'October 2025', 'September 2025',
+  'August 2025', 'July 2025', 'June 2025', 'May 2025'
+];
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-AE', {
+    style: 'currency',
+    currency: 'AED',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function getStatusColor(status: string): string {
+  switch (status) {
+    case 'Active':
+    case 'Paid':
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    case 'Draft':
+    case 'Partial':
+      return 'bg-amber-100 text-amber-700 border-amber-200';
+    case 'Unpaid':
+      return 'bg-rose-100 text-rose-700 border-rose-200';
+    case 'Inactive':
+    case 'No fees':
+      return 'bg-slate-100 text-slate-600 border-slate-200';
+    default:
+      return 'bg-slate-100 text-slate-600 border-slate-200';
+  }
+}
+
+export function getStatusDotColor(status: string): string {
+  switch (status) {
+    case 'Paid':
+      return 'bg-emerald-500';
+    case 'Partial':
+      return 'bg-amber-500';
+    case 'Unpaid':
+      return 'bg-rose-500';
+    default:
+      return 'bg-slate-400';
+  }
 }

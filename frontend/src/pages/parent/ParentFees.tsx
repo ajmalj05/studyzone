@@ -21,7 +21,7 @@ interface LedgerDto {
   totalCharges: number;
   totalPayments: number;
   balance: number;
-  charges: { period: string; amount: number }[];
+  charges: { id?: string; period: string; amount: number; particularName?: string; description?: string }[];
   payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode?: string }[];
 }
 
@@ -111,28 +111,50 @@ const ParentFees = () => {
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Charges</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalCharges.toLocaleString("en-AE")}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalCharges.toLocaleString()}</span></CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Paid</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalPayments.toLocaleString("en-AE")}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.totalPayments.toLocaleString()}</span></CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Balance Due</CardTitle></CardHeader>
-                  <CardContent><span className="text-lg font-semibold">AED {ledger.balance.toLocaleString("en-AE")}</span></CardContent>
+                  <CardContent><span className="text-lg font-semibold">AED {ledger.balance.toLocaleString()}</span></CardContent>
                 </Card>
               </div>
               <Card>
-                <CardHeader><CardTitle>Charges</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Charges</CardTitle>
+                </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow><TableHead>Period</TableHead><TableHead className="text-right">Amount</TableHead></TableRow>
+                      <TableRow>
+                        <TableHead>Fee Type</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(ledger.charges ?? []).map((c, i) => (
-                        <TableRow key={i}><TableCell>{c.period}</TableCell><TableCell className="text-right">AED {c.amount.toLocaleString("en-AE")}</TableCell></TableRow>
-                      ))}
+                      {(ledger.charges ?? []).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No charges found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        (ledger.charges ?? []).map((c, i) => (
+                          <TableRow key={c.id ?? i}>
+                            <TableCell>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                {c.particularName || "Fee"}
+                              </span>
+                            </TableCell>
+                            <TableCell>{c.period}</TableCell>
+                            <TableCell className="text-right">AED {c.amount.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -156,7 +178,7 @@ const ParentFees = () => {
                           <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
                           <TableCell>{p.receiptNumber}</TableCell>
                           <TableCell>{p.mode ?? "—"}</TableCell>
-                          <TableCell className="text-right">AED {p.amount.toLocaleString("en-AE")}</TableCell>
+                          <TableCell className="text-right">AED {p.amount.toLocaleString()}</TableCell>
                           <TableCell>
                             {p.id && (
                               <Button

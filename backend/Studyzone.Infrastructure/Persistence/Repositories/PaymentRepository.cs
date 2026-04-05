@@ -49,6 +49,16 @@ public class PaymentRepository : IPaymentRepository
         return await query.SumAsync(x => x.Amount, ct);
     }
 
+    public async Task<IReadOnlyList<Payment>> GetAllAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
+    {
+        var query = _db.Payments.AsNoTracking();
+        if (from.HasValue)
+            query = query.Where(x => x.PaidAt >= from.Value);
+        if (to.HasValue)
+            query = query.Where(x => x.PaidAt <= to.Value);
+        return await query.OrderByDescending(x => x.PaidAt).ToListAsync(ct);
+    }
+
     public async Task<Payment> AddAsync(Payment entity, CancellationToken ct = default)
     {
         _db.Payments.Add(entity);

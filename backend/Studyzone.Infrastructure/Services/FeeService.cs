@@ -284,7 +284,15 @@ public class FeeService : IFeeService
         {
             var s = await _structureRepo.GetByIdAsync(structId, ct);
             if (s != null)
-                structureNames[structId] = s.Name;
+            {
+                // Extract clean fee type from name (e.g., "Bus fee - Ahmed" -> "Bus fee")
+                var cleanName = s.Name;
+                if (cleanName?.Contains(" - ") == true)
+                {
+                    cleanName = cleanName.Split(" - ")[0];
+                }
+                structureNames[structId] = cleanName ?? "Fee";
+            }
         }
 
         return new FeeLedgerDto
@@ -303,7 +311,7 @@ public class FeeService : IFeeService
                 Period = x.Period,
                 Amount = x.Amount,
                 Description = x.Description,
-                ParticularName = structureNames.TryGetValue(x.FeeStructureId, out var name) ? name : null
+                ParticularName = structureNames.TryGetValue(x.FeeStructureId, out var name) ? name : "Fee"
             }).ToList(),
             Payments = payments.Select(x => new PaymentDto
             {
@@ -324,6 +332,12 @@ public class FeeService : IFeeService
         if (!Guid.TryParse(request.StudentId, out var studentId))
             throw new ArgumentException("Invalid student id.", nameof(request));
         var student = await _studentRepo.GetByIdAsync(studentId, ct) ?? throw new InvalidOperationException("Student not found.");
+        
+        // Check current balance to prevent overpayment
+        var ledger = await GetLedgerAsync(request.StudentId, null, null, ct);
+        if (request.Amount > ledger.Balance)
+            throw new InvalidOperationException($"Payment exceeds outstanding balance. Maximum allowed: AED {ledger.Balance:F2}");
+        
         var prefix = "RCP-" + DateTime.UtcNow.ToString("yyyyMM");
         var num = await _receiptSeqRepo.GetNextAsync(prefix, ct);
         var receiptNumber = $"{prefix}-{num:D4}";
@@ -450,6 +464,31 @@ public class FeeService : IFeeService
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<PaymentDto>> GetAllPaymentsAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
+    {
+        // Get all payments from all students
+        var allPayments = await _paymentRepo.GetAllAsync(from, to, ct);
+        var result = new List<PaymentDto>();
+        
+        foreach (var payment in allPayments)
+        {
+            var student = await _studentRepo.GetByIdAsync(payment.StudentId, ct);
+            result.Add(new PaymentDto
+            {
+                Id = payment.Id.ToString(),
+                StudentId = payment.StudentId.ToString(),
+                StudentName = student?.Name ?? "Unknown",
+                Amount = payment.Amount,
+                Mode = payment.Mode,
+                ReceiptNumber = payment.ReceiptNumber,
+                PaidAt = payment.PaidAt,
+                Reference = payment.Reference
+            });
+        }
+        
+        return result.OrderByDescending(p => p.PaidAt).ToList();
+    }
+
     public async Task<IReadOnlyList<FeeLedgerDto>> GetOutstandingByClassAsync(string? classId, string? academicYearId, CancellationToken ct = default)
     {
         var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
@@ -460,12 +499,10 @@ public class FeeService : IFeeService
         foreach (var enr in enrollments)
         {
             var ledger = await GetLedgerAsync(enr.StudentId.ToString(), null, null, ct);
-            if (ledger.Balance > 0)
-            {
-                ledger.FeePaymentStartMonth = enr.FeePaymentStartMonth;
-                ledger.FeePaymentStartYear = enr.FeePaymentStartYear;
-                result.Add(ledger);
-            }
+            // Include ALL students with fee data, not just those with outstanding balance
+            ledger.FeePaymentStartMonth = enr.FeePaymentStartMonth;
+            ledger.FeePaymentStartYear = enr.FeePaymentStartYear;
+            result.Add(ledger);
         }
         return result.OrderByDescending(x => x.Balance).ToList();
     }
@@ -514,7 +551,27 @@ public class FeeService : IFeeService
             throw new InvalidOperationException("Student enrollment has no class; cannot determine fee structure.");
 
         var ay = await _academicYearRepo.GetByIdAsync(enr.AcademicYearId, ct);
-        var structures = await _structureRepo.GetByClassIdAndAcademicYearAsync(enr.ClassId.Value, enr.AcademicYearId, ct);
+        var allStructures = await _structureRepo.GetByClassIdAndAcademicYearAsync(enr.ClassId.Value, enr.AcademicYearId, ct);
+        
+        // Get student name for filtering bus fees
+        var student = await _studentRepo.GetByIdAsync(studentId, ct);
+        var studentName = student?.Name ?? "";
+        
+        // Filter structures: 
+        // - Tuition and Admission fees: shared by all students in class
+        // - Bus fees: only apply to the specific student (matched by name in fee structure)
+        var structures = allStructures.Where(s => 
+        {
+            var nameLower = s.Name.ToLowerInvariant();
+            // Bus fees are per-student, filter by student name
+            if (nameLower.Contains("bus fee"))
+            {
+                return s.Name.Contains(studentName, StringComparison.OrdinalIgnoreCase);
+            }
+            // Tuition and Admission fees apply to all students
+            return true;
+        }).ToList();
+        
         if (structures.Count == 0)
             return new GenerateChargesResult { ChargesAdded = 0 };
 
