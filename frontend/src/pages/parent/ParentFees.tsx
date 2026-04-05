@@ -21,8 +21,8 @@ interface LedgerDto {
   totalCharges: number;
   totalPayments: number;
   balance: number;
-  charges: { id?: string; period: string; amount: number; particularName?: string; description?: string }[];
-  payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode?: string }[];
+  charges: { id?: string; period: string; amount: number; paid: number; balance: number; particularName?: string; description?: string }[];
+  payments: { id: string; amount: number; receiptNumber: string; paidAt: string; mode?: string; feeType?: string }[];
 }
 
 const ParentFees = () => {
@@ -36,6 +36,21 @@ const ParentFees = () => {
 
   const handlePrintReceipt = async (paymentId: string) => {
     if (!paymentId || printingId) return;
+    // Open synchronously on click so the browser treats it as user-initiated (not a blocked popup).
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      toast({
+        title: "Popup blocked",
+        description: "Allow popups for this site, or use your browser settings to allow popups for this page.",
+        variant: "destructive",
+      });
+      return;
+    }
+    printWindow.document.write(
+      "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Receipt</title></head><body style='font-family:system-ui;padding:1rem'>Loading receipt…</body></html>"
+    );
+    printWindow.document.close();
+
     setPrintingId(paymentId);
     try {
       const [receipt, school] = await Promise.all([
@@ -43,19 +58,21 @@ const ParentFees = () => {
         fetchApi("/SchoolProfile").catch(() => null) as Promise<SchoolProfileForReceipt | null>,
       ]);
       if (!receipt) {
+        printWindow.close();
         toast({ title: "Error", description: "Receipt not found.", variant: "destructive" });
         return;
       }
       const html = buildReceiptHtml(receipt, school);
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const w = window.open(url, "_blank", "noopener,noreferrer,width=900,height=700");
-      if (w) setTimeout(() => URL.revokeObjectURL(url), 5000);
-      else {
-        URL.revokeObjectURL(url);
-        toast({ title: "Popup blocked", description: "Allow popups to print the receipt.", variant: "destructive" });
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      try {
+        printWindow.opener = null;
+      } catch {
+        /* ignore */
       }
     } catch (e: unknown) {
+      printWindow.close();
       toast({ title: "Error", description: (e as Error).message || "Failed to load receipt", variant: "destructive" });
     } finally {
       setPrintingId(null);
@@ -166,6 +183,7 @@ const ParentFees = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
+                        <TableHead>Fee type</TableHead>
                         <TableHead>Receipt</TableHead>
                         <TableHead>Mode</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -176,6 +194,7 @@ const ParentFees = () => {
                       {(ledger.payments ?? []).map((p, i) => (
                         <TableRow key={p.id ?? i}>
                           <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
+                          <TableCell>{(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</TableCell>
                           <TableCell>{p.receiptNumber}</TableCell>
                           <TableCell>{p.mode ?? "—"}</TableCell>
                           <TableCell className="text-right">AED {p.amount.toLocaleString()}</TableCell>

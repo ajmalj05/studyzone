@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Download, Search, Check, CreditCard, ArrowLeft, FileText, Printer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StudentBillingRecord, ClassDto, StudentDto, StudentCharge, PaymentHistoryRecord, FeeReceiptDto, getInitials, getStatusColor, formatCurrency, getStatusDotColor, FEE_MONTH_NAMES } from "@/types/fees";
+import { StudentBillingRecord, ClassDto, StudentDto, StudentCharge, PaymentHistoryRecord, FeeReceiptDto, getInitials, getStatusColor, formatCurrency, getStatusDotColor, FEE_MONTH_NAMES, normalizeLedgerChargeAmounts, ledgerChargeStatus } from "@/types/fees";
 import { GenerateOutstandingModal } from "../modals/GenerateOutstandingModal";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
 import { QuickPayModal } from "../modals/QuickPayModal";
@@ -83,19 +83,25 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       
       // Transform the data to StudentBillingRecord format
       // Include ALL students, not just those with outstanding balance
-      const records: StudentBillingRecord[] = data.map(s => ({
-        id: s.studentId,
-        studentId: s.studentId,
-        studentName: s.studentName,
-        admissionNumber: "",
-        classId: "",
-        className: s.className || "—",
-        batch: "",
-        charged: s.totalCharges,
-        paid: s.totalPayments,
-        balance: s.balance,
-        status: s.balance === 0 ? "Paid" : s.balance > 0 && s.totalPayments > 0 ? "Partial" : "Unpaid"
-      }));
+      // Try to find matching student to get classId
+      const records: StudentBillingRecord[] = data.map(s => {
+        // Find the student in the students list to get proper class info
+        const studentInfo = students.find(st => st.id === s.studentId);
+        
+        return {
+          id: s.studentId,
+          studentId: s.studentId,
+          studentName: s.studentName,
+          admissionNumber: studentInfo?.admissionNumber || "",
+          classId: studentInfo?.classId || "",
+          className: s.className || studentInfo?.className || "—",
+          batch: studentInfo?.batchName || "",
+          charged: s.totalCharges,
+          paid: s.totalPayments,
+          balance: s.balance,
+          status: s.balance === 0 ? "Paid" : s.balance > 0 && s.totalPayments > 0 ? "Partial" : "Unpaid"
+        };
+      });
       
       setBillingRecords(records);
     } catch (e) {
@@ -111,10 +117,11 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
     }
   }, [selectedStudent]);
 
-  const loadStudentDetailData = async (studentId: string) => {
+  const loadStudentDetailData = async (studentId: string): Promise<number | null> => {
     try {
       // Load ledger to get charges and payments
       const ledger = await fetchApi(`/Fees/ledger/${studentId}`) as {
+        balance?: number;
         charges: Array<{
           id: string;
           period: string;
@@ -129,25 +136,28 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
           amount: number;
           mode: string;
           receiptNumber: string;
+          feeType?: string | null;
         }>;
       };
       
-      // Transform charges
+      // Transform charges (use ?? so balance 0 from API is not replaced by amount)
       const chargesData: StudentCharge[] = (ledger.charges || []).map(c => {
         const particularLower = (c.particularName || "").toLowerCase();
         let feeType: "Tuition" | "Bus" | "Admission" | "Manual" = "Manual";
         if (particularLower.includes("tuition")) feeType = "Tuition";
         else if (particularLower.includes("bus")) feeType = "Bus";
         else if (particularLower.includes("admission")) feeType = "Admission";
-        
+
+        const { amount, paid, balance } = normalizeLedgerChargeAmounts(c);
+
         return {
           id: c.id,
           feeType: feeType,
           month: c.period,
-          amount: c.amount,
-          paid: c.paid || 0,
-          balance: c.balance || c.amount,
-          status: (c.balance || c.amount) === 0 ? "Paid" : (c.paid || 0) > 0 ? "Partial" : "Unpaid"
+          amount,
+          paid,
+          balance,
+          status: ledgerChargeStatus(amount, paid, balance)
         };
       });
       setCharges(chargesData);
@@ -156,16 +166,19 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       const paymentsData: PaymentHistoryRecord[] = (ledger.payments || []).map(p => ({
         id: p.id,
         date: new Date(p.paidAt).toISOString().split('T')[0],
-        feeType: "Payment",
+        feeType: p.feeType?.trim() ? p.feeType.trim() : "General",
         amount: p.amount,
         mode: p.mode,
         reference: p.receiptNumber
       }));
       setPaymentHistory(paymentsData);
+
+      return typeof ledger.balance === "number" ? ledger.balance : null;
     } catch (e) {
       console.error("Failed to load student detail:", e);
       setCharges([]);
       setPaymentHistory([]);
+      return null;
     }
   };
 
@@ -272,10 +285,11 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       await fetchApi("/Fees/payments", {
         method: "POST",
         body: JSON.stringify({
-          StudentId: data.studentId,
-          Amount: data.amount,
-          Mode: data.mode,
-          Reference: data.reference,
+          studentId: data.studentId,
+          amount: data.amount,
+          mode: data.mode,
+          reference: data.reference ?? null,
+          feeType: data.feeType === "All outstanding" ? null : data.feeType,
         }),
       });
       toast({
@@ -306,10 +320,11 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       await fetchApi("/Fees/payments", {
         method: "POST",
         body: JSON.stringify({
-          StudentId: data.studentId,
-          Amount: data.amount,
-          Mode: data.mode,
-          Reference: data.reference,
+          studentId: data.studentId,
+          amount: data.amount,
+          mode: data.mode,
+          reference: data.reference ?? null,
+          feeType: data.feeType === "All outstanding" ? null : data.feeType,
         }),
       });
       toast({
@@ -323,10 +338,11 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       // First refresh billing data to get updated balances
       await loadBillingData();
       
-      // Then refresh detail data
-      if (selectedStudent) {
-        await loadStudentDetailData(selectedStudent.studentId);
-        
+      // Refresh charges for the student who was paid (so QuickPay shows updated amounts)
+      await loadStudentDetailData(data.studentId);
+      
+      // Then refresh detail data if we're in detail view
+      if (selectedStudent && selectedStudent.studentId === data.studentId) {
         // Find the updated record from the newly loaded billing records
         // We need to fetch fresh data since billingRecords state is async
         const freshData = await fetchApi(`/Fees/ledger/${selectedStudent.studentId}`) as {
@@ -587,12 +603,14 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
     });
   };
 
-  const openQuickPay = (record: StudentBillingRecord) => {
+  const openQuickPay = async (record: StudentBillingRecord) => {
+    const ledgerBalance = await loadStudentDetailData(record.studentId);
+
     setQuickPayData({
       studentId: record.studentId,
       studentName: record.studentName,
       admissionNumber: record.admissionNumber,
-      balance: record.balance,
+      balance: ledgerBalance ?? record.balance,
     });
     setQuickPayOpen(true);
   };
@@ -809,6 +827,7 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
           onClose={() => setQuickPayOpen(false)}
           onSave={handleQuickPay}
           studentData={quickPayData}
+          charges={charges}
         />
         <DeleteConfirmationModal
           isOpen={deleteModalOpen}
@@ -897,7 +916,12 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
           <span className="text-sm text-[hsl(194,70%,27%)]">
             {activeFilters.join(" · ")} — {filteredRecords.length} students
           </span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-[hsl(194,70%,27%)] hover:text-[hsl(194,70%,20%)] hover:bg-[hsl(189,95%,43%)]/20">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 text-xs text-[hsl(194,70%,27%)] hover:text-[hsl(194,70%,20%)] hover:bg-[hsl(189,95%,43%)]/20"
+            onClick={() => generateStudentReport("Current filtered list")}
+          >
             <Download className="h-3.5 w-3.5 mr-1" />
             Download this list
           </Button>
@@ -984,6 +1008,7 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
         onClose={() => setQuickPayOpen(false)}
         onSave={handleQuickPay}
         studentData={quickPayData}
+        charges={charges}
       />
     </div>
   );

@@ -48,6 +48,7 @@ public class PaymentDto
     public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime PaidAt { get; set; }
     public string? Reference { get; set; }
+    public string? FeeType { get; set; }
 }
 
 public class RecordPaymentRequest
@@ -57,6 +58,8 @@ public class RecordPaymentRequest
     public string Mode { get; set; } = "Cash";
     public string? Reference { get; set; }
     public string? Remarks { get; set; }
+    /// <summary>Optional: specify which fee type to pay (Tuition, Bus, Admission). If null, pays across all outstanding.</summary>
+    public string? FeeType { get; set; }
 }
 
 public class FeeLedgerDto
@@ -80,6 +83,8 @@ public class FeeChargeDto
     public string Id { get; set; } = string.Empty;
     public string Period { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public decimal Paid { get; set; }
+    public decimal Balance { get; set; }
     public string? Description { get; set; }
     /// <summary>Fee type / particular name (e.g. Admission Fee, Tuition).</summary>
     public string? ParticularName { get; set; }

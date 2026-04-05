@@ -124,7 +124,12 @@ public class FeesController : ControllerBase
             var dto = await _service.RecordPaymentAsync(request, ct);
             return Ok(dto);
         }
-        catch (InvalidOperationException) { return NotFound(); }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("Student not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound();
+            return BadRequest(new { message = ex.Message });
+        }
         catch (ArgumentException) { return BadRequest(); }
     }
 
