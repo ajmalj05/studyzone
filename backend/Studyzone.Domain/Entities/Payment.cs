@@ -10,5 +10,10 @@ public class Payment
     public DateTime PaidAt { get; set; }
     public string? Reference { get; set; }
     public string? Remarks { get; set; }
+    /// <summary>
+    /// Optional: Specific fee type this payment was for (Tuition, Bus, Admission).
+    /// If null, payment is distributed proportionally across all fee types.
+    /// </summary>
+    public string? FeeType { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -43,6 +43,16 @@ public class FeeService : IFeeService
         _notificationService = notificationService;
     }
 
+    /// <summary>Buckets fee labels like the frontend StudentBillingTab (Tuition / Bus / Admission / Manual).</summary>
+    private static string GetCanonicalFeeType(string? particularName)
+    {
+        var s = (particularName ?? "").ToLowerInvariant();
+        if (s.Contains("tuition")) return "Tuition";
+        if (s.Contains("bus")) return "Bus";
+        if (s.Contains("admission")) return "Admission";
+        return "Manual";
+    }
+
     private static decimal ApplyOffer(decimal baseAmount, StudentFeeOffer? offer)
     {
         if (offer == null) return baseAmount;
@@ -274,6 +284,7 @@ public class FeeService : IFeeService
             charges = charges.Where(x => string.Compare(x.Period, periodFrom, StringComparison.Ordinal) >= 0).ToList();
         if (!string.IsNullOrWhiteSpace(periodTo))
             charges = charges.Where(x => string.Compare(x.Period, periodTo, StringComparison.Ordinal) <= 0).ToList();
+        charges = charges.OrderBy(x => x.Period).ToList();
         var totalCharges = charges.Sum(x => x.Amount);
         var payments = await _paymentRepo.GetByStudentIdAsync(sid, null, null, ct);
         var totalPayments = payments.Sum(x => x.Amount);
@@ -295,6 +306,106 @@ public class FeeService : IFeeService
             }
         }
 
+        // Group charges by fee type
+        var chargesByFeeType = charges
+            .GroupBy(c => structureNames.TryGetValue(c.FeeStructureId, out var name) ? name : "Fee")
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Calculate totals per fee type
+        var feeTypeTotals = chargesByFeeType.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Sum(c => c.Amount)
+        );
+
+        var totalAllFees = feeTypeTotals.Values.Sum();
+
+        // Typed payments keyed by canonical fee type (matches UI labels and legacy structure-name FeeType values)
+        var feeTypeSpecificPayments = payments
+            .Where(p => !string.IsNullOrEmpty(p.FeeType))
+            .GroupBy(p => GetCanonicalFeeType(p.FeeType))
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
+
+        var generalPayments = payments
+            .Where(p => string.IsNullOrEmpty(p.FeeType))
+            .Sum(p => p.Amount);
+
+        // Build charge DTOs with paid/balance
+        var chargeDtos = new List<FeeChargeDto>();
+        var allocatedFromGeneral = new Dictionary<string, decimal>(); // Track general payments allocated per fee type
+        
+        foreach (var charge in charges)
+        {
+            var feeType = structureNames.TryGetValue(charge.FeeStructureId, out var name) ? name : "Fee";
+            var canonicalKey = GetCanonicalFeeType(feeType);
+
+            // 1. Get specific payments for this fee category
+            var specificPaid = feeTypeSpecificPayments.GetValueOrDefault(canonicalKey);
+            
+            // 2. Calculate proportion from general payments
+            if (!allocatedFromGeneral.ContainsKey(feeType))
+                allocatedFromGeneral[feeType] = 0;
+            
+            var feeTypeTotal = feeTypeTotals.GetValueOrDefault(feeType);
+            
+            decimal generalAllocated = 0;
+            
+            // Only calculate if there are charges and total fees
+            if (totalAllFees > 0 && feeTypeTotal > 0)
+            {
+                // Calculate this charge's proportion of the fee type total
+                var chargeProportionOfFeeType = charge.Amount / feeTypeTotal;
+                
+                // Calculate this fee type's share of general payments
+                var feeTypeShareOfGeneral = generalPayments * (feeTypeTotal / totalAllFees);
+                
+                // This charge's share = charge proportion * fee type share
+                generalAllocated = feeTypeShareOfGeneral * chargeProportionOfFeeType;
+            }
+            
+            // Calculate remaining general allocation for this fee type
+            decimal remainingGeneralForFeeType = 0;
+            if (totalAllFees > 0 && feeTypeTotal > 0)
+            {
+                remainingGeneralForFeeType = generalPayments * (feeTypeTotal / totalAllFees) - allocatedFromGeneral[feeType];
+            }
+            
+            // Ensure we don't over-allocate from general pool
+            generalAllocated = Math.Min(generalAllocated, remainingGeneralForFeeType);
+            generalAllocated = Math.Min(generalAllocated, charge.Amount); // Can't pay more than charge
+            
+            allocatedFromGeneral[feeType] += generalAllocated;
+            
+            // Total paid for this charge = specific payments + share of general payments
+            var actualPaid = Math.Min(specificPaid + generalAllocated, charge.Amount);
+            
+            // Reduce remaining typed pool for this category (next charge shares same canonical key)
+            if (specificPaid > 0)
+            {
+                feeTypeSpecificPayments[canonicalKey] = Math.Max(0, specificPaid - (charge.Amount - generalAllocated));
+            }
+            
+            var balance = charge.Amount - actualPaid;
+            
+            // Round to avoid tiny fractional remainders (e.g., 0.000001 becomes 0)
+            // Consider anything less than 0.01 as fully paid
+            if (balance < 0.01m && balance > -0.01m)
+            {
+                balance = 0;
+                actualPaid = charge.Amount;
+            }
+            
+            chargeDtos.Add(new FeeChargeDto
+            {
+                Id = charge.Id.ToString(),
+                Period = charge.Period,
+                Amount = charge.Amount,
+                Paid = actualPaid,
+                Balance = Math.Max(0, balance),
+                Description = charge.Description,
+                ParticularName = feeType
+            });
+        }
+
         return new FeeLedgerDto
         {
             StudentId = studentId,
@@ -305,14 +416,7 @@ public class FeeService : IFeeService
             Balance = totalCharges - totalPayments,
             FeePaymentStartMonth = enr?.FeePaymentStartMonth,
             FeePaymentStartYear = enr?.FeePaymentStartYear,
-            Charges = charges.Select(x => new FeeChargeDto
-            {
-                Id = x.Id.ToString(),
-                Period = x.Period,
-                Amount = x.Amount,
-                Description = x.Description,
-                ParticularName = structureNames.TryGetValue(x.FeeStructureId, out var name) ? name : "Fee"
-            }).ToList(),
+            Charges = chargeDtos,
             Payments = payments.Select(x => new PaymentDto
             {
                 Id = x.Id.ToString(),
@@ -322,7 +426,8 @@ public class FeeService : IFeeService
                 Mode = x.Mode,
                 ReceiptNumber = x.ReceiptNumber,
                 PaidAt = x.PaidAt,
-                Reference = x.Reference
+                Reference = x.Reference,
+                FeeType = x.FeeType
             }).ToList()
         };
     }
@@ -338,6 +443,18 @@ public class FeeService : IFeeService
         if (request.Amount > ledger.Balance)
             throw new InvalidOperationException($"Payment exceeds outstanding balance. Maximum allowed: AED {ledger.Balance:F2}");
         
+        // If specific fee type is specified, check that category's balance (same bucketing as ledger / UI)
+        if (!string.IsNullOrEmpty(request.FeeType) && request.FeeType != "All outstanding")
+        {
+            var requestKey = GetCanonicalFeeType(request.FeeType);
+            var feeTypeBalance = ledger.Charges
+                .Where(c => GetCanonicalFeeType(c.ParticularName) == requestKey)
+                .Sum(c => c.Balance);
+
+            if (request.Amount > feeTypeBalance)
+                throw new InvalidOperationException($"Payment exceeds {request.FeeType} fee balance. Maximum allowed: AED {feeTypeBalance:F2}");
+        }
+        
         var prefix = "RCP-" + DateTime.UtcNow.ToString("yyyyMM");
         var num = await _receiptSeqRepo.GetNextAsync(prefix, ct);
         var receiptNumber = $"{prefix}-{num:D4}";
@@ -351,6 +468,7 @@ public class FeeService : IFeeService
             PaidAt = DateTime.UtcNow,
             Reference = request.Reference,
             Remarks = request.Remarks,
+            FeeType = request.FeeType, // Store which fee type was paid
             CreatedAt = DateTime.UtcNow
         };
         var added = await _paymentRepo.AddAsync(entity, ct);
@@ -364,7 +482,8 @@ public class FeeService : IFeeService
             Mode = added.Mode,
             ReceiptNumber = added.ReceiptNumber,
             PaidAt = added.PaidAt,
-            Reference = added.Reference
+            Reference = added.Reference,
+            FeeType = added.FeeType
         };
     }
 
@@ -404,10 +523,12 @@ public class FeeService : IFeeService
             }
         }
 
-        // Receipt is for this single payment only (one fee payment, not full ledger)
+        var particularLabel = string.IsNullOrWhiteSpace(payment.FeeType)
+            ? "General (all outstanding)"
+            : $"{payment.FeeType.Trim()} fee";
         var particulars = new List<FeeReceiptParticularDto>
         {
-            new FeeReceiptParticularDto { Name = "Fees paid", Amount = payment.Amount }
+            new FeeReceiptParticularDto { Name = particularLabel, Amount = payment.Amount }
         };
 
         var history = new List<FeeReceiptHistoryItemDto>
@@ -460,7 +581,8 @@ public class FeeService : IFeeService
             Mode = x.Mode,
             ReceiptNumber = x.ReceiptNumber,
             PaidAt = x.PaidAt,
-            Reference = x.Reference
+            Reference = x.Reference,
+            FeeType = x.FeeType
         }).ToList();
     }
 
@@ -482,7 +604,8 @@ public class FeeService : IFeeService
                 Mode = payment.Mode,
                 ReceiptNumber = payment.ReceiptNumber,
                 PaidAt = payment.PaidAt,
-                Reference = payment.Reference
+                Reference = payment.Reference,
+                FeeType = payment.FeeType
             });
         }
         

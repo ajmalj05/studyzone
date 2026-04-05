@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StudentDto } from "@/types/fees";
+import { fetchApi } from "@/lib/api";
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -33,20 +34,95 @@ interface RecordPaymentModalProps {
   students: StudentDto[];
 }
 
+type LedgerMeta = {
+  balance: number;
+  charges: Array<{ feeType: string; balance: number }>;
+};
+
+function mapLedgerCharges(
+  charges: Array<{ particularName?: string; balance?: number; amount: number }>
+): Array<{ feeType: string; balance: number }> {
+  return charges.map((c) => {
+    const particularLower = (c.particularName || "").toLowerCase();
+    let feeType: "Tuition" | "Bus" | "Admission" | "Manual" = "Manual";
+    if (particularLower.includes("tuition")) feeType = "Tuition";
+    else if (particularLower.includes("bus")) feeType = "Bus";
+    else if (particularLower.includes("admission")) feeType = "Admission";
+    return { feeType, balance: c.balance ?? c.amount };
+  });
+}
+
+function amountForFeeType(feeType: string, meta: LedgerMeta): number {
+  if (feeType === "All outstanding") return meta.balance;
+  return meta.charges
+    .filter((c) => c.feeType.toLowerCase() === feeType.toLowerCase())
+    .reduce((s, c) => s + c.balance, 0);
+}
+
+const emptyForm = () => ({
+  studentId: "",
+  feeType: "All outstanding",
+  amount: "",
+  date: new Date().toISOString().split("T")[0],
+  mode: "Cash",
+  reference: "",
+});
+
 export function RecordPaymentModal({
   isOpen,
   onClose,
   onSave,
   students,
 }: RecordPaymentModalProps) {
-  const [formData, setFormData] = useState({
-    studentId: "",
-    feeType: "All outstanding",
-    amount: "",
-    date: new Date().toISOString().split('T')[0],
-    mode: "Cash",
-    reference: "",
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const [ledgerMeta, setLedgerMeta] = useState<LedgerMeta | null>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData(emptyForm());
+    setLedgerMeta(null);
+    setLedgerLoading(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !formData.studentId) {
+      if (!formData.studentId) setLedgerMeta(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLedgerMeta(null);
+    setFormData((f) => ({ ...f, amount: "" }));
+
+    (async () => {
+      setLedgerLoading(true);
+      try {
+        const ledger = await fetchApi(`/Fees/ledger/${formData.studentId}`) as {
+          balance?: number;
+          charges?: Array<{ particularName?: string; balance?: number; amount: number }>;
+        };
+        if (cancelled) return;
+        const balance = typeof ledger.balance === "number" ? ledger.balance : 0;
+        const charges = mapLedgerCharges(ledger.charges ?? []);
+        setLedgerMeta({ balance, charges });
+      } catch {
+        if (!cancelled) setLedgerMeta(null);
+      } finally {
+        if (!cancelled) setLedgerLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, formData.studentId]);
+
+  useEffect(() => {
+    if (!ledgerMeta) return;
+    const amt = amountForFeeType(formData.feeType, ledgerMeta);
+    setFormData((f) => ({ ...f, amount: String(amt) }));
+  }, [ledgerMeta, formData.feeType]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,14 +134,8 @@ export function RecordPaymentModal({
       mode: formData.mode,
       reference: formData.reference || undefined,
     });
-    setFormData({
-      studentId: "",
-      feeType: "All outstanding",
-      amount: "",
-      date: new Date().toISOString().split('T')[0],
-      mode: "Cash",
-      reference: "",
-    });
+    setFormData(emptyForm());
+    setLedgerMeta(null);
   };
 
   return (
@@ -74,7 +144,7 @@ export function RecordPaymentModal({
         <DialogHeader>
           <DialogTitle className="text-base font-medium">Record payment</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Record a payment for a student.
+            Select a student to load balances from the ledger. Amount prefills like Quick Pay; you can edit it.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -123,10 +193,11 @@ export function RecordPaymentModal({
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="Enter amount"
+                placeholder={ledgerLoading ? "Loading…" : "Enter amount"}
                 value={formData.amount}
                 onChange={(e) => setFormData((f) => ({ ...f, amount: e.target.value }))}
                 className="h-9 text-sm"
+                disabled={ledgerLoading && !!formData.studentId}
                 required
               />
             </div>

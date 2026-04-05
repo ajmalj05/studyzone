@@ -65,6 +65,8 @@ export interface PaymentRecord {
   receiptNumber: string;
   paidAt: string;
   reference?: string | null;
+  /** Tuition, Bus, Admission, Manual, or null/omitted for general (all-outstanding) payments */
+  feeType?: string | null;
 }
 
 export interface PaymentHistoryRecord {
@@ -125,6 +127,28 @@ export interface StudentFeeOfferDto {
   reason?: string;
 }
 
+/** Charge line as returned by GET /Fees/ledger/{studentId} */
+export interface FeeLedgerChargeDto {
+  id: string;
+  period: string;
+  amount: number;
+  paid?: number;
+  balance?: number;
+  particularName?: string;
+  description?: string;
+}
+
+/** Payment line as returned by GET /Fees/ledger/{studentId} */
+export interface FeeLedgerPaymentDto {
+  id: string;
+  amount: number;
+  mode: string;
+  receiptNumber: string;
+  paidAt: string;
+  reference?: string | null;
+  feeType?: string | null;
+}
+
 export interface FeeLedgerDto {
   studentId: string;
   studentName: string;
@@ -134,6 +158,8 @@ export interface FeeLedgerDto {
   totalCharges: number;
   totalPayments: number;
   balance: number;
+  charges?: FeeLedgerChargeDto[];
+  payments?: FeeLedgerPaymentDto[];
 }
 
 export const FEE_MONTH_NAMES = [
@@ -154,6 +180,47 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+const FEE_LINE_EPS = 0.01;
+
+function parseMoney(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Normalizes amount / paid / balance from GET /Fees/ledger charge rows (camelCase or legacy PascalCase).
+ * Fixes inconsistent rows where balance is ~0 but nothing was paid toward a non-zero charge (shows as Unpaid with balance = amount).
+ */
+export function normalizeLedgerChargeAmounts(c: {
+  amount?: unknown;
+  paid?: unknown;
+  balance?: unknown;
+  Paid?: unknown;
+  Balance?: unknown;
+  Amount?: unknown;
+}): { amount: number; paid: number; balance: number } {
+  const amount = parseMoney(c.amount ?? c.Amount) ?? 0;
+  const paid = parseMoney(c.paid ?? c.Paid) ?? 0;
+  const balRaw = parseMoney(c.balance ?? c.Balance);
+  let balance = balRaw != null ? Math.max(0, balRaw) : Math.max(0, amount - paid);
+  const impliedOutstanding = Math.max(0, amount - paid);
+  // Row inconsistent (e.g. balance 0 while amount > paid); trust amount − paid for display/status.
+  if (amount > FEE_LINE_EPS && Math.abs(impliedOutstanding - balance) > FEE_LINE_EPS) {
+    balance = impliedOutstanding;
+  }
+  return { amount, paid, balance };
+}
+
+/** Per-line status for a charge; uses small epsilon so rounding and API quirks do not mark unpaid lines as Paid. */
+export function ledgerChargeStatus(amount: number, paid: number, balance: number): StudentCharge['status'] {
+  if (amount <= FEE_LINE_EPS) return 'Paid';
+  if (balance <= FEE_LINE_EPS && paid + FEE_LINE_EPS >= amount) return 'Paid';
+  if (paid > FEE_LINE_EPS) return 'Partial';
+  return 'Unpaid';
 }
 
 export function getInitials(name: string): string {

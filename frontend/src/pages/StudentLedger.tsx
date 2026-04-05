@@ -235,13 +235,14 @@ function buildLedgerPrintHtml(
             (p) =>
               `<tr>
                 <td>${p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</td>
+                <td>${esc((p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General")}</td>
                 <td>${esc(p.receiptNumber)}</td>
                 <td>${esc(p.mode)}</td>
                 <td class="text-right">${currency}${Number(p.amount).toLocaleString("en-AE")}</td>
               </tr>`
           )
           .join("")
-      : "<tr><td colspan=\"4\" class=\"text-right\">No payments</td></tr>";
+      : "<tr><td colspan=\"5\" class=\"text-right\">No payments</td></tr>";
 
   return `<!DOCTYPE html>
   <html>
@@ -285,7 +286,7 @@ function buildLedgerPrintHtml(
         <div class="ledger-section-title">Payments</div>
         <table class="ledger-table">
           <thead>
-            <tr><th>Date</th><th>Receipt</th><th>Mode</th><th class="text-right">Amount</th></tr>
+            <tr><th>Date</th><th>Fee type</th><th>Receipt</th><th>Mode</th><th class="text-right">Amount</th></tr>
           </thead>
           <tbody>${paymentsRows}</tbody>
         </table>
@@ -724,6 +725,7 @@ export default function StudentLedger() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Fee type</TableHead>
                     <TableHead>Receipt</TableHead>
                     <TableHead>Mode</TableHead>
                     <TableHead>Amount</TableHead>
@@ -734,6 +736,7 @@ export default function StudentLedger() {
                   {ledger.payments.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</TableCell>
                       <TableCell>{p.receiptNumber}</TableCell>
                       <TableCell>{p.mode}</TableCell>
                       <TableCell>{formatCurrency(p.amount)}</TableCell>

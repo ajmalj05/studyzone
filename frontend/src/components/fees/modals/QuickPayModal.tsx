@@ -35,6 +35,13 @@ interface QuickPayModalProps {
     admissionNumber: string;
     balance: number;
   } | null;
+  charges?: Array<{
+    id: string;
+    feeType: string;
+    amount: number;
+    paid: number;
+    balance: number;
+  }>;
 }
 
 export function QuickPayModal({
@@ -42,6 +49,7 @@ export function QuickPayModal({
   onClose,
   onSave,
   studentData,
+  charges = [],
 }: QuickPayModalProps) {
   const [formData, setFormData] = useState({
     feeType: "All outstanding",
@@ -51,17 +59,65 @@ export function QuickPayModal({
     reference: "",
   });
 
+  // Calculate which fee types have outstanding balance
+  const getFeeTypesWithBalance = () => {
+    const feeTypeTotals: Record<string, number> = {};
+    
+    charges.forEach(c => {
+      const type = c.feeType;
+      if (!feeTypeTotals[type]) feeTypeTotals[type] = 0;
+      feeTypeTotals[type] += c.balance;
+    });
+    
+    // Match SelectItem epsilon: hide fully paid categories (tiny float dust)
+    return Object.entries(feeTypeTotals)
+      .filter(([, balance]) => balance > 0.01)
+      .map(([type]) => type);
+  };
+
+  // Calculate amount based on selected fee type
+  const getAmountForFeeType = (feeType: string): number => {
+    if (feeType === "All outstanding") {
+      return studentData?.balance || 0;
+    }
+    
+    // Sum up the balance for the selected fee type
+    const feeTypeCharges = charges.filter(c => 
+      c.feeType.toLowerCase() === feeType.toLowerCase()
+    );
+    return feeTypeCharges.reduce((sum, c) => sum + c.balance, 0);
+  };
+
   useEffect(() => {
     if (studentData) {
+      // Check which fee types have outstanding balance
+      const availableFeeTypes = getFeeTypesWithBalance();
+      
+      // If there's only one fee type with balance, default to it
+      // Otherwise default to "All outstanding"
+      const defaultFeeType = availableFeeTypes.length === 1 
+        ? availableFeeTypes[0] 
+        : "All outstanding";
+      
       setFormData({
-        feeType: "All outstanding",
-        amount: String(studentData.balance),
+        feeType: defaultFeeType,
+        amount: String(getAmountForFeeType(defaultFeeType)),
         date: new Date().toISOString().split('T')[0],
         mode: "Cash",
         reference: "",
       });
     }
-  }, [studentData, isOpen]);
+  }, [studentData, charges, isOpen]);
+
+  // Update amount when fee type changes
+  const handleFeeTypeChange = (value: string) => {
+    const newAmount = getAmountForFeeType(value);
+    setFormData((f) => ({ 
+      ...f, 
+      feeType: value,
+      amount: String(newAmount)
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,16 +163,25 @@ export function QuickPayModal({
             <Label className="text-sm">Fee type</Label>
             <Select
               value={formData.feeType}
-              onValueChange={(v) => setFormData((f) => ({ ...f, feeType: v }))}
+              onValueChange={handleFeeTypeChange}
             >
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All outstanding" className="text-sm">All outstanding</SelectItem>
-                <SelectItem value="Tuition" className="text-sm">Tuition</SelectItem>
-                <SelectItem value="Bus" className="text-sm">Bus</SelectItem>
-                <SelectItem value="Admission" className="text-sm">Admission</SelectItem>
+                <SelectItem value="All outstanding" className="text-sm">
+                  All outstanding (AED {(studentData?.balance || 0).toFixed(2)})
+                </SelectItem>
+                {getFeeTypesWithBalance().map(feeType => {
+                  const amount = getAmountForFeeType(feeType);
+                  // Only show if balance is greater than 0.01 (round to avoid tiny fractions)
+                  if (amount < 0.01) return null;
+                  return (
+                    <SelectItem key={feeType} value={feeType} className="text-sm">
+                      {feeType} (AED {amount.toFixed(2)})
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

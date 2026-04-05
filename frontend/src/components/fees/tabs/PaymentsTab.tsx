@@ -81,10 +81,11 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
       await fetchApi("/Fees/payments", {
         method: "POST",
         body: JSON.stringify({
-          StudentId: data.studentId,
-          Amount: data.amount,
-          Mode: data.mode,
-          Reference: data.reference,
+          studentId: data.studentId,
+          amount: data.amount,
+          mode: data.mode,
+          reference: data.reference ?? null,
+          feeType: data.feeType === "All outstanding" ? null : data.feeType,
         }),
       });
       toast({
@@ -130,6 +131,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
           <tr>
             <th>Date</th>
             <th>Student</th>
+            <th>Fee type</th>
             <th>Receipt</th>
             <th class="text-right">Amount (AED)</th>
             <th>Mode</th>
@@ -141,6 +143,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
             <tr>
               <td>${new Date(p.paidAt).toLocaleDateString()}</td>
               <td>${p.studentName}</td>
+              <td>${(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</td>
               <td>${p.receiptNumber}</td>
               <td class="text-right">${p.amount.toLocaleString()}</td>
               <td>${p.mode}</td>
@@ -195,7 +198,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
             deposit: payment.amount,
             remainingBalance: 0,
             currencySymbol: "AED",
-            particulars: [{ name: "Payment", amount: payment.amount }],
+            particulars: [{ name: (payment.feeType && String(payment.feeType).trim()) ? String(payment.feeType).trim() : "General", amount: payment.amount }],
           };
         } else {
           toast({ title: "Error", description: "Receipt not found.", variant: "destructive" });
@@ -292,6 +295,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
             <TableRow className="bg-slate-50 hover:bg-slate-50">
               <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Student</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Fee type</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount (AED)</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Mode</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</TableHead>
@@ -301,7 +305,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
           <TableBody>
             {filteredPayments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-sm text-slate-400">
+                <TableCell colSpan={7} className="text-center py-8 text-sm text-slate-400">
                   No payments recorded. Use Record payment to add entries.
                 </TableCell>
               </TableRow>
@@ -310,6 +314,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
                 <TableRow key={payment.id} className="border-b border-slate-100">
                   <TableCell className="text-slate-600">{new Date(payment.paidAt).toLocaleDateString()}</TableCell>
                   <TableCell className="font-medium text-slate-700">{payment.studentName}</TableCell>
+                  <TableCell className="text-slate-600">{(payment.feeType && String(payment.feeType).trim()) ? String(payment.feeType).trim() : "General"}</TableCell>
                   <TableCell className="font-medium text-slate-700">{formatCurrency(payment.amount)}</TableCell>
                   <TableCell className="text-slate-600">{payment.mode}</TableCell>
                   <TableCell className="text-slate-600">{payment.reference || "—"}</TableCell>
