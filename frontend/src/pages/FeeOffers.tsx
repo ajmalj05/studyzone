@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { FeeTablePaginationBar } from "@/components/fees/FeeTablePaginationBar";
+import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
 export default function FeeOffers() {
   const { selectedYearId, currentYear } = useAcademicYear();
@@ -79,6 +81,7 @@ export default function FeeOffers() {
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [offersPage, setOffersPage] = useState(1);
 
   const loadOffers = async () => {
     try {
@@ -125,6 +128,19 @@ export default function FeeOffers() {
       setLoading(false);
     })();
   }, [selectedYearId]);
+
+  useEffect(() => {
+    setOffersPage(1);
+  }, [selectedYearId]);
+
+  useEffect(() => {
+    setOffersPage((p) => feeClampPage(p, offers.length, FEE_UI_PAGE_SIZE));
+  }, [offers.length]);
+
+  const pagedOffers = useMemo(
+    () => feeSlicePage(offers, offersPage, FEE_UI_PAGE_SIZE),
+    [offers, offersPage]
+  );
 
   const openAdd = () => {
     setEditingOffer(null);
@@ -230,26 +246,27 @@ export default function FeeOffers() {
           <Button onClick={openAdd}>Add offer</Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {offers.length === 0 ? (
+          <div className="overflow-hidden rounded-lg border border-border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground text-sm">
-                    No fee offers for the selected academic year.
-                  </TableCell>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : (
-                offers.map((o) => (
+              </TableHeader>
+              <TableBody>
+                {offers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground text-sm">
+                      No fee offers for the selected academic year.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pagedOffers.map((o) => (
                   <TableRow key={o.id}>
                     <TableCell>{o.studentName}</TableCell>
                     <TableCell>{o.className ?? "—"}</TableCell>
@@ -275,10 +292,16 @@ export default function FeeOffers() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <FeeTablePaginationBar
+              page={offersPage}
+              total={offers.length}
+              onPageChange={setOffersPage}
+            />
+          </div>
 
           <Dialog open={modalOpen} onOpenChange={setModalOpen}>
             <DialogContent className="sm:max-w-md">

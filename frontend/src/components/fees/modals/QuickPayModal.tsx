@@ -140,7 +140,7 @@ export function QuickPayModal({
         <DialogHeader>
           <DialogTitle className="text-base font-medium">Quick Pay</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Recording payment for {studentData.studentName} (Adm# {studentData.admissionNumber})
+            {studentData.studentName} (Adm# {studentData.admissionNumber}) — amount prefills from the ledger; you can edit it.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
