@@ -262,3 +262,37 @@ export function getStatusDotColor(status: string): string {
       return 'bg-slate-400';
   }
 }
+
+const FEE_TYPE_ORDER = ['Tuition', 'Admission', 'Bus'];
+
+/**
+ * Maps a raw particular name from the ledger API to a normalised fee type
+ * label suitable for display (e.g. "Tuition fee" → "Tuition").
+ */
+export function feeTypeFromParticularName(particularName?: string | null): string {
+  const name = (particularName ?? '').trim();
+  const lower = name.toLowerCase();
+  if (lower === 'tuition fee') return 'Tuition';
+  if (lower === 'admission fee') return 'Admission';
+  if (lower.startsWith('bus fee')) return 'Bus';
+  return name || 'Other';
+}
+
+/**
+ * Returns the unique fee type keys present in the given charges array,
+ * ordered: Tuition → Admission → Bus → everything else alphabetically.
+ * Only types with a positive balance are included.
+ */
+export function orderedFeeTypeKeysForOutstandingCharges(
+  charges: Array<{ feeType: string; balance: number }>
+): string[] {
+  const seen = new Set<string>();
+  for (const c of charges) {
+    if (c.balance > 0) seen.add(c.feeType);
+  }
+  const known = FEE_TYPE_ORDER.filter((k) => seen.has(k));
+  const others = Array.from(seen)
+    .filter((k) => !FEE_TYPE_ORDER.includes(k))
+    .sort();
+  return [...known, ...others];
+}
