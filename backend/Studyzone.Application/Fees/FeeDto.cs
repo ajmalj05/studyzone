@@ -122,6 +122,8 @@ public class FeeReceiptParticularDto
 {
     public string Name { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    /// <summary>From matching FeeStructure.Frequency when payment is typed (e.g. Monthly, Per term). Null for general payments or if no structure match.</summary>
+    public string? Frequency { get; set; }
 }
 
 public class FeeReceiptHistoryItemDto

@@ -53,6 +53,17 @@ public class FeeService : IFeeService
         return "Manual";
     }
 
+    /// <summary>
+    /// Pools typed payments against charges: Tuition/Bus/Admission share one key per canonical type;
+    /// custom structure names use the trimmed label (dictionary keys compared case-insensitively).
+    /// </summary>
+    private static string GetTypedPaymentAllocationKey(string? label)
+    {
+        var c = GetCanonicalFeeType(label);
+        if (c != "Manual") return c;
+        return (label ?? "").Trim();
+    }
+
     private static decimal ApplyOffer(decimal baseAmount, StudentFeeOffer? offer)
     {
         if (offer == null) return baseAmount;
@@ -319,12 +330,12 @@ public class FeeService : IFeeService
 
         var totalAllFees = feeTypeTotals.Values.Sum();
 
-        // Typed payments keyed by canonical fee type (matches UI labels and legacy structure-name FeeType values)
         var feeTypeSpecificPayments = payments
             .Where(p => !string.IsNullOrEmpty(p.FeeType))
-            .GroupBy(p => GetCanonicalFeeType(p.FeeType))
-            .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
+            .GroupBy(p => GetTypedPaymentAllocationKey(p.FeeType!), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount), StringComparer.OrdinalIgnoreCase);
 
+        // Payments with no FeeType: summed then split across charges in proportion to each fee group's gross charges (see generalAllocated below).
         var generalPayments = payments
             .Where(p => string.IsNullOrEmpty(p.FeeType))
             .Sum(p => p.Amount);
@@ -336,10 +347,10 @@ public class FeeService : IFeeService
         foreach (var charge in charges)
         {
             var feeType = structureNames.TryGetValue(charge.FeeStructureId, out var name) ? name : "Fee";
-            var canonicalKey = GetCanonicalFeeType(feeType);
+            var typedKey = GetTypedPaymentAllocationKey(feeType);
 
             // 1. Get specific payments for this fee category
-            var specificPaid = feeTypeSpecificPayments.GetValueOrDefault(canonicalKey);
+            var specificPaid = feeTypeSpecificPayments.GetValueOrDefault(typedKey);
             
             // 2. Calculate proportion from general payments
             if (!allocatedFromGeneral.ContainsKey(feeType))
@@ -378,10 +389,10 @@ public class FeeService : IFeeService
             // Total paid for this charge = specific payments + share of general payments
             var actualPaid = Math.Min(specificPaid + generalAllocated, charge.Amount);
             
-            // Reduce remaining typed pool for this category (next charge shares same canonical key)
+            // Reduce remaining typed pool for this category (next charge shares same typed key)
             if (specificPaid > 0)
             {
-                feeTypeSpecificPayments[canonicalKey] = Math.Max(0, specificPaid - (charge.Amount - generalAllocated));
+                feeTypeSpecificPayments[typedKey] = Math.Max(0, specificPaid - (charge.Amount - generalAllocated));
             }
             
             var balance = charge.Amount - actualPaid;
@@ -446,9 +457,9 @@ public class FeeService : IFeeService
         // If specific fee type is specified, check that category's balance (same bucketing as ledger / UI)
         if (!string.IsNullOrEmpty(request.FeeType) && request.FeeType != "All outstanding")
         {
-            var requestKey = GetCanonicalFeeType(request.FeeType);
+            var requestKey = GetTypedPaymentAllocationKey(request.FeeType);
             var feeTypeBalance = ledger.Charges
-                .Where(c => GetCanonicalFeeType(c.ParticularName) == requestKey)
+                .Where(c => string.Equals(GetTypedPaymentAllocationKey(c.ParticularName), requestKey, StringComparison.OrdinalIgnoreCase))
                 .Sum(c => c.Balance);
 
             if (request.Amount > feeTypeBalance)
@@ -495,6 +506,38 @@ public class FeeService : IFeeService
         return "Term 3";
     }
 
+    private static string? CleanFeeStructureBaseName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var n = name.Trim();
+        if (n.Contains(" - ", StringComparison.Ordinal))
+            n = n.Split(" - ")[0].Trim();
+        return n;
+    }
+
+    /// <summary>Same allocation keys as ledger typed payments; picks structure frequency for receipt display.</summary>
+    private static string? ResolveBillingFrequencyForPayment(string paymentFeeType, IReadOnlyList<FeeStructure> structures)
+    {
+        if (string.IsNullOrWhiteSpace(paymentFeeType)) return null;
+        var payKey = GetTypedPaymentAllocationKey(paymentFeeType);
+        var payTrim = paymentFeeType.Trim();
+        FeeStructure? exact = null;
+        FeeStructure? fallback = null;
+        foreach (var s in structures)
+        {
+            var baseName = CleanFeeStructureBaseName(s.Name) ?? s.Name;
+            if (!string.Equals(GetTypedPaymentAllocationKey(baseName), payKey, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (string.Equals(baseName, payTrim, StringComparison.OrdinalIgnoreCase))
+                exact = s;
+            else if (fallback == null)
+                fallback = s;
+        }
+
+        var chosen = exact ?? fallback;
+        return chosen != null ? chosen.Frequency : null;
+    }
+
     public async Task<FeeReceiptDto?> GetReceiptAsync(string paymentId, CancellationToken ct = default)
     {
         if (!Guid.TryParse(paymentId, out var pid))
@@ -526,9 +569,17 @@ public class FeeService : IFeeService
         var particularLabel = string.IsNullOrWhiteSpace(payment.FeeType)
             ? "General (all outstanding)"
             : $"{payment.FeeType.Trim()} fee";
+
+        string? structureFrequency = null;
+        if (!string.IsNullOrWhiteSpace(payment.FeeType) && classId.HasValue && academicYearId.HasValue)
+        {
+            var structures = await _structureRepo.GetByClassIdAndAcademicYearAsync(classId.Value, academicYearId.Value, ct);
+            structureFrequency = ResolveBillingFrequencyForPayment(payment.FeeType, structures);
+        }
+
         var particulars = new List<FeeReceiptParticularDto>
         {
-            new FeeReceiptParticularDto { Name = particularLabel, Amount = payment.Amount }
+            new FeeReceiptParticularDto { Name = particularLabel, Amount = payment.Amount, Frequency = structureFrequency }
         };
 
         var history = new List<FeeReceiptHistoryItemDto>

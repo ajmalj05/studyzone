@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Download, Search, Check, CreditCard, ArrowLeft, FileText, Printer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StudentBillingRecord, ClassDto, StudentDto, StudentCharge, PaymentHistoryRecord, FeeReceiptDto, getInitials, getStatusColor, formatCurrency, getStatusDotColor, FEE_MONTH_NAMES, normalizeLedgerChargeAmounts, ledgerChargeStatus } from "@/types/fees";
+import { StudentBillingRecord, ClassDto, StudentDto, BatchDto, StudentCharge, PaymentHistoryRecord, FeeReceiptDto, getInitials, getStatusColor, formatCurrency, getStatusDotColor, FEE_MONTH_NAMES, normalizeLedgerChargeAmounts, ledgerChargeStatus, feeTypeFromParticularName } from "@/types/fees";
 import { GenerateOutstandingModal } from "../modals/GenerateOutstandingModal";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
 import { QuickPayModal } from "../modals/QuickPayModal";
@@ -34,13 +34,16 @@ import { buildReceiptHtml, buildReportHtml, SchoolProfileForReceipt } from "@/li
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { FeeTablePaginationBar } from "../FeeTablePaginationBar";
+import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
 interface StudentBillingTabProps {
   classes: ClassDto[];
+  batches: BatchDto[];
   students: StudentDto[];
 }
 
-export function StudentBillingTab({ classes, students }: StudentBillingTabProps) {
+export function StudentBillingTab({ classes, batches, students }: StudentBillingTabProps) {
   const { selectedYearId } = useAcademicYear();
   const [view, setView] = useState<"list" | "detail">("list");
   const [selectedStudent, setSelectedStudent] = useState<StudentBillingRecord | null>(null);
@@ -63,6 +66,7 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
   const [billingRecords, setBillingRecords] = useState<StudentBillingRecord[]>([]);
   const [charges, setCharges] = useState<StudentCharge[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>([]);
+  const [billingListPage, setBillingListPage] = useState(1);
 
   // Load billing data on mount
   useEffect(() => {
@@ -142,11 +146,7 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
       
       // Transform charges (use ?? so balance 0 from API is not replaced by amount)
       const chargesData: StudentCharge[] = (ledger.charges || []).map(c => {
-        const particularLower = (c.particularName || "").toLowerCase();
-        let feeType: "Tuition" | "Bus" | "Admission" | "Manual" = "Manual";
-        if (particularLower.includes("tuition")) feeType = "Tuition";
-        else if (particularLower.includes("bus")) feeType = "Bus";
-        else if (particularLower.includes("admission")) feeType = "Admission";
+        const feeType = feeTypeFromParticularName(c.particularName);
 
         const { amount, paid, balance } = normalizeLedgerChargeAmounts(c);
 
@@ -189,6 +189,19 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
     if (statusFilter && record.status !== statusFilter) return false;
     return true;
   });
+
+  useEffect(() => {
+    setBillingListPage(1);
+  }, [searchTerm, classFilter, statusFilter, selectedYearId]);
+
+  useEffect(() => {
+    setBillingListPage((p) => feeClampPage(p, filteredRecords.length, FEE_UI_PAGE_SIZE));
+  }, [filteredRecords.length]);
+
+  const pagedBillingRecords = useMemo(
+    () => feeSlicePage(filteredRecords, billingListPage, FEE_UI_PAGE_SIZE),
+    [filteredRecords, billingListPage]
+  );
 
   const activeFilters = [
     classFilter && classes.find(c => c.id === classFilter)?.name,
@@ -949,7 +962,7 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRecords.map((record) => (
+              pagedBillingRecords.map((record) => (
                 <TableRow 
                   key={record.id} 
                   className="border-b border-slate-100 cursor-pointer hover:bg-slate-50"
@@ -989,6 +1002,11 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
             )}
           </TableBody>
         </Table>
+        <FeeTablePaginationBar
+          page={billingListPage}
+          total={filteredRecords.length}
+          onPageChange={setBillingListPage}
+        />
       </Card>
 
       <GenerateOutstandingModal
@@ -1001,6 +1019,8 @@ export function StudentBillingTab({ classes, students }: StudentBillingTabProps)
         isOpen={recordPaymentOpen}
         onClose={() => setRecordPaymentOpen(false)}
         onSave={handleRecordPayment}
+        classes={classes}
+        batches={batches}
         students={students}
       />
       <QuickPayModal

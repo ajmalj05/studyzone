@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,24 +24,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Download, Search, CreditCard, Printer } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { PaymentRecord, ClassDto, StudentDto, FeeReceiptDto, formatCurrency, MONTHS_2026 } from "@/types/fees";
+import { PaymentRecord, ClassDto, StudentDto, BatchDto, FeeReceiptDto, formatCurrency, MONTHS_2026 } from "@/types/fees";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
 import { buildReceiptHtml, buildReportHtml, SchoolProfileForReceipt } from "@/lib/receiptHtml";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { FeeTablePaginationBar } from "../FeeTablePaginationBar";
+import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
 interface PaymentsTabProps {
   classes: ClassDto[];
+  batches: BatchDto[];
   students: StudentDto[];
 }
 
-export function PaymentsTab({ classes, students }: PaymentsTabProps) {
+export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [printingId, setPrintingId] = useState<string | null>(null);
 
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [paymentsPage, setPaymentsPage] = useState(1);
 
   // Load payments on mount
   useEffect(() => {
@@ -64,6 +68,19 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
     if (monthFilter && !payment.paidAt.includes(monthFilter.split(" ")[0])) return false;
     return true;
   });
+
+  useEffect(() => {
+    setPaymentsPage(1);
+  }, [searchTerm, monthFilter]);
+
+  useEffect(() => {
+    setPaymentsPage((p) => feeClampPage(p, filteredPayments.length, FEE_UI_PAGE_SIZE));
+  }, [filteredPayments.length]);
+
+  const pagedPayments = useMemo(
+    () => feeSlicePage(filteredPayments, paymentsPage, FEE_UI_PAGE_SIZE),
+    [filteredPayments, paymentsPage]
+  );
 
   const activeFilters = [
     monthFilter,
@@ -310,7 +327,7 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredPayments.map((payment) => (
+              pagedPayments.map((payment) => (
                 <TableRow key={payment.id} className="border-b border-slate-100">
                   <TableCell className="text-slate-600">{new Date(payment.paidAt).toLocaleDateString()}</TableCell>
                   <TableCell className="font-medium text-slate-700">{payment.studentName}</TableCell>
@@ -335,12 +352,19 @@ export function PaymentsTab({ classes, students }: PaymentsTabProps) {
             )}
           </TableBody>
         </Table>
+        <FeeTablePaginationBar
+          page={paymentsPage}
+          total={filteredPayments.length}
+          onPageChange={setPaymentsPage}
+        />
       </Card>
 
       <RecordPaymentModal
         isOpen={recordPaymentOpen}
         onClose={() => setRecordPaymentOpen(false)}
         onSave={handleRecordPayment}
+        classes={classes}
+        batches={batches}
         students={students}
       />
     </div>

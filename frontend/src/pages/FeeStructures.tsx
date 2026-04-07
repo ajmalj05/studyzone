@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { FeeStructureDto, ClassDto, formatCurrency } from "@/types/fees";
 import { Pencil, Trash2 } from "lucide-react";
+import { FeeTablePaginationBar } from "@/components/fees/FeeTablePaginationBar";
+import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +57,7 @@ export default function FeeStructures() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [structuresPage, setStructuresPage] = useState(1);
 
   const loadStructures = async () => {
     try {
@@ -82,6 +85,19 @@ export default function FeeStructures() {
       setLoading(false);
     })();
   }, [selectedYearId]);
+
+  useEffect(() => {
+    setStructuresPage(1);
+  }, [selectedYearId]);
+
+  useEffect(() => {
+    setStructuresPage((p) => feeClampPage(p, structures.length, FEE_UI_PAGE_SIZE));
+  }, [structures.length]);
+
+  const pagedStructures = useMemo(
+    () => feeSlicePage(structures, structuresPage, FEE_UI_PAGE_SIZE),
+    [structures, structuresPage]
+  );
 
   const handleCreateStructure = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,37 +234,52 @@ export default function FeeStructures() {
               </form>
             </DialogContent>
           </Dialog>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Class</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {structures.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.className}</TableCell>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>{formatCurrency(s.amount)}</TableCell>
-                  <TableCell>{s.frequency}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteId(s.id)} aria-label="Delete">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="overflow-hidden rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {structures.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground text-sm py-8">
+                      No fee structures for the selected academic year. Add one to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pagedStructures.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell>{s.className}</TableCell>
+                      <TableCell>{s.name}</TableCell>
+                      <TableCell>{formatCurrency(s.amount)}</TableCell>
+                      <TableCell>{s.frequency}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteId(s.id)} aria-label="Delete">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <FeeTablePaginationBar
+              page={structuresPage}
+              total={structures.length}
+              onPageChange={setStructuresPage}
+            />
+          </div>
 
           <Dialog open={!!editingId} onOpenChange={(open) => { if (!open) setEditingId(null); }}>
             <DialogContent className="sm:max-w-md">
