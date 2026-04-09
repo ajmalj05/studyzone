@@ -3,7 +3,7 @@ import { FeeSetupTab } from "@/components/fees/tabs/FeeSetupTab";
 import { StudentBillingTab } from "@/components/fees/tabs/StudentBillingTab";
 import { PaymentsTab } from "@/components/fees/tabs/PaymentsTab";
 import FeeOffers from "./FeeOffers";
-import { ClassDto, StudentDto } from "@/types/fees";
+import { ClassDto, StudentDto, BatchDto } from "@/types/fees";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ export default function Fees() {
   const [activeTab, setActiveTab] = useState<TabType>("setup");
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
+  const [batches, setBatches] = useState<BatchDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadClasses = async () => {
@@ -48,10 +49,22 @@ export default function Fees() {
     }
   };
 
+  const loadBatches = async () => {
+    try {
+      const url = selectedYearId
+        ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}`
+        : "/Batches";
+      const list = (await fetchApi(url)) as BatchDto[];
+      setBatches(list ?? []);
+    } catch {
+      setBatches([]);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadClasses(), loadStudents()]);
+      await Promise.all([loadClasses(), loadStudents(), loadBatches()]);
       setLoading(false);
     })();
   }, [selectedYearId]);
@@ -130,9 +143,9 @@ export default function Fees() {
 
       {/* Tab Content */}
       <div className="px-1">
-        {activeTab === "setup" && <FeeSetupTab classes={classes} students={students} />}
-        {activeTab === "billing" && <StudentBillingTab classes={classes} students={students} />}
-        {activeTab === "payments" && <PaymentsTab classes={classes} students={students} />}
+        {activeTab === "setup" && <FeeSetupTab classes={classes} students={students} batches={batches} />}
+        {activeTab === "billing" && <StudentBillingTab classes={classes} students={students} batches={batches} />}
+        {activeTab === "payments" && <PaymentsTab classes={classes} students={students} batches={batches} />}
         {activeTab === "offers" && <FeeOffers />}
       </div>
     </div>
