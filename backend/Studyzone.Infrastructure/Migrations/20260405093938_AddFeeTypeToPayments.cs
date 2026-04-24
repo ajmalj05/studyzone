@@ -10,19 +10,19 @@ namespace Studyzone.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "FeeType",
-                table: "Payments",
-                type: "text",
-                nullable: true);
+            migrationBuilder.Sql("""
+                ALTER TABLE "Payments"
+                    ADD COLUMN IF NOT EXISTS "FeeType" text NULL;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "FeeType",
-                table: "Payments");
+            migrationBuilder.Sql("""
+                ALTER TABLE "Payments"
+                    DROP COLUMN IF EXISTS "FeeType";
+                """);
         }
     }
 }

@@ -11,50 +11,36 @@ namespace Studyzone.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "OfferLetterFieldConfigs",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    FieldKey = table.Column<string>(type: "text", nullable: false),
-                    Label = table.Column<string>(type: "text", nullable: false),
-                    DefaultValue = table.Column<string>(type: "text", nullable: true),
-                    IsVisible = table.Column<bool>(type: "boolean", nullable: false),
-                    ShowInPdf = table.Column<bool>(type: "boolean", nullable: false),
-                    IsRequired = table.Column<bool>(type: "boolean", nullable: false),
-                    DisplayOrder = table.Column<int>(type: "integer", nullable: false),
-                    FieldType = table.Column<string>(type: "text", nullable: false),
-                    Section = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_OfferLetterFieldConfigs", x => x.Id);
-                });
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS "OfferLetterFieldConfigs" (
+                    "Id"           uuid NOT NULL,
+                    "FieldKey"     text NOT NULL,
+                    "Label"        text NOT NULL,
+                    "DefaultValue" text NULL,
+                    "IsVisible"    boolean NOT NULL,
+                    "ShowInPdf"    boolean NOT NULL,
+                    "IsRequired"   boolean NOT NULL,
+                    "DisplayOrder" integer NOT NULL,
+                    "FieldType"    text NOT NULL,
+                    "Section"      text NULL,
+                    "CreatedAt"    timestamp with time zone NOT NULL,
+                    "UpdatedAt"    timestamp with time zone NULL,
+                    CONSTRAINT "PK_OfferLetterFieldConfigs" PRIMARY KEY ("Id")
+                );
 
-            migrationBuilder.CreateIndex(
-                name: "IX_OfferLetterFieldConfigs_DisplayOrder",
-                table: "OfferLetterFieldConfigs",
-                column: "DisplayOrder");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OfferLetterFieldConfigs_FieldKey",
-                table: "OfferLetterFieldConfigs",
-                column: "FieldKey",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OfferLetterFieldConfigs_Section",
-                table: "OfferLetterFieldConfigs",
-                column: "Section");
+                CREATE INDEX IF NOT EXISTS "IX_OfferLetterFieldConfigs_DisplayOrder"
+                    ON "OfferLetterFieldConfigs" ("DisplayOrder");
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_OfferLetterFieldConfigs_FieldKey"
+                    ON "OfferLetterFieldConfigs" ("FieldKey");
+                CREATE INDEX IF NOT EXISTS "IX_OfferLetterFieldConfigs_Section"
+                    ON "OfferLetterFieldConfigs" ("Section");
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "OfferLetterFieldConfigs");
+            migrationBuilder.Sql(@"DROP TABLE IF EXISTS ""OfferLetterFieldConfigs"";");
         }
     }
 }

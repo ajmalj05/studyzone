@@ -8,18 +8,18 @@ namespace Studyzone.Infrastructure.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<decimal>(
-                name: "BusFeeAmount",
-                table: "StudentEnrollments",
-                type: "numeric",
-                nullable: true);
+            migrationBuilder.Sql("""
+                ALTER TABLE "StudentEnrollments"
+                    ADD COLUMN IF NOT EXISTS "BusFeeAmount" numeric NULL;
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "BusFeeAmount",
-                table: "StudentEnrollments");
+            migrationBuilder.Sql("""
+                ALTER TABLE "StudentEnrollments"
+                    DROP COLUMN IF EXISTS "BusFeeAmount";
+                """);
         }
     }
 }

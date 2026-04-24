@@ -11,59 +11,37 @@ namespace Studyzone.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "StudentFeeOffers",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    StudentId = table.Column<Guid>(type: "uuid", nullable: false),
-                    AcademicYearId = table.Column<Guid>(type: "uuid", nullable: false),
-                    OfferType = table.Column<string>(type: "text", nullable: false),
-                    Value = table.Column<decimal>(type: "numeric", nullable: false),
-                    Reason = table.Column<string>(type: "text", nullable: true),
-                    EffectiveFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    EffectiveTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_StudentFeeOffers", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_StudentFeeOffers_AcademicYears_AcademicYearId",
-                        column: x => x.AcademicYearId,
-                        principalTable: "AcademicYears",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_StudentFeeOffers_Students_StudentId",
-                        column: x => x.StudentId,
-                        principalTable: "Students",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS "StudentFeeOffers" (
+                    "Id"             uuid NOT NULL,
+                    "StudentId"      uuid NOT NULL,
+                    "AcademicYearId" uuid NOT NULL,
+                    "OfferType"      text NOT NULL,
+                    "Value"          numeric NOT NULL,
+                    "Reason"         text NULL,
+                    "EffectiveFrom"  timestamp with time zone NULL,
+                    "EffectiveTo"    timestamp with time zone NULL,
+                    "CreatedAt"      timestamp with time zone NOT NULL,
+                    CONSTRAINT "PK_StudentFeeOffers" PRIMARY KEY ("Id"),
+                    CONSTRAINT "FK_StudentFeeOffers_AcademicYears_AcademicYearId"
+                        FOREIGN KEY ("AcademicYearId") REFERENCES "AcademicYears" ("Id") ON DELETE CASCADE,
+                    CONSTRAINT "FK_StudentFeeOffers_Students_StudentId"
+                        FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id") ON DELETE CASCADE
+                );
 
-            migrationBuilder.CreateIndex(
-                name: "IX_StudentFeeOffers_AcademicYearId",
-                table: "StudentFeeOffers",
-                column: "AcademicYearId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_StudentFeeOffers_StudentId",
-                table: "StudentFeeOffers",
-                column: "StudentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_StudentFeeOffers_StudentId_AcademicYearId",
-                table: "StudentFeeOffers",
-                columns: new[] { "StudentId", "AcademicYearId" },
-                unique: true);
+                CREATE INDEX IF NOT EXISTS "IX_StudentFeeOffers_AcademicYearId"
+                    ON "StudentFeeOffers" ("AcademicYearId");
+                CREATE INDEX IF NOT EXISTS "IX_StudentFeeOffers_StudentId"
+                    ON "StudentFeeOffers" ("StudentId");
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_StudentFeeOffers_StudentId_AcademicYearId"
+                    ON "StudentFeeOffers" ("StudentId", "AcademicYearId");
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "StudentFeeOffers");
+            migrationBuilder.Sql(@"DROP TABLE IF EXISTS ""StudentFeeOffers"";");
         }
     }
 }

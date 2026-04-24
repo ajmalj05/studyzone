@@ -12,58 +12,24 @@ public partial class AddMarksEntryApproval : Migration
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<DateTime>(
-            name: "ApprovedAt",
-            table: "MarksEntries",
-            type: "timestamp with time zone",
-            nullable: true);
-
-        migrationBuilder.AddColumn<Guid>(
-            name: "ApprovedByUserId",
-            table: "MarksEntries",
-            type: "uuid",
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "RejectionReason",
-            table: "MarksEntries",
-            type: "text",
-            nullable: true);
-
-        migrationBuilder.AddColumn<string>(
-            name: "Status",
-            table: "MarksEntries",
-            type: "text",
-            nullable: false,
-            defaultValue: "Approved");
-
-        migrationBuilder.CreateIndex(
-            name: "IX_MarksEntries_ExamId_Status",
-            table: "MarksEntries",
-            columns: new[] { "ExamId", "Status" });
+        migrationBuilder.Sql("""
+            ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "ApprovedAt" timestamp with time zone NULL;
+            ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "ApprovedByUserId" uuid NULL;
+            ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "RejectionReason" text NULL;
+            ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "Status" text NOT NULL DEFAULT 'Approved';
+            CREATE INDEX IF NOT EXISTS "IX_MarksEntries_ExamId_Status" ON "MarksEntries" ("ExamId", "Status");
+            """);
     }
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropIndex(
-            name: "IX_MarksEntries_ExamId_Status",
-            table: "MarksEntries");
-
-        migrationBuilder.DropColumn(
-            name: "Status",
-            table: "MarksEntries");
-
-        migrationBuilder.DropColumn(
-            name: "RejectionReason",
-            table: "MarksEntries");
-
-        migrationBuilder.DropColumn(
-            name: "ApprovedByUserId",
-            table: "MarksEntries");
-
-        migrationBuilder.DropColumn(
-            name: "ApprovedAt",
-            table: "MarksEntries");
+        migrationBuilder.Sql("""
+            DROP INDEX IF EXISTS "IX_MarksEntries_ExamId_Status";
+            ALTER TABLE "MarksEntries" DROP COLUMN IF EXISTS "Status";
+            ALTER TABLE "MarksEntries" DROP COLUMN IF EXISTS "RejectionReason";
+            ALTER TABLE "MarksEntries" DROP COLUMN IF EXISTS "ApprovedByUserId";
+            ALTER TABLE "MarksEntries" DROP COLUMN IF EXISTS "ApprovedAt";
+            """);
     }
 }

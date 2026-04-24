@@ -23,17 +23,12 @@ namespace Studyzone.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "BreaksJson",
-                table: "TimetableSettings");
-
-            migrationBuilder.DropColumn(
-                name: "PeriodDurationMinutes",
-                table: "TimetableSettings");
-
-            migrationBuilder.DropColumn(
-                name: "SchoolStartTime",
-                table: "TimetableSettings");
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""TimetableSettings""
+                    DROP COLUMN IF EXISTS ""BreaksJson"",
+                    DROP COLUMN IF EXISTS ""PeriodDurationMinutes"",
+                    DROP COLUMN IF EXISTS ""SchoolStartTime"";
+            ");
         }
     }
 }
