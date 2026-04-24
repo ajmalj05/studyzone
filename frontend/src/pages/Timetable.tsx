@@ -98,6 +98,13 @@ const WORKING_DAY_OPTIONS = [
   { value: 7, label: "Mon – Sun (7 days)" },
 ];
 
+function createClientId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function normalizeTimeForInput(value: string | undefined): string {
   if (!value?.trim()) return "08:00";
@@ -110,7 +117,7 @@ function normalizeTimeForInput(value: string | undefined): string {
 
 function newBreakRow(periodsPerDay: number): TimetableBreakDto {
   return {
-    id: crypto.randomUUID(),
+    id: createClientId(),
     afterPeriod: Math.min(3, Math.max(1, periodsPerDay)),
     durationMinutes: 20,
     appliesTo: "all",
@@ -168,7 +175,7 @@ export default function Timetable() {
       setSettings(data);
       const breaksRaw = Array.isArray(data.breaks) ? data.breaks : [];
       const breaks: TimetableBreakDto[] = breaksRaw.map((b) => ({
-        id: b.id || crypto.randomUUID(),
+        id: b.id || createClientId(),
         afterPeriod: typeof b.afterPeriod === "number" ? b.afterPeriod : 1,
         durationMinutes: typeof b.durationMinutes === "number" ? b.durationMinutes : 15,
         appliesTo: typeof b.appliesTo === "string" && b.appliesTo ? b.appliesTo : "all",
@@ -307,7 +314,7 @@ export default function Timetable() {
         schoolStartTime: normalizeTimeForInput(settingsForm.schoolStartTime),
         periodDurationMinutes: duration,
         breaks: settingsForm.breaks.map((b) => ({
-          id: b.id || crypto.randomUUID(),
+          id: b.id || createClientId(),
           afterPeriod: Math.max(1, Math.min(ppd, b.afterPeriod || 1)),
           durationMinutes: Math.max(1, Math.min(120, b.durationMinutes || 15)),
           appliesTo: b.appliesTo || "all",
