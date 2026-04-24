@@ -275,6 +275,8 @@ export function AddFeeModal({
                 onValueChange={(v) => {
                   const nk = v as AddFeeModalFeeKind;
                   setFeeKind(nk);
+                  setClassId("");
+                  setClassFilterBatchId(ALL);
                   if (nk === "admission") setFrequency("Once");
                   if (nk !== "bus") {
                     setStudentId("");
@@ -378,35 +380,38 @@ export function AddFeeModal({
               <>
                 {!isEditing && (
                   <>
-                    <div className="space-y-1.5">
+                    <div className={feeKind === "other" ? "space-y-1.5" : "space-y-1.5 sm:col-span-2"}>
                       <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Class</Label>
                       <SearchableSelect
                         value={classId}
                         onValueChange={setClassId}
                         placeholder="Select class"
+                        emptyMessage={emptyClassListMessage}
                         options={classListForFeeKind.map((c) => ({ value: c.id, label: c.name }))}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Batch (filter classes)
-                      </Label>
-                      <SearchableSelect
-                        value={classFilterBatchId}
-                        onValueChange={(v) => {
-                          setClassFilterBatchId(v);
-                          if (v === ALL) return;
-                          if (!classId) return;
-                          const b = batches.find((x) => x.id === v);
-                          if (!b || b.classId !== classId) setClassId("");
-                        }}
-                        placeholder="All batches"
-                        options={[
-                          { value: ALL, label: "All batches" },
-                          ...batches.map((b) => ({ value: b.id, label: b.name })),
-                        ]}
-                      />
-                    </div>
+                    {feeKind === "other" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Batch (filter classes)
+                        </Label>
+                        <SearchableSelect
+                          value={classFilterBatchId}
+                          onValueChange={(v) => {
+                            setClassFilterBatchId(v);
+                            if (v === ALL) return;
+                            if (!classId) return;
+                            const b = batches.find((x) => x.id === v);
+                            if (!b || b.classId !== classId) setClassId("");
+                          }}
+                          placeholder="All batches"
+                          options={[
+                            { value: ALL, label: "All batches" },
+                            ...batches.map((b) => ({ value: b.id, label: b.name })),
+                          ]}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
                 {isEditing && (

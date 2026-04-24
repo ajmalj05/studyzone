@@ -231,9 +231,9 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     const isOther = !["tuition", "admission", "bus"].includes(activeTab);
     setCreateDefaults(
       defaults ?? ({
-        kind: isOther ? "other" : (activeTab as "tuition" | "admission" | "bus"),
-        baseLabel: isOther ? activeTab : undefined,
-      } as unknown as AddFeeModalCreateDefaults)
+        feeKind: isOther ? "other" : (activeTab as "tuition" | "admission" | "bus"),
+        otherStructureName: isOther ? activeTab : undefined,
+      } satisfies AddFeeModalCreateDefaults)
     );
     setAddModalOpen(true);
   };

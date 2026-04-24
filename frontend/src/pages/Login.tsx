@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
 import mascotImg from '@/assets/mascot.png';
 import logoImg from '@/assets/logo.png';
 
@@ -14,8 +13,8 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [role, setRole] = useState<"teacher" | "parent">("teacher");
-  const [userId, setUserId] = useState("T1001");
-  const [password, setPassword] = useState("password");
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -69,13 +68,8 @@ const Login = () => {
                   type="button"
                   onClick={() => {
                     setRole(r);
-                    if (r === "teacher") {
-                      setUserId("T1001");
-                      setPassword("password");
-                    } else {
-                      setUserId("P1001");
-                      setPassword("password");
-                    }
+                    setUserId("");
+                    setPassword("");
                   }}
                   className={`flex-1 flex justify-center py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all min-w-0 ${role === r
                     ? "bg-card shadow-sm text-primary font-semibold"
@@ -99,7 +93,7 @@ const Login = () => {
                 <Input
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
-                  placeholder="Enter your username (e.g. T1001)"
+                  placeholder=""
                   className="pl-9 sm:pl-10 rounded-xl h-10 sm:h-12 border-border hover:border-accent focus:border-ring focus:ring-ring bg-card text-sm sm:text-base"
                 />
               </div>
@@ -118,7 +112,7 @@ const Login = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder=""
                   className="pl-9 sm:pl-10 rounded-xl h-10 sm:h-12 border-border hover:border-accent focus:border-ring focus:ring-ring bg-card text-sm sm:text-base"
                 />
               </div>
@@ -174,20 +168,6 @@ const Login = () => {
             </p>
           </motion.div>
 
-          {/* Admin Login Link */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-center pt-1 sm:pt-2 mt-1 sm:mt-2 flex-shrink-0"
-          >
-            <Link
-              to="/admin-login"
-              className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Admin Portal Access
-            </Link>
-          </motion.div>
         </div>
 
         {/* Right Side: Illustration - scales within outer box */}

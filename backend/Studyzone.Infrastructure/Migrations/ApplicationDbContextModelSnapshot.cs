@@ -694,6 +694,9 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<DateTime?>("ExamDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("MaxMarks")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -705,6 +708,28 @@ namespace Studyzone.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Exams");
+                });
+
+            modelBuilder.Entity("Studyzone.Domain.Entities.ExamClass", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("ExamId", "ClassId")
+                        .IsUnique();
+
+                    b.ToTable("ExamClasses");
                 });
 
             modelBuilder.Entity("Studyzone.Domain.Entities.FeeCharge", b =>
