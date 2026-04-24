@@ -13,7 +13,6 @@ public class ParentChildDto
     public string? AdmissionNumber { get; set; }
     public string? ClassName { get; set; }
     public string? BatchName { get; set; }
-    public string? Section { get; set; }
 }
 
 public class ParentDashboardDto

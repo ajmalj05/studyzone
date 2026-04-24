@@ -506,7 +506,6 @@ CREATE TABLE IF NOT EXISTS ""Batches"" (
     ""ClassId"" uuid NOT NULL,
     ""AcademicYearId"" uuid NOT NULL,
     ""Name"" text NOT NULL,
-    ""Section"" text NULL,
     ""SeatLimit"" integer NULL,
     ""ClassTeacherUserId"" uuid NULL,
     ""CreatedAt"" timestamp with time zone NOT NULL,
@@ -526,7 +525,6 @@ CREATE TABLE IF NOT EXISTS ""StudentEnrollments"" (
     ""AcademicYearId"" uuid NOT NULL,
     ""ClassId"" uuid NULL,
     ""BatchId"" uuid NULL,
-    ""Section"" text NULL,
     ""Status"" text NOT NULL,
     ""AdmissionNumber"" text NOT NULL,
     ""JoinedAt"" timestamp with time zone NULL,
@@ -692,7 +690,6 @@ END $$;");
             AddColumnIfNotExists(mb, "Batches", "ClassId", "uuid", false, "gen_random_uuid()");
             AddColumnIfNotExists(mb, "Batches", "AcademicYearId", "uuid", false, "gen_random_uuid()");
             AddColumnIfNotExists(mb, "Batches", "Name", "text", false, "''");
-            AddColumnIfNotExists(mb, "Batches", "Section", "text", true, "NULL");
             AddColumnIfNotExists(mb, "Batches", "SeatLimit", "integer", true, "NULL");
             AddColumnIfNotExists(mb, "Batches", "ClassTeacherUserId", "uuid", true, "NULL");
             AddColumnIfNotExists(mb, "Batches", "CreatedAt", "timestamp with time zone", false, "now()");
@@ -923,7 +920,6 @@ END $$;");
             AddColumnIfNotExists(mb, "StudentEnrollments", "AcademicYearId", "uuid", false, "gen_random_uuid()");
             AddColumnIfNotExists(mb, "StudentEnrollments", "ClassId", "uuid", true, "NULL");
             AddColumnIfNotExists(mb, "StudentEnrollments", "BatchId", "uuid", true, "NULL");
-            AddColumnIfNotExists(mb, "StudentEnrollments", "Section", "text", true, "NULL");
             AddColumnIfNotExists(mb, "StudentEnrollments", "Status", "text", false, "''");
             AddColumnIfNotExists(mb, "StudentEnrollments", "AdmissionNumber", "text", false, "''");
             AddColumnIfNotExists(mb, "StudentEnrollments", "JoinedAt", "timestamp with time zone", true, "NULL");

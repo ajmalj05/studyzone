@@ -13,7 +13,6 @@ interface ParentChildDto {
   admissionNumber?: string;
   className?: string;
   batchName?: string;
-  section?: string;
 }
 
 const ParentChildren = () => {
@@ -61,7 +60,7 @@ const ParentChildren = () => {
                   </div>
                   <CardTitle className="text-lg">{c.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {c.className ?? "—"} {c.section ? `• ${c.section}` : ""} {c.admissionNumber ? `• ${c.admissionNumber}` : ""}
+                    {c.className ?? "—"} {c.admissionNumber ? `• ${c.admissionNumber}` : ""}
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">

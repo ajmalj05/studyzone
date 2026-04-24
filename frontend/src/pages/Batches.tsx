@@ -33,7 +33,6 @@ interface BatchDto {
   academicYearId?: string;
   academicYearName?: string;
   name: string;
-  section?: string;
   seatLimit?: number;
   classTeacherUserId?: string;
   classTeacherName?: string;
@@ -65,7 +64,6 @@ export default function Batches() {
     classId: "",
     academicYearId: "",
     name: "",
-    section: "",
     seatLimit: 40,
     classTeacherUserId: "",
   });
@@ -127,7 +125,6 @@ export default function Batches() {
       classId: classes[0]?.id ?? "",
       academicYearId: selectedYearId ?? "",
       name: "",
-      section: "",
       seatLimit: 40,
       classTeacherUserId: "",
     });
@@ -140,7 +137,6 @@ export default function Batches() {
       classId: b.classId,
       academicYearId: b.academicYearId ?? selectedYearId ?? "",
       name: b.name,
-      section: b.section ?? "",
       seatLimit: b.seatLimit ?? 40,
       classTeacherUserId: b.classTeacherUserId ?? "",
     });
@@ -158,7 +154,6 @@ export default function Batches() {
         classId: batchForm.classId,
         academicYearId: batchForm.academicYearId || selectedYearId,
         name: batchForm.name,
-        section: batchForm.section || undefined,
         seatLimit: batchForm.seatLimit,
         classTeacherUserId: batchForm.classTeacherUserId || undefined,
       };
@@ -187,11 +182,6 @@ export default function Batches() {
       key: "name",
       header: "Batch",
       cell: (b) => <span className="font-semibold text-slate-700 dark:text-slate-200">{b.name}</span>,
-    },
-    {
-      key: "section",
-      header: "Section",
-      cell: (b) => <span className="text-slate-600 dark:text-slate-400">{b.section ?? "—"}</span>,
     },
     {
       key: "teacher",
@@ -244,7 +234,7 @@ export default function Batches() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{editingBatchId ? "Edit batch" : "Add batch"}</DialogTitle>
-                <DialogDescription>Class, batch name, section and seat limit (per batch).</DialogDescription>
+                <DialogDescription>Class, batch name and seat limit (per batch).</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSaveBatch} className="space-y-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -267,10 +257,6 @@ export default function Batches() {
                   <div className="space-y-1">
                     <Label>Batch name *</Label>
                     <Input value={batchForm.name} onChange={(e) => setBatchForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. A" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Section</Label>
-                    <Input value={batchForm.section} onChange={(e) => setBatchForm((f) => ({ ...f, section: e.target.value }))} placeholder="Optional" />
                   </div>
                   <div className="space-y-1">
                     <Label>Seat limit</Label>

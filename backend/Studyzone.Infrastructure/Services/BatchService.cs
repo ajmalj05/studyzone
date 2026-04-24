@@ -70,7 +70,6 @@ public class BatchService : IBatchService
             ClassId = classId,
             AcademicYearId = academicYearId,
             Name = request.Name,
-            Section = request.Section,
             SeatLimit = request.SeatLimit,
             ClassTeacherUserId = classTeacherId,
             CreatedAt = DateTime.UtcNow
@@ -85,7 +84,6 @@ public class BatchService : IBatchService
             throw new ArgumentException("Invalid id.", nameof(id));
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Batch not found.");
         entity.Name = request.Name;
-        entity.Section = request.Section;
         entity.SeatLimit = request.SeatLimit;
         entity.ClassTeacherUserId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
             ? null
@@ -110,7 +108,6 @@ public class BatchService : IBatchService
         AcademicYearId = e.AcademicYearId.ToString(),
         AcademicYearName = e.AcademicYear?.Name,
         Name = e.Name,
-        Section = e.Section,
         SeatLimit = e.SeatLimit,
         ClassTeacherUserId = e.ClassTeacherUserId?.ToString(),
         ClassTeacherName = null

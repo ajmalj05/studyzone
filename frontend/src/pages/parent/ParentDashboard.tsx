@@ -13,7 +13,6 @@ interface ParentChildDto {
   admissionNumber?: string;
   className?: string;
   batchName?: string;
-  section?: string;
 }
 
 interface ParentDashboardDto {
@@ -81,7 +80,7 @@ const ParentDashboard = () => {
                     {data.children.slice(0, 5).map((c) => (
                       <li key={c.studentId} className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2">
                         <span className="font-medium">{c.name}</span>
-                        <span className="text-sm text-muted-foreground">{c.className ?? "—"} {c.section ?? ""}</span>
+                        <span className="text-sm text-muted-foreground">{c.className ?? "—"}</span>
                       </li>
                     ))}
                   </ul>

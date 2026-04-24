@@ -64,6 +64,11 @@ interface TimetableBreakDto {
   appliesTo: string;
 }
 
+type TimetableBreakForm = Omit<TimetableBreakDto, "afterPeriod" | "durationMinutes"> & {
+  afterPeriod: number | "";
+  durationMinutes: number | "";
+};
+
 interface TimetableSettingsDto {
   workingDayCount: number;
   periodsPerDay: number;
@@ -144,10 +149,31 @@ export default function Timetable() {
     periodsPerDay: 6,
     schoolStartTime: "08:00",
     periodDurationMinutes: 45,
-    breaks: [] as TimetableBreakDto[],
+    breaks: [] as TimetableBreakForm[],
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [subjectPopoverOpen, setSubjectPopoverOpen] = useState(false);
+
+  const applySettingsToState = (data: TimetableSettingsDto) => {
+    setSettings(data);
+    const breaksRaw = Array.isArray(data.breaks) ? data.breaks : [];
+    const breaks: TimetableBreakForm[] = breaksRaw.map((b) => ({
+      id: b.id || createClientId(),
+      afterPeriod: typeof b.afterPeriod === "number" ? b.afterPeriod : 1,
+      durationMinutes: typeof b.durationMinutes === "number" ? b.durationMinutes : 15,
+      appliesTo: typeof b.appliesTo === "string" && b.appliesTo ? b.appliesTo : "all",
+    }));
+    setSettingsForm({
+      workingDayCount: data.workingDayCount,
+      periodsPerDay: data.periodsPerDay,
+      schoolStartTime: normalizeTimeForInput(data.schoolStartTime),
+      periodDurationMinutes:
+        typeof data.periodDurationMinutes === "number" && data.periodDurationMinutes > 0
+          ? data.periodDurationMinutes
+          : 45,
+      breaks,
+    });
+  };
 
   usePageHeaderConfigEffect(
     { title: "Timetable", description: "Configure periods, slots, and publish batch timetables." },
@@ -172,24 +198,7 @@ export default function Timetable() {
   const loadSettings = async () => {
     try {
       const data = (await fetchApi("/Timetable/settings")) as TimetableSettingsDto;
-      setSettings(data);
-      const breaksRaw = Array.isArray(data.breaks) ? data.breaks : [];
-      const breaks: TimetableBreakDto[] = breaksRaw.map((b) => ({
-        id: b.id || createClientId(),
-        afterPeriod: typeof b.afterPeriod === "number" ? b.afterPeriod : 1,
-        durationMinutes: typeof b.durationMinutes === "number" ? b.durationMinutes : 15,
-        appliesTo: typeof b.appliesTo === "string" && b.appliesTo ? b.appliesTo : "all",
-      }));
-      setSettingsForm({
-        workingDayCount: data.workingDayCount,
-        periodsPerDay: data.periodsPerDay,
-        schoolStartTime: normalizeTimeForInput(data.schoolStartTime),
-        periodDurationMinutes:
-          typeof data.periodDurationMinutes === "number" && data.periodDurationMinutes > 0
-            ? data.periodDurationMinutes
-            : 45,
-        breaks,
-      });
+      applySettingsToState(data);
     } catch (_) {
       setSettings(null);
     }
@@ -308,6 +317,30 @@ export default function Timetable() {
     try {
       const ppd = Math.max(1, Math.min(20, settingsForm.periodsPerDay));
       const duration = Math.max(5, Math.min(180, settingsForm.periodDurationMinutes || 45));
+      const invalidBreak = settingsForm.breaks.find(
+        (b) => b.afterPeriod === "" || b.afterPeriod < 1 || b.afterPeriod > ppd,
+      );
+      if (invalidBreak) {
+        toast({
+          title: "Invalid break period",
+          description: `Break after period must be between 1 and ${ppd}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const invalidBreakDuration = settingsForm.breaks.find(
+        (b) => b.durationMinutes === "" || b.durationMinutes < 1 || b.durationMinutes > 120,
+      );
+      if (invalidBreakDuration) {
+        toast({
+          title: "Invalid break duration",
+          description: "Break duration must be between 1 and 120 minutes.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const payload = {
         workingDayCount: Math.max(1, Math.min(7, settingsForm.workingDayCount)),
         periodsPerDay: ppd,
@@ -315,17 +348,17 @@ export default function Timetable() {
         periodDurationMinutes: duration,
         breaks: settingsForm.breaks.map((b) => ({
           id: b.id || createClientId(),
-          afterPeriod: Math.max(1, Math.min(ppd, b.afterPeriod || 1)),
-          durationMinutes: Math.max(1, Math.min(120, b.durationMinutes || 15)),
+          afterPeriod: Number(b.afterPeriod),
+          durationMinutes: Number(b.durationMinutes),
           appliesTo: b.appliesTo || "all",
         })),
       };
-      await fetchApi("/Timetable/settings", {
+      const savedSettings = (await fetchApi("/Timetable/settings", {
         method: "PUT",
         body: JSON.stringify(payload),
-      });
+      })) as TimetableSettingsDto;
+      applySettingsToState(savedSettings);
       toast({ title: "Success", description: "Timetable settings saved." });
-      await loadSettings();
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to save settings", variant: "destructive" });
     } finally {
@@ -371,7 +404,7 @@ export default function Timetable() {
 
   const fieldLabelClass = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
-  const updateBreak = (id: string, patch: Partial<TimetableBreakDto>) => {
+  const updateBreak = (id: string, patch: Partial<TimetableBreakForm>) => {
     setSettingsForm((f) => ({
       ...f,
       breaks: f.breaks.map((b) => (b.id === id ? { ...b, ...patch } : b)),
@@ -387,6 +420,12 @@ export default function Timetable() {
       ...f,
       breaks: [...f.breaks, newBreakRow(f.periodsPerDay)],
     }));
+  };
+
+  const getBreakAppliesToLabel = (value?: string) => {
+    if (!value || value === "all") return "All batches";
+    const batch = batches.find((b) => b.id === value);
+    return batch ? `${batch.className} - ${batch.name}` : "Selected batch";
   };
 
   // ── Calendar view helpers ─────────────────────────────────────────────────
@@ -531,15 +570,25 @@ export default function Timetable() {
                     settings; the slot grid still follows periods per day until generation is wired to these rules.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  // variant="outline"
-                  className="h-10 shrink-0 gap-2 self-start rounded-lg sm:self-auto"
-                  onClick={addBreak}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add break
-                </Button>
+                <div className="flex shrink-0 flex-col gap-2 self-start sm:flex-row sm:self-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 gap-2 rounded-lg border-primary/25 bg-background"
+                    onClick={addBreak}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add break
+                  </Button>
+                  <Button
+                    type="button"
+                    className="h-10 rounded-lg px-5"
+                    onClick={handleSaveSettings}
+                    disabled={savingSettings}
+                  >
+                    {savingSettings ? "Saving…" : "Save breaks"}
+                  </Button>
+                </div>
               </div>
               <div className="mt-5 space-y-3">
                 {settingsForm.breaks.length === 0 ? (
@@ -569,14 +618,12 @@ export default function Timetable() {
                                 max={settingsForm.periodsPerDay}
                                 className="h-10 rounded-lg"
                                 value={b.afterPeriod}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const value = e.target.value;
                                   updateBreak(b.id, {
-                                    afterPeriod: Math.max(
-                                      1,
-                                      Math.min(settingsForm.periodsPerDay, parseInt(e.target.value, 10) || 1),
-                                    ),
-                                  })
-                                }
+                                    afterPeriod: value === "" ? "" : Math.max(1, parseInt(value, 10)),
+                                  });
+                                }}
                               />
                             </div>
                             <div className="space-y-2">
@@ -587,9 +634,12 @@ export default function Timetable() {
                                 max={120}
                                 className="h-10 rounded-lg"
                                 value={b.durationMinutes}
-                                onChange={(e) =>
-                                  updateBreak(b.id, { durationMinutes: Math.max(1, parseInt(e.target.value, 10) || 15) })
-                                }
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  updateBreak(b.id, {
+                                    durationMinutes: value === "" ? "" : Math.max(1, parseInt(value, 10)),
+                                  });
+                                }}
                               />
                             </div>
 
@@ -621,6 +671,24 @@ export default function Timetable() {
                   </ul>
                 )}
               </div>
+              {settings?.breaks && settings.breaks.length > 0 ? (
+                <div className="mt-5 rounded-lg border border-cyan-200/70 bg-cyan-50/60 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/20">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-cyan-900/70 dark:text-cyan-200/80">
+                    Saved breaks
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {settings.breaks.map((breakItem, index) => (
+                      <div
+                        key={breakItem.id || `${breakItem.afterPeriod}-${index}`}
+                        className="rounded-lg border border-cyan-200 bg-white px-3 py-2 text-xs font-medium text-cyan-950 shadow-sm dark:border-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-100"
+                      >
+                        B{index + 1}: after period {breakItem.afterPeriod}, {breakItem.durationMinutes} min,{" "}
+                        {getBreakAppliesToLabel(breakItem.appliesTo)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>

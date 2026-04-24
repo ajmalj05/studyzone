@@ -175,7 +175,6 @@ public class AdmissionApplicationService : IApplicationService
             Gender = app.Gender,
             ClassId = app.ClassId?.ToString(),
             BatchId = app.BatchId?.ToString(),
-            Section = app.Section,
             GuardianName = app.FatherNameAsInPassport ?? app.GuardianName,
             GuardianPhone = app.FatherMobileNumber ?? app.GuardianPhone,
             GuardianEmail = app.FatherEmailAddress ?? app.GuardianEmail,

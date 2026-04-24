@@ -9,7 +9,6 @@ public class StudentEnrollment
     public AcademicYear AcademicYear { get; set; } = null!;
     public Guid? ClassId { get; set; }
     public Guid? BatchId { get; set; }
-    public string? Section { get; set; }
     public string Status { get; set; } = "Active";
     public string AdmissionNumber { get; set; } = string.Empty;
     public DateTime? JoinedAt { get; set; }

@@ -34,7 +34,6 @@ interface StudentDto {
   className?: string;
   batchId?: string;
   batchName?: string;
-  section?: string;
   status: string;
   guardianName?: string;
   guardianPhone?: string;
@@ -57,7 +56,6 @@ interface BatchDto {
   className: string;
   academicYearId?: string;
   name: string;
-  section?: string;
   seatLimit?: number;
 }
 
@@ -96,7 +94,6 @@ export default function Students() {
     academicYearId: "",
     classId: "",
     batchId: "",
-    section: "",
     guardianName: "",
     guardianPhone: "",
     guardianEmail: "",
@@ -192,7 +189,6 @@ export default function Students() {
       academicYearId: selectedYearId || (academicYears.length > 0 ? academicYears[0].id : ""),
       classId: "",
       batchId: "",
-      section: "",
       guardianName: "",
       guardianPhone: "",
       guardianEmail: "",
@@ -214,7 +210,6 @@ export default function Students() {
       academicYearId: s.academicYearId ?? selectedYearId ?? "",
       classId: s.classId ?? "",
       batchId: s.batchId ?? "",
-      section: s.section ?? "",
       guardianName: s.guardianName ?? "",
       guardianPhone: s.guardianPhone ?? "",
       guardianEmail: s.guardianEmail ?? "",

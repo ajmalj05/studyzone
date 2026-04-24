@@ -79,12 +79,15 @@ export default function Classes() {
       return;
     }
     try {
+      const name = classForm.name.trim();
+      const code = classForm.code.trim();
+
       if (editingClassId) {
         await fetchApi(`/Classes/${editingClassId}`, {
           method: "PUT",
           body: JSON.stringify({
-            name: classForm.name,
-            code: classForm.code,
+            name,
+            code,
           }),
         });
         toast({ title: "Success", description: "Class updated." });
@@ -92,8 +95,8 @@ export default function Classes() {
         await fetchApi("/Classes", {
           method: "POST",
           body: JSON.stringify({
-            name: classForm.name,
-            code: classForm.code,
+            name,
+            code,
           }),
         });
         toast({ title: "Success", description: "Class created." });

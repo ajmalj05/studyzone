@@ -97,8 +97,7 @@ public class ParentPortalService : IParentPortalService
                 Name = student.Name,
                 AdmissionNumber = enr?.AdmissionNumber ?? student.AdmissionNumber,
                 ClassName = className,
-                BatchName = batchName,
-                Section = enr?.Section
+                BatchName = batchName
             });
         }
         return result;

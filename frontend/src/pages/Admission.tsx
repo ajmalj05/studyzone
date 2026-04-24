@@ -34,7 +34,6 @@ interface BatchDto {
   classId: string;
   className: string;
   name: string;
-  section?: string;
 }
 
 export default function Admission() {
@@ -142,7 +141,7 @@ export default function Admission() {
                 className="w-[150px]"
                 options={[
                   { value: "all", label: "All batches" },
-                  ...batchesForApplicationClass.map((b) => ({ value: b.id, label: `${b.name}${b.section ? ` (${b.section})` : ""}` })),
+                  ...batchesForApplicationClass.map((b) => ({ value: b.id, label: b.name })),
                 ]}
               />
               <Button className="gap-1.5" onClick={() => navigate("/admin/admission/application/new")}>

@@ -29,6 +29,7 @@ interface TeacherDto {
   registerNumber?: string;
   subject?: string;
   phone?: string;
+  isActive?: boolean;
   status: string;
 }
 
@@ -77,7 +78,11 @@ export default function Teachers() {
   const fetchTeachers = async () => {
     try {
       const data = (await fetchApi("/Users?role=teacher")) as TeacherDto[];
-      setTeachers(data);
+      setTeachers((Array.isArray(data) ? data : []).map((teacher) => ({
+        ...teacher,
+        registerNumber: teacher.registerNumber || teacher.userId,
+        status: teacher.status || (teacher.isActive === false ? "Inactive" : "Active"),
+      })));
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to fetch teachers", variant: "destructive" });
     }
@@ -293,9 +298,59 @@ export default function Teachers() {
   };
 
   const handleSave = async () => {
-    toast({ title: "Saved", description: "Teacher saved successfully" });
-    setShowModal(false);
-    fetchTeachers();
+    const name = form.name.trim();
+    const registerNumber = form.registerNumber.trim();
+    const subject = form.subject.trim();
+    const phone = form.phone.trim();
+
+    if (!name || (!editTeacher && !registerNumber)) {
+      toast({
+        title: "Validation",
+        description: "Name and Register Number are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (editTeacher) {
+        await fetchApi(`/Users/${editTeacher.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name,
+            role: "teacher",
+            isActive: editTeacher.isActive !== false,
+            phone: phone || undefined,
+            subject: subject || undefined,
+          }),
+        });
+      } else {
+        await fetchApi("/Users", {
+          method: "POST",
+          body: JSON.stringify({
+            userId: registerNumber,
+            password: registerNumber,
+            name,
+            role: "teacher",
+            phone: phone || undefined,
+            subject: subject || undefined,
+          }),
+        });
+      }
+
+      toast({
+        title: "Saved",
+        description: editTeacher ? "Teacher updated successfully" : "Teacher added successfully",
+      });
+      setShowModal(false);
+      await fetchTeachers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save teacher",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

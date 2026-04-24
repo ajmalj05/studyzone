@@ -506,9 +506,6 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<int?>("SeatLimit")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Section")
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AcademicYearId");
@@ -1358,9 +1355,6 @@ namespace Studyzone.Infrastructure.Migrations
 
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Section")
-                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()

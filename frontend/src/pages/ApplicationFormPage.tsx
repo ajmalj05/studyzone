@@ -56,7 +56,6 @@ interface BatchDto {
   id: string;
   classId: string;
   name: string;
-  section?: string;
 }
 interface SchoolProfileDto {
   id: string;
@@ -1370,7 +1369,7 @@ export default function ApplicationFormPage() {
               onValueChange={(v) => update("batchId", v)}
               disabled={!form.classId}
               placeholder="Select batch"
-              options={batchesForClass.map((b) => ({ value: b.id, label: `${b.name}${b.section ? ` (${b.section})` : ""}` }))}
+              options={batchesForClass.map((b) => ({ value: b.id, label: b.name }))}
             />
           </div>
           <div className="space-y-2">

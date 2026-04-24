@@ -12,7 +12,6 @@ public class StudentDto
     public string? ClassName { get; set; }
     public string? BatchId { get; set; }
     public string? BatchName { get; set; }
-    public string? Section { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? GuardianName { get; set; }
     public string? GuardianPhone { get; set; }
@@ -42,7 +41,6 @@ public class CreateStudentRequest
     public string? Gender { get; set; }
     public string? ClassId { get; set; }
     public string? BatchId { get; set; }
-    public string? Section { get; set; }
     public string? GuardianName { get; set; }
     public string? GuardianPhone { get; set; }
     public string? GuardianEmail { get; set; }
@@ -65,7 +63,6 @@ public class UpdateStudentRequest
     public string? Gender { get; set; }
     public string? ClassId { get; set; }
     public string? BatchId { get; set; }
-    public string? Section { get; set; }
     public string? GuardianName { get; set; }
     public string? GuardianPhone { get; set; }
     public string? GuardianEmail { get; set; }
@@ -86,7 +83,6 @@ public class BulkPromoteRequest
     public string? TargetAcademicYearId { get; set; }
     public string TargetClassId { get; set; } = string.Empty;
     public string? TargetBatchId { get; set; }
-    public string? TargetSection { get; set; }
     /// <summary>First month (1-12) from which fees are due for promoted enrollments. Null = not set.</summary>
     public int? TargetFeePaymentStartMonth { get; set; }
     /// <summary>First year from which fees are due for promoted enrollments. Null = not set.</summary>

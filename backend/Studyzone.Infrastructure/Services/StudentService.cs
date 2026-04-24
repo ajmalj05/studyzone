@@ -133,7 +133,6 @@ public class StudentService : IStudentService
             AcademicYearId = currentYear.Id,
             ClassId = cid,
             BatchId = bid,
-            Section = request.Section,
             Status = "Active",
             AdmissionNumber = admissionNumber,
             JoinedAt = DateTime.UtcNow,
@@ -178,7 +177,6 @@ public class StudentService : IStudentService
             {
                 enr.ClassId = string.IsNullOrWhiteSpace(request.ClassId) || !Guid.TryParse(request.ClassId, out var cg) ? null : cg;
                 enr.BatchId = string.IsNullOrWhiteSpace(request.BatchId) || !Guid.TryParse(request.BatchId, out var bg) ? null : bg;
-                enr.Section = request.Section;
                 enr.FeePaymentStartMonth = request.FeePaymentStartMonth is >= 1 and <= 12 ? request.FeePaymentStartMonth : null;
                 enr.FeePaymentStartYear = request.FeePaymentStartYear is >= 2000 and <= 2100 ? request.FeePaymentStartYear : null;
                 enr.BusFeeAmount = request.BusFeeAmount > 0 ? request.BusFeeAmount : null;
@@ -257,7 +255,6 @@ public class StudentService : IStudentService
                 AcademicYearId = targetYear.Id,
                 ClassId = targetClassId,
                 BatchId = targetBatchId,
-                Section = request.TargetSection,
                 Status = "Active",
                 AdmissionNumber = admissionNumber,
                 JoinedAt = DateTime.UtcNow,
@@ -305,7 +302,6 @@ public class StudentService : IStudentService
             ClassName = className,
             BatchId = enr?.BatchId?.ToString(),
             BatchName = batchName,
-            Section = enr?.Section,
             Status = enr?.Status ?? "Active",
             GuardianName = s.GuardianName,
             GuardianPhone = s.GuardianPhone,

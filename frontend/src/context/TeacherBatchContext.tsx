@@ -6,7 +6,6 @@ export interface MyBatchDto {
   classId: string;
   className: string;
   name: string;
-  section?: string;
   seatLimit?: number;
   classTeacherUserId?: string;
   classTeacherName?: string;

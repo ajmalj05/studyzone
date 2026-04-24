@@ -43,7 +43,6 @@ interface BatchDto {
   classId: string;
   className: string;
   name: string;
-  section?: string;
   seatLimit?: number;
 }
 
@@ -226,8 +225,7 @@ export default function AcademicYearDetailPage() {
     return batches.filter(
       (b) =>
         b.className?.toLowerCase().includes(q) ||
-        b.name?.toLowerCase().includes(q) ||
-        (b.section && b.section.toLowerCase().includes(q))
+        b.name?.toLowerCase().includes(q)
     );
   }, [batches, batchSearch]);
 
@@ -387,7 +385,6 @@ export default function AcademicYearDetailPage() {
                     <TableRow>
                       <TableHead>Class</TableHead>
                       <TableHead>Batch</TableHead>
-                      <TableHead>Section</TableHead>
                       <TableHead>Seat limit</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -403,7 +400,6 @@ export default function AcademicYearDetailPage() {
                         <TableRow key={b.id}>
                           <TableCell>{b.className}</TableCell>
                           <TableCell>{b.name}</TableCell>
-                          <TableCell>{b.section ?? "—"}</TableCell>
                           <TableCell>{b.seatLimit ?? "—"}</TableCell>
                         </TableRow>
                       ))

@@ -98,13 +98,13 @@ public class TimetableService : ITimetableService
     private static List<TimetableBreakDto> SanitizeBreaks(IReadOnlyList<TimetableBreakDto>? breaks, int periodsPerDay)
     {
         if (breaks == null || breaks.Count == 0) return new List<TimetableBreakDto>();
-        var maxAfter = Math.Max(1, periodsPerDay - 1);
+        var maxAfter = Math.Max(1, periodsPerDay);
         return breaks
             .Select(b => new TimetableBreakDto
             {
                 Id = string.IsNullOrWhiteSpace(b.Id) ? Guid.NewGuid().ToString("N") : b.Id.Trim(),
                 AfterPeriod = Math.Clamp(b.AfterPeriod, 1, maxAfter),
-                DurationMinutes = Math.Clamp(b.DurationMinutes, 5, 120),
+                DurationMinutes = Math.Clamp(b.DurationMinutes, 1, 120),
                 AppliesTo = string.IsNullOrWhiteSpace(b.AppliesTo) ? "all" : b.AppliesTo.Trim().ToLowerInvariant(),
             })
             .ToList();

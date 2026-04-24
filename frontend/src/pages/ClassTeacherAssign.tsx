@@ -19,7 +19,6 @@ interface BatchDto {
   academicYearId: string;
   academicYearName?: string;
   name: string;
-  section?: string;
   seatLimit?: number;
   classTeacherUserId?: string;
   classTeacherName?: string;
@@ -92,7 +91,6 @@ export default function ClassTeacherAssign() {
           classId: batch.classId,
           academicYearId: batch.academicYearId || currentYear?.id,
           name: batch.name,
-          section: batch.section || undefined,
           seatLimit: batch.seatLimit,
           classTeacherUserId: teacherUserId || undefined,
         }),
@@ -126,11 +124,6 @@ export default function ClassTeacherAssign() {
       key: "batch",
       header: "Batch",
       cell: (b) => <span className="capitalize">{b.name}</span>,
-    },
-    {
-      key: "section",
-      header: "Section",
-      cell: (b) => <span className="text-muted-foreground">{b.section ?? "—"}</span>,
     },
     {
       key: "academicYear",

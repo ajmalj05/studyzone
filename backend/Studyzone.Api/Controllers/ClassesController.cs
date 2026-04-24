@@ -34,8 +34,15 @@ public class ClassesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ClassDto>> Create([FromBody] CreateClassRequest request, CancellationToken ct)
     {
-        var dto = await _service.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        try
+        {
+            var dto = await _service.CreateAsync(request, ct);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -46,6 +53,13 @@ public class ClassesController : ControllerBase
             var dto = await _service.UpdateAsync(id, request, ct);
             return Ok(dto);
         }
-        catch (InvalidOperationException) { return NotFound(); }
+        catch (InvalidOperationException ex) when (ex.Message == "Class not found.")
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

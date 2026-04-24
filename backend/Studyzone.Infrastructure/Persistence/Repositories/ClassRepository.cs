@@ -19,6 +19,28 @@ public class ClassRepository : IClassRepository
         return await _db.Classes.FindAsync(new object[] { id }, ct);
     }
 
+    public async Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default)
+    {
+        var normalized = name.Trim().ToLower();
+        return await _db.Classes
+            .AsNoTracking()
+            .AnyAsync(x =>
+                x.Name.Trim().ToLower() == normalized &&
+                (!excludeId.HasValue || x.Id != excludeId.Value),
+                ct);
+    }
+
+    public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null, CancellationToken ct = default)
+    {
+        var normalized = code.Trim().ToLower();
+        return await _db.Classes
+            .AsNoTracking()
+            .AnyAsync(x =>
+                x.Code.Trim().ToLower() == normalized &&
+                (!excludeId.HasValue || x.Id != excludeId.Value),
+                ct);
+    }
+
     public async Task<IReadOnlyList<Class>> GetAllAsync(CancellationToken ct = default)
     {
         return await _db.Classes.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
