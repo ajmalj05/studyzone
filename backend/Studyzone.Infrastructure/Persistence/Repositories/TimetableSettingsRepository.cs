@@ -26,6 +26,9 @@ public class TimetableSettingsRepository : ITimetableSettingsRepository
         {
             existing.WorkingDayCount = entity.WorkingDayCount;
             existing.PeriodsPerDay = entity.PeriodsPerDay;
+            existing.SchoolStartTime = entity.SchoolStartTime;
+            existing.PeriodDurationMinutes = entity.PeriodDurationMinutes;
+            existing.BreaksJson = entity.BreaksJson;
             _db.TimetableSettings.Update(existing);
             await _db.SaveChangesAsync(ct);
             return existing;

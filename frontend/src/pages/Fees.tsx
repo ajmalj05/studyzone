@@ -3,16 +3,26 @@ import { FeeSetupTab } from "@/components/fees/tabs/FeeSetupTab";
 import { StudentBillingTab } from "@/components/fees/tabs/StudentBillingTab";
 import { PaymentsTab } from "@/components/fees/tabs/PaymentsTab";
 import FeeOffers from "./FeeOffers";
+import StudentLedger from "./StudentLedger";
 import { ClassDto, StudentDto, BatchDto } from "@/types/fees";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "@/hooks/use-toast";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
+import { PillTabs } from "@/components/ui/pill-tabs";
+import { Settings, CreditCard, Banknote, Tag, BookOpen } from "lucide-react";
 
-type TabType = "setup" | "billing" | "payments" | "offers";
+type TabType = "setup" | "billing" | "payments" | "offers" | "ledger";
 
 export default function Fees() {
   const { selectedYearId } = useAcademicYear();
+  usePageHeaderConfigEffect(
+    {
+      title: "Fee management",
+      description: "Configure fees, student billing, payments, and offers for the selected academic year.",
+    },
+    [],
+  );
   const [activeTab, setActiveTab] = useState<TabType>("setup");
   const [classes, setClasses] = useState<ClassDto[]>([]);
   const [students, setStudents] = useState<StudentDto[]>([]);
@@ -79,66 +89,19 @@ export default function Fees() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Academic Year Badge */}
-
-      {/* Navigation Tabs - Sticky */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 shadow-sm">
-        <div className="flex items-center justify-center">
-          <nav className="flex items-center gap-8">
-            <button
-              onClick={() => setActiveTab("setup")}
-              className={`relative py-4 px-2 text-lg font-semibold transition-colors ${
-                activeTab === "setup"
-                  ? "text-[hsl(194,70%,27%)]"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Fee Setup
-              {activeTab === "setup" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[hsl(194,70%,27%)]" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("billing")}
-              className={`relative py-4 px-2 text-lg font-semibold transition-colors ${
-                activeTab === "billing"
-                  ? "text-[hsl(194,70%,27%)]"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Student Billing
-              {activeTab === "billing" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[hsl(194,70%,27%)]" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("payments")}
-              className={`relative py-4 px-2 text-lg font-semibold transition-colors ${
-                activeTab === "payments"
-                  ? "text-[hsl(194,70%,27%)]"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Payments
-              {activeTab === "payments" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[hsl(194,70%,27%)]" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("offers")}
-              className={`relative py-4 px-2 text-lg font-semibold transition-colors ${
-                activeTab === "offers"
-                  ? "text-[hsl(194,70%,27%)]"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Fee Offers
-              {activeTab === "offers" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[hsl(194,70%,27%)]" />
-              )}
-            </button>
-          </nav>
-        </div>
+      {/* Navigation Tabs - Pill Style */}
+      <div className="px-1">
+        <PillTabs
+          tabs={[
+            { value: "setup", label: "Fee Setup", icon: Settings },
+            { value: "billing", label: "Student Billing", icon: CreditCard },
+            { value: "payments", label: "Payments", icon: Banknote },
+            { value: "offers", label: "Fee Offers", icon: Tag },
+            { value: "ledger", label: "Student Ledger", icon: BookOpen },
+          ]}
+          activeValue={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabType)}
+        />
       </div>
 
       {/* Tab Content */}
@@ -147,6 +110,7 @@ export default function Fees() {
         {activeTab === "billing" && <StudentBillingTab classes={classes} students={students} batches={batches} />}
         {activeTab === "payments" && <PaymentsTab classes={classes} students={students} batches={batches} />}
         {activeTab === "offers" && <FeeOffers />}
+        {activeTab === "ledger" && <StudentLedger />}
       </div>
     </div>
   );

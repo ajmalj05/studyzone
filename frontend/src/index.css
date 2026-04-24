@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -81,8 +81,15 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Sora', sans-serif;
   }
+
+  h1 { @apply text-2xl font-semibold tracking-tight; }
+  h2 { @apply text-xl font-semibold tracking-tight; }
+  h3 { @apply text-lg font-semibold; }
+  h4 { @apply text-base font-semibold; }
+  h5 { @apply text-sm font-semibold; }
+  p  { @apply text-sm leading-relaxed; }
 }
 
 @layer utilities {
@@ -147,6 +154,51 @@
   }
 
   .sidebar-nav-scroll::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  /* Cards inside the admin content container already sit on the white card background —
+     strip their own border/shadow/radius so there's only one visual border (the outer container). */
+  [data-admin-scroll] [data-comp="card"] {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+
+  /* Modern thin scrollbar for main content areas */
+  [data-admin-scroll],
+  .custom-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(215 16% 75% / 0.6) transparent;
+  }
+
+  [data-admin-scroll]::-webkit-scrollbar,
+  .custom-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  [data-admin-scroll]::-webkit-scrollbar-track,
+  .custom-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 6px;
+  }
+
+  [data-admin-scroll]::-webkit-scrollbar-thumb,
+  .custom-scroll::-webkit-scrollbar-thumb {
+    background: hsl(215 16% 75% / 0.55);
+    border-radius: 999px;
+  }
+
+  [data-admin-scroll]::-webkit-scrollbar-thumb:hover,
+  .custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(189 95% 43% / 0.55);
+  }
+
+  [data-admin-scroll]::-webkit-scrollbar-button,
+  .custom-scroll::-webkit-scrollbar-button {
     display: none;
   }
 }

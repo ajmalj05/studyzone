@@ -10,29 +10,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { ClassDto, StudentDto, BatchDto } from "@/types/fees";
 import type { FeeStructureRow } from "@/lib/feeSetupGrouping";
 import { inferFeeKind, parseBusFeeDisplay, classIdsTakenForOtherBase } from "@/lib/feeSetupGrouping";
-import {
-  FEE_UI_PAGE_SIZE,
-  feeClampPage,
-  feePageCount,
-  feeSlicePage,
-} from "@/lib/feeListPagination";
-import { FeePaginationNumbers } from "../FeePaginationNumbers";
 
 export type AddFeeModalFeeKind = "tuition" | "admission" | "bus" | "other";
 
 export interface AddFeeModalSavePayload {
   feeKind: AddFeeModalFeeKind;
-  customStructureName?: string;
+  /** Fee name (used for custom/other fee types) - backend expects 'name' field */
+  name?: string;
   classId?: string;
   studentId?: string;
   amount: number;
@@ -66,60 +54,6 @@ interface AddFeeModalProps {
 
 const ALL = "__all__";
 
-function AddFeeSelectPaginationFooter({
-  page,
-  total,
-  onPageChange,
-}: {
-  page: number;
-  total: number;
-  onPageChange: (p: number) => void;
-}) {
-  if (total <= FEE_UI_PAGE_SIZE) return null;
-  const pages = feePageCount(total, FEE_UI_PAGE_SIZE);
-  const start = (page - 1) * FEE_UI_PAGE_SIZE + 1;
-  const end = Math.min(page * FEE_UI_PAGE_SIZE, total);
-  return (
-    <div
-      className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-2 py-1.5"
-      onPointerDown={(e) => e.preventDefault()}
-    >
-      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-        Showing {start}–{end} of {total}
-      </span>
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          Prev
-        </Button>
-        <FeePaginationNumbers
-          currentPage={page}
-          totalPages={pages}
-          onPageChange={onPageChange}
-          variant="compact"
-          className="justify-end"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          disabled={page >= pages}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Next
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function AddFeeModal({
   open,
   onOpenChange,
@@ -147,11 +81,6 @@ export function AddFeeModal({
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState("Monthly");
   const [routeNote, setRouteNote] = useState("");
-  const [classListSelectPage, setClassListSelectPage] = useState(1);
-  const [batchesSelectPage, setBatchesSelectPage] = useState(1);
-  const [busClassSelectPage, setBusClassSelectPage] = useState(1);
-  const [busBatchSelectPage, setBusBatchSelectPage] = useState(1);
-  const [busStudentSelectPage, setBusStudentSelectPage] = useState(1);
 
   const classIdsForBatchFilter = useMemo(() => {
     if (classFilterBatchId === ALL) return null;
@@ -236,11 +165,6 @@ export function AddFeeModal({
 
   useEffect(() => {
     if (!open) return;
-    setClassListSelectPage(1);
-    setBatchesSelectPage(1);
-    setBusClassSelectPage(1);
-    setBusBatchSelectPage(1);
-    setBusStudentSelectPage(1);
 
     if (editStructure) {
       const inferred = inferFeeKind(editStructure);
@@ -279,71 +203,6 @@ export function AddFeeModal({
     setRouteNote("");
     setFrequency(k === "admission" ? "Once" : "Monthly");
   }, [open, editStructure, createDefaults, students]);
-
-  useEffect(() => {
-    setClassListSelectPage(1);
-  }, [feeKind, classFilterBatchId]);
-
-  useEffect(() => {
-    setClassListSelectPage((p) => feeClampPage(p, classListForFeeKind.length, FEE_UI_PAGE_SIZE));
-  }, [classListForFeeKind.length]);
-
-  useEffect(() => {
-    setBatchesSelectPage(1);
-  }, [classFilterBatchId]);
-
-  useEffect(() => {
-    setBatchesSelectPage((p) => feeClampPage(p, batches.length, FEE_UI_PAGE_SIZE));
-  }, [batches.length]);
-
-  useEffect(() => {
-    setBusClassSelectPage(1);
-  }, [feeKind]);
-
-  useEffect(() => {
-    setBusClassSelectPage((p) => feeClampPage(p, busClasses.length, FEE_UI_PAGE_SIZE));
-  }, [busClasses.length]);
-
-  useEffect(() => {
-    setBusBatchSelectPage(1);
-  }, [busClassId]);
-
-  useEffect(() => {
-    setBusBatchSelectPage((p) => feeClampPage(p, busBatchesForClass.length, FEE_UI_PAGE_SIZE));
-  }, [busBatchesForClass.length]);
-
-  useEffect(() => {
-    setBusStudentSelectPage(1);
-  }, [busClassId, busBatchId]);
-
-  useEffect(() => {
-    setBusStudentSelectPage((p) => feeClampPage(p, busStudentsSelectable.length, FEE_UI_PAGE_SIZE));
-  }, [busStudentsSelectable.length]);
-
-  const pagedClassListForFeeKind = useMemo(
-    () => feeSlicePage(classListForFeeKind, classListSelectPage, FEE_UI_PAGE_SIZE),
-    [classListForFeeKind, classListSelectPage]
-  );
-
-  const pagedBatches = useMemo(
-    () => feeSlicePage(batches, batchesSelectPage, FEE_UI_PAGE_SIZE),
-    [batches, batchesSelectPage]
-  );
-
-  const pagedBusClasses = useMemo(
-    () => feeSlicePage(busClasses, busClassSelectPage, FEE_UI_PAGE_SIZE),
-    [busClasses, busClassSelectPage]
-  );
-
-  const pagedBusBatchesForClass = useMemo(
-    () => feeSlicePage(busBatchesForClass, busBatchSelectPage, FEE_UI_PAGE_SIZE),
-    [busBatchesForClass, busBatchSelectPage]
-  );
-
-  const pagedBusStudentsSelectable = useMemo(
-    () => feeSlicePage(busStudentsSelectable, busStudentSelectPage, FEE_UI_PAGE_SIZE),
-    [busStudentsSelectable, busStudentSelectPage]
-  );
 
   const title = isEditing
     ? feeKind === "bus"
@@ -384,14 +243,14 @@ export function AddFeeModal({
     if (feeKind === "tuition" || feeKind === "admission") {
       payload.classId = classId;
     } else if (feeKind === "other") {
-      payload.customStructureName = customName.trim();
+      payload.name = customName.trim();
       payload.classId = classId;
     } else if (feeKind === "bus") {
       payload.studentId = studentId;
       payload.routeNote = routeNote.trim() || undefined;
     }
 
-    if (feeKind === "other" && !payload.customStructureName) return;
+    if (feeKind === "other" && !payload.name) return;
     if ((feeKind === "tuition" || feeKind === "admission" || feeKind === "other") && !payload.classId) return;
     if (feeKind === "bus" && !payload.studentId) return;
 
@@ -411,7 +270,7 @@ export function AddFeeModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-4">
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Fee type</Label>
-              <Select
+              <SearchableSelect
                 value={feeKind}
                 onValueChange={(v) => {
                   const nk = v as AddFeeModalFeeKind;
@@ -429,22 +288,20 @@ export function AddFeeModal({
                   if (nk !== "other") setCustomName("");
                 }}
                 disabled={feeTypeSelectDisabled}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tuition">Tuition fee</SelectItem>
-                  <SelectItem value="admission">Admission fee</SelectItem>
-                  <SelectItem value="bus">Bus fee</SelectItem>
-                  <SelectItem value="other">Other (custom)</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "tuition", label: "Tuition fee" },
+                  { value: "admission", label: "Admission fee" },
+                  { value: "bus", label: "Bus fee" },
+                  { value: "other", label: "Other (custom)" },
+                ]}
+              />
             </div>
 
             {feeKind === "other" && (
               <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Fee name</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Fee name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   className="h-10"
                   placeholder="e.g. Exam fee, Activity fee"
@@ -453,6 +310,9 @@ export function AddFeeModal({
                   disabled={isEditing}
                   required
                 />
+                {!customName.trim() && (
+                  <p className="text-xs text-red-500">Fee name is required</p>
+                )}
               </div>
             )}
 
@@ -460,7 +320,7 @@ export function AddFeeModal({
               <>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Class</Label>
-                  <Select
+                  <SearchableSelect
                     value={busClassId}
                     onValueChange={(v) => {
                       setBusClassId(v);
@@ -468,66 +328,28 @@ export function AddFeeModal({
                       setStudentId("");
                     }}
                     disabled={isEditing}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="All classes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL}>All classes</SelectItem>
-                      {busClasses.length === 0 ? (
-                        <SelectItem value="_none" disabled className="whitespace-normal opacity-100">
-                          No classes with enrolled students.
-                        </SelectItem>
-                      ) : (
-                        pagedBusClasses.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))
-                      )}
-                      <AddFeeSelectPaginationFooter
-                        page={busClassSelectPage}
-                        total={busClasses.length}
-                        onPageChange={setBusClassSelectPage}
-                      />
-                    </SelectContent>
-                  </Select>
+                    placeholder="All classes"
+                    options={[
+                      { value: ALL, label: "All classes" },
+                      ...busClasses.map((c) => ({ value: c.id, label: c.name })),
+                    ]}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Batch</Label>
-                  <Select
+                  <SearchableSelect
                     value={busBatchId}
                     onValueChange={(v) => {
                       setBusBatchId(v);
                       setStudentId("");
                     }}
                     disabled={isEditing}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="All batches" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL}>All batches</SelectItem>
-                      {busBatchesForClass.length === 0 ? (
-                        <SelectItem value="_none" disabled className="whitespace-normal opacity-100">
-                          {busClassId === ALL
-                            ? "No batches for this academic year."
-                            : "No batches for this class."}
-                        </SelectItem>
-                      ) : (
-                        pagedBusBatchesForClass.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))
-                      )}
-                      <AddFeeSelectPaginationFooter
-                        page={busBatchSelectPage}
-                        total={busBatchesForClass.length}
-                        onPageChange={setBusBatchSelectPage}
-                      />
-                    </SelectContent>
-                  </Select>
+                    placeholder="All batches"
+                    options={[
+                      { value: ALL, label: "All batches" },
+                      ...busBatchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                    ]}
+                  />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Student</Label>
@@ -538,31 +360,15 @@ export function AddFeeModal({
                         : "—"}
                     </div>
                   ) : (
-                    <Select value={studentId} onValueChange={setStudentId} required>
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select student" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {busStudentsSelectable.length === 0 ? (
-                          <SelectItem value="_none" disabled className="whitespace-normal opacity-100">
-                            {busStudents.length === 0
-                              ? "No students match this class and batch."
-                              : "You are up to date — every student here already has a bus fee."}
-                          </SelectItem>
-                        ) : (
-                          pagedBusStudentsSelectable.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name} ({s.admissionNumber})
-                            </SelectItem>
-                          ))
-                        )}
-                        <AddFeeSelectPaginationFooter
-                          page={busStudentSelectPage}
-                          total={busStudentsSelectable.length}
-                          onPageChange={setBusStudentSelectPage}
-                        />
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={studentId}
+                      onValueChange={setStudentId}
+                      placeholder="Select student"
+                      options={busStudentsSelectable.map((s) => ({
+                        value: s.id,
+                        label: `${s.name} (${s.admissionNumber})`,
+                      }))}
+                    />
                   )}
                 </div>
               </>
@@ -574,35 +380,18 @@ export function AddFeeModal({
                   <>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Class</Label>
-                      <Select value={classId} onValueChange={setClassId} required>
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Select class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {classListForFeeKind.length === 0 ? (
-                            <SelectItem value="_none" disabled className="whitespace-normal opacity-100">
-                              {emptyClassListMessage}
-                            </SelectItem>
-                          ) : (
-                            pagedClassListForFeeKind.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                              </SelectItem>
-                            ))
-                          )}
-                          <AddFeeSelectPaginationFooter
-                            page={classListSelectPage}
-                            total={classListForFeeKind.length}
-                            onPageChange={setClassListSelectPage}
-                          />
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={classId}
+                        onValueChange={setClassId}
+                        placeholder="Select class"
+                        options={classListForFeeKind.map((c) => ({ value: c.id, label: c.name }))}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Batch (filter classes)
                       </Label>
-                      <Select
+                      <SearchableSelect
                         value={classFilterBatchId}
                         onValueChange={(v) => {
                           setClassFilterBatchId(v);
@@ -611,30 +400,12 @@ export function AddFeeModal({
                           const b = batches.find((x) => x.id === v);
                           if (!b || b.classId !== classId) setClassId("");
                         }}
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="All batches" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ALL}>All batches</SelectItem>
-                          {batches.length === 0 ? (
-                            <SelectItem value="_none" disabled className="whitespace-normal opacity-100">
-                              No batches for this academic year.
-                            </SelectItem>
-                          ) : (
-                            pagedBatches.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>
-                                {b.name}
-                              </SelectItem>
-                            ))
-                          )}
-                          <AddFeeSelectPaginationFooter
-                            page={batchesSelectPage}
-                            total={batches.length}
-                            onPageChange={setBatchesSelectPage}
-                          />
-                        </SelectContent>
-                      </Select>
+                        placeholder="All batches"
+                        options={[
+                          { value: ALL, label: "All batches" },
+                          ...batches.map((b) => ({ value: b.id, label: b.name })),
+                        ]}
+                      />
                     </div>
                   </>
                 )}
@@ -666,27 +437,20 @@ export function AddFeeModal({
             {feeKind !== "admission" && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Frequency</Label>
-                <Select value={frequency} onValueChange={setFrequency}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[
-                      "Monthly",
-                      "Per term",
-                      "Annual",
-                      ...(feeKind === "other" ? (["Once", "HalfYearly"] as const) : []),
-                      ...(frequency &&
-                      !["Monthly", "Per term", "Annual", "Once", "HalfYearly"].includes(frequency)
-                        ? [frequency]
-                        : []),
-                    ].map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={frequency}
+                  onValueChange={setFrequency}
+                  options={[
+                    "Monthly",
+                    "Per term",
+                    "Annual",
+                    ...(feeKind === "other" ? (["Once", "HalfYearly"] as const) : []),
+                    ...(frequency &&
+                    !["Monthly", "Per term", "Annual", "Once", "HalfYearly"].includes(frequency)
+                      ? [frequency]
+                      : []),
+                  ].map((f) => ({ value: f, label: f }))}
+                />
               </div>
             )}
 

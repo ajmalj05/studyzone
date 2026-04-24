@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +25,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto, AddAdmissionFeeResult, StudentFeeOfferDto } from "@/types/fees";
+import { FeeLedgerDto, StudentDto, ClassDto, BatchDto, FEE_MONTH_NAMES, formatCurrency, FeeReceiptDto, StudentFeeOfferDto } from "@/types/fees";
 
 interface SchoolProfileDto {
   id: string;
@@ -320,6 +314,14 @@ export default function StudentLedger() {
   const [admissionFeeSubmitting, setAdmissionFeeSubmitting] = useState(false);
   const [studentFeeOffer, setStudentFeeOffer] = useState<StudentFeeOfferDto | null>(null);
 
+  usePageHeaderConfigEffect(
+    {
+      title: "Student billing",
+      description: "Manage one student's charges, payments, concessions, and receipts.",
+    },
+    [],
+  );
+
   const loadStudents = async () => {
     try {
       const params = new URLSearchParams();
@@ -425,7 +427,7 @@ export default function StudentLedger() {
           recordPayment: admissionFeeRecordPayment,
           paymentMode: "Cash",
         }),
-      })) as AddAdmissionFeeResult;
+      })) as { chargeId: string; paymentId?: string; receiptNumber?: string };
       toast({
         title: "Admission fee added",
         description: admissionFeeRecordPayment && result.receiptNumber
@@ -504,104 +506,90 @@ export default function StudentLedger() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Student Billing" description="Manage one student's charges, payments, concessions, and receipts." />
-        <CurrentAcademicYearBadge />
-      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Student billing</CardTitle>
-          <CardDescription>View and manage charges, payments, concessions, and receipts for one student.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-wrap items-end gap-2">
-            <div>
-              <Label>Class</Label>
-              <Select
+        <CardHeader className="flex flex-row items-start justify-between gap-6 flex-wrap">
+          <div>
+            <CardTitle>Student billing</CardTitle>
+            <CardDescription>View and manage charges, payments, concessions, and receipts for one student.</CardDescription>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Class</Label>
+              <SearchableSelect
                 value={classFilter || "all"}
                 onValueChange={(v) => {
                   const next = v === "all" ? "" : v;
                   setClassFilter(next);
                   setBatchFilter("");
                 }}
-              >
-                <SelectTrigger className="w-[160px] mt-1">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="All classes"
+                className="w-[160px]"
+                options={[
+                  { value: "all", label: "All classes" },
+                  ...classes.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
             </div>
-            <div>
-              <Label>Batch</Label>
-              <Select
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Batch</Label>
+              <SearchableSelect
                 value={batchFilter || "all"}
                 onValueChange={(v) => setBatchFilter(v === "all" ? "" : v)}
-              >
-                <SelectTrigger className="w-[160px] mt-1">
-                  <SelectValue placeholder="All batches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All batches</SelectItem>
-                  {batchesForClass.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="All batches"
+                className="w-[160px]"
+                options={[
+                  { value: "all", label: "All batches" },
+                  ...batchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
             </div>
-            <div>
-              <Label>Search</Label>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Search</Label>
               <input
-                className="mt-1 w-[220px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm h-10"
                 placeholder="Name or admission #"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {selectedStudentId && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={generateChargesLoading}
-                  onClick={async () => {
-                    setGenerateChargesLoading(true);
-                    try {
-                      const result = (await fetchApi("/Fees/generate-charges", {
-                        method: "POST",
-                        body: JSON.stringify({
-                          studentId: selectedStudentId,
-                          academicYearId: selectedYearId || undefined,
-                        }),
-                      })) as { chargesAdded: number };
-                      toast({ title: "Charges generated", description: result.chargesAdded === 0 ? "No new charges added (all periods already have charges)." : `${result.chargesAdded} charge(s) added.` });
-                      await loadLedger(selectedStudentId);
-                    } catch (e: unknown) {
-                      toast({ title: "Error", description: (e as Error).message || "Failed to generate charges", variant: "destructive" });
-                    }
-                    setGenerateChargesLoading(false);
-                  }}
-                >
-                  {generateChargesLoading ? "Generating…" : "Generate outstanding"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setAdmissionFeeOpen(true)}
-                >
-                  Add admission fee
-                </Button>
-              </>
-            )}
           </div>
+        </CardHeader>
+        <CardContent>
+          {selectedStudentId && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={generateChargesLoading}
+                onClick={async () => {
+                  setGenerateChargesLoading(true);
+                  try {
+                    const result = (await fetchApi("/Fees/generate-charges", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        studentId: selectedStudentId,
+                        academicYearId: selectedYearId || undefined,
+                      }),
+                    })) as { chargesAdded: number };
+                    toast({ title: "Charges generated", description: result.chargesAdded === 0 ? "No new charges added (all periods already have charges)." : `${result.chargesAdded} charge(s) added.` });
+                    await loadLedger(selectedStudentId);
+                  } catch (e: unknown) {
+                    toast({ title: "Error", description: (e as Error).message || "Failed to generate charges", variant: "destructive" });
+                  }
+                  setGenerateChargesLoading(false);
+                }}
+              >
+                {generateChargesLoading ? "Generating…" : "Generate outstanding"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAdmissionFeeOpen(true)}
+              >
+                Add admission fee
+              </Button>
+            </div>
+          )}
 
           <Dialog open={admissionFeeOpen} onOpenChange={setAdmissionFeeOpen}>
             <DialogContent className="sm:max-w-md">
@@ -646,40 +634,19 @@ export default function StudentLedger() {
             </DialogContent>
           </Dialog>
           <div className="mt-2">
-            <Label className="mb-1 block">Students</Label>
-            <div className="max-h-64 overflow-y-auto rounded-md border border-input bg-background">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Admission #</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Batch</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStudents.map((s) => (
-                    <TableRow
-                      key={s.id}
-                      className={`cursor-pointer hover:bg-muted ${selectedStudentId === s.id ? "bg-muted/70" : ""}`}
-                      onClick={() => setSelectedStudentId(s.id)}
-                    >
-                      <TableCell>{s.name}</TableCell>
-                      <TableCell>{s.admissionNumber}</TableCell>
-                      <TableCell>{classes.find((c) => c.id === s.classId)?.name ?? "-"}</TableCell>
-                      <TableCell>{batches.find((b) => b.id === s.batchId)?.name ?? "-"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredStudents.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                        No students found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <DataTable
+              data={filteredStudents}
+              columns={[
+                { key: "name", header: "Name", cell: (s) => s.name },
+                { key: "admissionNumber", header: "Admission #", cell: (s) => s.admissionNumber },
+                { key: "className", header: "Class", cell: (s) => classes.find((c) => c.id === s.classId)?.name ?? "-" },
+                { key: "batchName", header: "Batch", cell: (s) => batches.find((b) => b.id === s.batchId)?.name ?? "-" },
+              ] as DataTableColumn<StudentDto>[]}
+              keyExtractor={(s) => s.id}
+              loading={loading}
+              emptyMessage="No students found"
+              onRowClick={(s) => setSelectedStudentId(s.id)}
+            />
           </div>
           {ledger && (
             <div className="space-y-4">

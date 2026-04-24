@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DashboardHeader } from "@/components/DashboardHeader";
 import { Search, X, Check, XCircle, UserCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -56,8 +55,6 @@ export default function AdminTeacherRequests() {
 
     return (
         <div className="space-y-4">
-                <DashboardHeader title="Teacher Requests" description="Manage and respond to staff inquiries" />
-
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

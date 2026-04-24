@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
-  MessageSquare,
   Send,
   CheckCircle,
   XCircle,
   Clock,
-  UserCircle,
+  Eye,
 } from "lucide-react";
 
 const requestTypes = [
@@ -22,19 +23,41 @@ const requestTypes = [
   "General Issue",
 ];
 
-const statusStyle: Record<string, string> = {
-  Pending: "bg-warning/15 text-warning",
-  Approved: "bg-success/15 text-success",
-  Rejected: "bg-destructive/15 text-destructive",
+const getStatusBadge = (status: string) => {
+  const variants: Record<string, { label: string; variant: "warning" | "success" | "destructive" }> = {
+    Pending: { label: "Pending", variant: "warning" },
+    Approved: { label: "Approved", variant: "success" },
+    Rejected: { label: "Rejected", variant: "destructive" },
+  };
+  return variants[status] || { label: status, variant: "secondary" as const };
 };
+
+interface RequestDto {
+  _id: string;
+  requestType: string;
+  subject: string;
+  message: string;
+  status: string;
+  createdAt: string;
+  adminComment?: string;
+}
 
 const ParentRequests = () => {
   const { user } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<RequestDto[]>([]);
   const [type, setType] = useState(requestTypes[0]);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  usePageHeaderConfigEffect(
+    {
+      title: "Report an issue / contact admin",
+      description: "Submit requests to the school office and track their status.",
+    },
+    [],
+  );
 
   useEffect(() => {
     if (user?._id) {
@@ -97,12 +120,61 @@ const ParentRequests = () => {
     }
   };
 
+  // Table columns
+  const requestColumns: DataTableColumn<RequestDto>[] = [
+    {
+      key: "requestType",
+      header: "Type",
+      badge: (req) => ({ label: req.requestType, variant: "indigo" }),
+    },
+    {
+      key: "subject",
+      header: "Subject",
+      cell: (req) => <span className="font-medium text-slate-700 dark:text-slate-200">{req.subject || req.requestType}</span>,
+    },
+    {
+      key: "date",
+      header: "Date",
+      cell: (req) => (
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {new Date(req.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      badge: (req) => {
+        const badge = getStatusBadge(req.status);
+        return { label: badge.label, variant: badge.variant };
+      },
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "w-[60px]",
+      cell: (req) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={() => setExpandedId(expandedId === req._id ? null : req._id)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ];
+
+  const expandedRow = expandedId ? requests.find(r => r._id === expandedId) : null;
+
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">
-        Report an Issue / Contact Admin
-      </h1>
-
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="rounded-[var(--radius)] shadow-card">
           <CardHeader>
@@ -178,90 +250,42 @@ const ParentRequests = () => {
         </Card>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card className="rounded-[var(--radius)] shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Your Requests</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {requests.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                You have not submitted any requests yet.
-              </p>
-            ) : (
-              requests.map((req, i) => (
-                <motion.div
-                  key={req._id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="rounded-xl border border-border p-5 shadow-sm bg-card hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-3">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
-                          {req.requestType}
-                        </span>
-                        <span
-                          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border ${statusStyle[req.status]} ${req.status === "Pending" ? "border-warning/30" : req.status === "Approved" ? "border-success/30" : "border-destructive/30"}`}
-                        >
-                          {req.status === "Pending" && (
-                            <Clock className="h-3.5 w-3.5" />
-                          )}
-                          {req.status === "Approved" && (
-                            <CheckCircle className="h-3.5 w-3.5" />
-                          )}
-                          {req.status === "Rejected" && (
-                            <XCircle className="h-3.5 w-3.5" />
-                          )}
-                          {req.status}
-                        </span>
-                      </div>
-                      <h4 className="text-base font-semibold text-foreground">
-                        {req.subject || req.requestType}
-                      </h4>
-                    </div>
-                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap bg-muted px-2.5 py-1 rounded-full">
-                      {new Date(req.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+      <Card className="rounded-[var(--radius)] shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Your Requests</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <DataTable
+            data={requests}
+            columns={requestColumns}
+            keyExtractor={(req) => req._id}
+            emptyMessage="No requests yet"
+            emptyDescription="Submit your first request using the form above"
+          />
+          
+          {/* Expanded row content */}
+          {expandedRow && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-lg border border-border bg-muted/30 p-4 mt-4"
+            >
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground uppercase">Your Message</span>
+                  <p className="text-sm text-foreground mt-1">{expandedRow.message}</p>
+                </div>
+                {expandedRow.adminComment && (
+                  <div className="pt-3 border-t border-border">
+                    <span className="text-xs font-medium text-primary uppercase">Admin Reply</span>
+                    <p className="text-sm text-foreground mt-1">{expandedRow.adminComment}</p>
                   </div>
-
-                  <div className="bg-background rounded-lg border border-border p-3 mt-2">
-                    <p className="text-sm text-foreground/80 leading-relaxed">
-                      {req.message}
-                    </p>
-                  </div>
-
-                  {req.adminComment && (
-                    <div className="mt-4 bg-primary/5 rounded-lg border border-primary/10 p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                          <UserCircle className="h-4 w-4 text-primary" />
-                        </div>
-                        <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                          Admin Reply
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground/90 pl-8">
-                        {req.adminComment}
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

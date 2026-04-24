@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { StatCard } from "@/components/StatCard";
 import { Users, ClipboardCheck, BookOpen, DollarSign, Bell, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,11 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  usePageHeaderConfigEffect(
+    { title: "Dashboard", description: "Your schedule, attendance tasks, and notices at a glance." },
+    [],
+  );
+
   useEffect(() => {
     fetchApi("/TeacherPortal/dashboard")
       .then((d: TeacherPortalDashboardDto) => setData(d))
@@ -51,7 +56,6 @@ const TeacherDashboard = () => {
   if (loading) {
     return (
       <div className="space-y-4">
-        <DashboardHeader />
         <div className="animate-pulse space-y-4">
           <div className="h-24 rounded-xl bg-muted" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -67,7 +71,6 @@ const TeacherDashboard = () => {
   if (error) {
     return (
       <div className="space-y-4">
-        <DashboardHeader />
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="p-4 text-destructive">{error}</CardContent>
         </Card>
@@ -80,8 +83,6 @@ const TeacherDashboard = () => {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader />
-
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="gradient-hero rounded-[var(--radius)] p-8 text-primary-foreground">
           <h2 className="text-lg font-semibold">Welcome back, {d.teacherName ?? "Teacher"}!</h2>
           <p className="mt-1 text-primary-foreground/80">You have {d.classesTodayCount} class{d.classesTodayCount !== 1 ? "es" : ""} scheduled today</p>

@@ -233,7 +233,7 @@ public class ReportsService : IReportsService
         var exam = await _examRepo.GetByIdAsync(eid, ct);
         if (exam == null)
             return null;
-        var marks = await _marksRepo.GetByExamIdAsync(eid, ct);
+        var marks = await _marksRepo.GetByExamIdAsync(eid, approvedOnly: true, ct);
         var studentIds = marks.Select(m => m.StudentId).Distinct().ToList();
         var studentNames = new Dictionary<Guid, string>();
         foreach (var sid in studentIds)

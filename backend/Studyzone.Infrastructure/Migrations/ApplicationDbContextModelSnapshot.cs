@@ -832,8 +832,10 @@ namespace Studyzone.Infrastructure.Migrations
 
             modelBuilder.Entity("Studyzone.Domain.Entities.MarksEntry", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -842,11 +844,18 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("MarksObtained")
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("MaxMarks")
                         .HasColumnType("numeric");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
@@ -855,9 +864,15 @@ namespace Studyzone.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExamId");
+
+                    b.HasIndex("ExamId", "Status");
 
                     b.HasIndex("ExamId", "StudentId", "Subject");
 
@@ -1711,8 +1726,20 @@ namespace Studyzone.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BreaksJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PeriodDurationMinutes")
+                        .HasDefaultValue(45)
+                        .HasColumnType("integer");
+
                     b.Property<int>("PeriodsPerDay")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SchoolStartTime")
+                        .IsRequired()
+                        .HasDefaultValue("08:00")
+                        .HasColumnType("text");
 
                     b.Property<int>("WorkingDayCount")
                         .HasColumnType("integer");

@@ -10,13 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface QuickPayModalProps {
   isOpen: boolean;
@@ -161,29 +155,19 @@ export function QuickPayModal({
 
           <div className="space-y-1.5">
             <Label className="text-sm">Fee type</Label>
-            <Select
+            <SearchableSelect
               value={formData.feeType}
               onValueChange={handleFeeTypeChange}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All outstanding" className="text-sm">
-                  All outstanding (AED {(studentData?.balance || 0).toFixed(2)})
-                </SelectItem>
-                {getFeeTypesWithBalance().map(feeType => {
-                  const amount = getAmountForFeeType(feeType);
-                  // Only show if balance is greater than 0.01 (round to avoid tiny fractions)
-                  if (amount < 0.01) return null;
-                  return (
-                    <SelectItem key={feeType} value={feeType} className="text-sm">
-                      {feeType} (AED {amount.toFixed(2)})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+              options={[
+                { value: "All outstanding", label: `All outstanding (AED ${(studentData?.balance || 0).toFixed(2)})` },
+                ...getFeeTypesWithBalance()
+                  .filter(feeType => getAmountForFeeType(feeType) >= 0.01)
+                  .map(feeType => ({
+                    value: feeType,
+                    label: `${feeType} (AED ${getAmountForFeeType(feeType).toFixed(2)})`,
+                  })),
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -215,20 +199,16 @@ export function QuickPayModal({
 
           <div className="space-y-1.5">
             <Label className="text-sm">Payment mode</Label>
-            <Select
+            <SearchableSelect
               value={formData.mode}
               onValueChange={(v) => setFormData((f) => ({ ...f, mode: v }))}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cash" className="text-sm">Cash</SelectItem>
-                <SelectItem value="Bank transfer" className="text-sm">Bank transfer</SelectItem>
-                <SelectItem value="Cheque" className="text-sm">Cheque</SelectItem>
-                <SelectItem value="Online" className="text-sm">Online</SelectItem>
-              </SelectContent>
-            </Select>
+              options={[
+                { value: "Cash", label: "Cash" },
+                { value: "Bank transfer", label: "Bank transfer" },
+                { value: "Cheque", label: "Cheque" },
+                { value: "Online", label: "Online" },
+              ]}
+            />
           </div>
 
           <div className="space-y-1.5">

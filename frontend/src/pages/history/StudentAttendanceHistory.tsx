@@ -7,7 +7,7 @@ import { Search, Calendar, History, BookOpen, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DownloadModal } from "@/components/DownloadModal";
 import { fetchApi } from "@/lib/api";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { useOptionalPageHeaderDispatch } from "@/context/PageHeaderContext";
 
 interface AttendanceReportRowDto {
   studentId: string;
@@ -47,6 +47,17 @@ const StudentAttendanceHistory = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDownload, setShowDownload] = useState(false);
 
+  const setPageHeader = useOptionalPageHeaderDispatch();
+
+  useEffect(() => {
+    if (!setPageHeader) return;
+    setPageHeader({
+      title: "Student attendance history",
+      description: "Attendance summary for the selected period and class.",
+    });
+    return () => setPageHeader({});
+  }, [setPageHeader]);
+
   useEffect(() => {
     fetchApi("/Classes")
       .then((list: ClassDto[]) => setClasses(Array.isArray(list) ? list : []))
@@ -80,11 +91,7 @@ const StudentAttendanceHistory = () => {
 
   const content = (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Student Attendance History</h1>
-          <p className="text-muted-foreground text-sm">Attendance summary for the selected period</p>
-        </div>
+      <div className="flex justify-end">
         <Button variant="outline" className="rounded-xl gap-2 shadow-sm" onClick={() => setShowDownload(true)}>
           <Download className="h-4 w-4" /> Export
         </Button>
@@ -198,7 +205,6 @@ const StudentAttendanceHistory = () => {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader />
       {content}
     </div>
   );

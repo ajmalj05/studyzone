@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { fetchApi } from "@/lib/api";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface ParentChildDto {
   studentId: string;
@@ -28,6 +29,14 @@ const ParentTimetable = () => {
   const [studentId, setStudentId] = useState(studentIdParam ?? "");
   const [slots, setSlots] = useState<TimetableSlotDto[]>([]);
   const [loading, setLoading] = useState(false);
+
+  usePageHeaderConfigEffect(
+    {
+      title: "Timetable",
+      description: "Weekly class schedule for each linked child.",
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchApi("/ParentPortal/my-children")
@@ -61,19 +70,18 @@ const ParentTimetable = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Timetable</h1>
       <Card className="rounded-[var(--radius)]">
         <CardContent className="pt-6">
-          <Select value={studentId} onValueChange={setStudentId}>
-            <SelectTrigger className="w-[280px] rounded-xl">
-              <SelectValue placeholder="Select child" />
-            </SelectTrigger>
-            <SelectContent>
-              {children.map((c) => (
-                <SelectItem key={c.studentId} value={c.studentId}>{c.name} {c.className ? `(${c.className})` : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={studentId}
+            onValueChange={setStudentId}
+            placeholder="Select child"
+            className="w-[280px] rounded-xl"
+            options={children.map((c) => ({
+              value: c.studentId,
+              label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
+            }))}
+          />
         </CardContent>
       </Card>
       {studentId && (

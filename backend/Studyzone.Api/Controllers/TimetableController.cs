@@ -21,7 +21,14 @@ public class TimetableController : ControllerBase
     {
         var settings = await _service.GetTimetableSettingsAsync(ct);
         if (settings == null)
-            return Ok(new TimetableSettingsDto { WorkingDayCount = 5, PeriodsPerDay = 6 });
+            return Ok(new TimetableSettingsDto
+            {
+                WorkingDayCount = 5,
+                PeriodsPerDay = 6,
+                SchoolStartTime = "08:00",
+                PeriodDurationMinutes = 45,
+                Breaks = new List<TimetableBreakDto>(),
+            });
         return Ok(settings);
     }
 
@@ -72,6 +79,13 @@ public class TimetableController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpDelete("slot/{slotId}")]
+    public async Task<IActionResult> DeleteSlot(string slotId, CancellationToken ct)
+    {
+        await _service.DeleteSlotAsync(slotId, ct);
+        return NoContent();
     }
 
     [HttpPost("batch/{batchId}/publish")]

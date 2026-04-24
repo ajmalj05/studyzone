@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, CalendarDays, BookOpen, Calendar, Library, UserRoundCog, Wallet, Receipt,
+  ClipboardList, Wallet, Receipt, School, Megaphone, UserCircle,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -24,45 +25,30 @@ const sidebarSections: SidebarSection[] = [
     label: "Main",
     items: [{ title: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" }],
   },
+
   {
     label: "Admissions",
     items: [
       { title: "Enquiry", icon: MessageSquare, path: "/admin/enquiry" },
       { title: "Admission", icon: ClipboardList, path: "/admin/admission" },
-      { title: "Academic Year", icon: Calendar, path: "/admin/academic-year" },
     ],
   },
   {
     label: "People",
     items: [
       { title: "Students", icon: Users, path: "/admin/students" },
-      {
-        title: "Teachers",
-        icon: GraduationCap,
-        path: "#",
-        subItems: [
-          { title: "Teacher List", path: "/admin/teachers" },
-          { title: "Offer Letter", path: "/admin/teachers/offer-letter" },
-        ],
-      },
-      { title: "Class Teacher Assign", icon: UserRoundCog, path: "/admin/class-teacher" },
+      { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
       { title: "Parent Portal", icon: UserCheck, path: "/admin/parents" },
     ],
   },
   {
-    label: "Academics",
-    items: [
-      { title: "Classes", icon: BookOpen, path: "/admin/classes" },
-      { title: "Subjects", icon: Library, path: "/admin/subjects" },
-      { title: "Timetable", icon: CalendarDays, path: "/admin/timetable" },
-      { title: "Exams & Results", icon: FileText, path: "/admin/exams" },
-    ],
+    label: "Curriculum",
+    items: [{ title: "Academics", icon: School, path: "/admin/academics" }],
   },
   {
     label: "Finance",
     items: [
       { title: "Fee Management", icon: DollarSign, path: "/admin/fees" },
-      { title: "Student Ledger", icon: Receipt, path: "/admin/fees/ledger" },
       { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
       { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
       { title: "Expenses", icon: Receipt, path: "/admin/expenses" },
@@ -85,14 +71,9 @@ const sidebarSections: SidebarSection[] = [
   {
     label: "Communication",
     items: [
-      { title: "Communication", icon: MessageSquare, path: "/admin/communication" },
-    ],
-  },
-  {
-    label: "Requests",
-    items: [
-      { title: "Teacher Requests", icon: MessageSquare, path: "/admin/requests/teacher" },
-      { title: "Parent Requests", icon: MessageSquare, path: "/admin/requests/parent" },
+      { title: "Circular", icon: Megaphone, path: "/admin/communication/circular" },
+      { title: "Teacher requests", icon: GraduationCap, path: "/admin/communication/teacher-requests" },
+      { title: "Parent requests", icon: UserCircle, path: "/admin/communication/parent-requests" },
     ],
   },
   {
@@ -162,7 +143,15 @@ export function AppSidebarContent({
               )}
               {collapsed && section.label !== "Main" && <div className="pt-2" />}
               {section.items.map((item, index) => {
-                const isActive = location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path));
+                const isTeachers = item.title === "Teachers";
+                const isAcademics = item.title === "Academics";
+                const isActive =
+                  isTeachers
+                    ? location.pathname.startsWith("/admin/teachers")
+                    : isAcademics
+                      ? location.pathname.startsWith("/admin/academics")
+                      : location.pathname === item.path ||
+                        (item.subItems && item.subItems.some((sub) => location.pathname === sub.path));
                 const isExpanded = expandedMenu === item.title;
                 return (
                   <div key={item.title}>
@@ -248,8 +237,18 @@ export function AppSidebarContent({
   );
 }
 
-export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface AppSidebarProps {
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+export function AppSidebar({ collapsed: controlledCollapsed, onCollapsedChange }: AppSidebarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
+  const setCollapsed = (v: boolean) => {
+    setInternalCollapsed(v);
+    onCollapsedChange?.(v);
+  };
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   return (

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { FileText, UserPlus, Printer, Save, Plus, Trash2, Edit, RotateCcw, Check, X } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface SchoolProfileDto {
   id: string;
@@ -637,7 +637,6 @@ export default function TeacherOfferLetter() {
   if (loadingFields) {
     return (
       <div className="space-y-6">
-        <DashboardHeader title="Teacher Offer Letter" description="Loading field configurations..." />
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">Loading field configurations...</p>
@@ -649,8 +648,7 @@ export default function TeacherOfferLetter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Teacher Offer Letter" description="Create, save, and print professional offer letters for teachers." />
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" className="gap-2" onClick={startNew}>
             <Plus className="h-4 w-4" /> New
@@ -944,7 +942,7 @@ export default function TeacherOfferLetter() {
                       </div>
                     )}
                     <div className={!isFieldActive("letterDate") ? 'pointer-events-none' : ''}>
-                      <Input type="date" value={form.letterDate} onChange={(e) => set("letterDate", e.target.value)} />
+                      <DatePicker value={form.letterDate} onChange={(val) => set("letterDate", val)} placeholder="Select letter date" />
                     </div>
                   </div>
 
@@ -988,7 +986,7 @@ export default function TeacherOfferLetter() {
                       </div>
                     )}
                     <div className={!isFieldActive("interviewDate") ? 'pointer-events-none' : ''}>
-                      <Input type="date" value={form.interviewDate} onChange={(e) => set("interviewDate", e.target.value)} />
+                      <DatePicker value={form.interviewDate} onChange={(val) => set("interviewDate", val)} placeholder="Select interview date" />
                     </div>
                   </div>
 
@@ -1009,7 +1007,7 @@ export default function TeacherOfferLetter() {
                       </div>
                     )}
                     <div className={!isFieldActive("joiningDate") ? 'pointer-events-none' : ''}>
-                      <Input type="date" value={form.joiningDate} onChange={(e) => set("joiningDate", e.target.value)} />
+                      <DatePicker value={form.joiningDate} onChange={(val) => set("joiningDate", val)} placeholder="Select joining date" />
                     </div>
                   </div>
                 </div>

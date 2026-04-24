@@ -10,13 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Popover,
   PopoverContent,
@@ -234,7 +228,7 @@ export function RecordPaymentModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Class</Label>
-              <Select
+              <SearchableSelect
                 value={classFilter || ALL}
                 onValueChange={(v) => {
                   const value = v === ALL ? "" : v;
@@ -249,25 +243,16 @@ export function RecordPaymentModal({
                     );
                   if (!stillInList) setFormData((f) => ({ ...f, studentId: "" }));
                 }}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL} className="text-sm">
-                    All classes
-                  </SelectItem>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id} className="text-sm">
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="All classes"
+                options={[
+                  { value: ALL, label: "All classes" },
+                  ...classes.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm">Batch</Label>
-              <Select
+              <SearchableSelect
                 value={batchFilter || ALL}
                 onValueChange={(v) => {
                   const value = v === ALL ? "" : v;
@@ -282,21 +267,12 @@ export function RecordPaymentModal({
                     );
                   if (!stillInList) setFormData((f) => ({ ...f, studentId: "" }));
                 }}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="All batches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL} className="text-sm">
-                    All batches
-                  </SelectItem>
-                  {batchesForClass.map((b) => (
-                    <SelectItem key={b.id} value={b.id} className="text-sm">
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="All batches"
+                options={[
+                  { value: ALL, label: "All batches" },
+                  ...batchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
             </div>
           </div>
 
@@ -371,32 +347,27 @@ export function RecordPaymentModal({
 
           <div className="space-y-1.5">
             <Label className="text-sm">Fee type</Label>
-            <Select
+            <SearchableSelect
               value={formData.feeType}
               onValueChange={handleFeeTypeChange}
               disabled={!ledgerMeta || ledgerLoading}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All outstanding" className="text-sm">
-                  {ledgerMeta
+              options={[
+                {
+                  value: "All outstanding",
+                  label: ledgerMeta
                     ? `All outstanding (AED ${sumChargeBalances(ledgerMeta).toFixed(2)})`
-                    : "All outstanding"}
-                </SelectItem>
-                {ledgerMeta &&
-                  orderedFeeTypeKeysForOutstandingCharges(ledgerMeta.charges).map((key) => {
-                    const lineAmt = amountForFeeType(key, ledgerMeta);
-                    if (lineAmt < 0.01) return null;
-                    return (
-                      <SelectItem key={key} value={key} className="text-sm">
-                        {key} (AED {lineAmt.toFixed(2)})
-                      </SelectItem>
-                    );
-                  })}
-              </SelectContent>
-            </Select>
+                    : "All outstanding",
+                },
+                ...(ledgerMeta
+                  ? orderedFeeTypeKeysForOutstandingCharges(ledgerMeta.charges)
+                      .filter((key) => amountForFeeType(key, ledgerMeta) >= 0.01)
+                      .map((key) => ({
+                        value: key,
+                        label: `${key} (AED ${amountForFeeType(key, ledgerMeta).toFixed(2)})`,
+                      }))
+                  : []),
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -429,20 +400,16 @@ export function RecordPaymentModal({
 
           <div className="space-y-1.5">
             <Label className="text-sm">Payment mode</Label>
-            <Select
+            <SearchableSelect
               value={formData.mode}
               onValueChange={(v) => setFormData((f) => ({ ...f, mode: v }))}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cash" className="text-sm">Cash</SelectItem>
-                <SelectItem value="Bank transfer" className="text-sm">Bank transfer</SelectItem>
-                <SelectItem value="Cheque" className="text-sm">Cheque</SelectItem>
-                <SelectItem value="Online" className="text-sm">Online</SelectItem>
-              </SelectContent>
-            </Select>
+              options={[
+                { value: "Cash", label: "Cash" },
+                { value: "Bank transfer", label: "Bank transfer" },
+                { value: "Cheque", label: "Cheque" },
+                { value: "Online", label: "Online" },
+              ]}
+            />
           </div>
 
           <div className="space-y-1.5">

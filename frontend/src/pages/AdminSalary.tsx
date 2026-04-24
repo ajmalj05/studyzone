@@ -1,15 +1,9 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +52,11 @@ export default function AdminSalary() {
   const [lineModalPayment, setLineModalPayment] = useState<TeacherSalaryPaymentDto | null>(null);
   const [lineForm, setLineForm] = useState({ lineType: "Deduction" as "Deduction" | "Addition", description: "", amount: "" });
   const [detailPayment, setDetailPayment] = useState<TeacherSalaryPaymentDto | null>(null);
+
+  usePageHeaderConfigEffect(
+    { title: "Payroll", description: "Generate monthly teacher payroll, adjustments, and mark as paid." },
+    [],
+  );
 
   const loadPaymentsForMonth = async () => {
     const y = payrollYear >= 1 && payrollYear <= 9999 ? payrollYear : new Date().getFullYear();
@@ -151,8 +150,6 @@ export default function AdminSalary() {
 
   return (
     <div className="space-y-6">
-        <DashboardHeader title="Payroll" description="Manage monthly payments" />
-
         <Card className="rounded-[var(--radius)]">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -164,25 +161,21 @@ export default function AdminSalary() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium">Year</label>
-                <Select value={String(payrollYear)} onValueChange={(v) => setPayrollYear(parseInt(v, 10))}>
-                  <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {[currentDate.getFullYear(), currentDate.getFullYear() - 1].map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={String(payrollYear)}
+                  onValueChange={(v) => setPayrollYear(parseInt(v, 10))}
+                  className="w-28"
+                  options={[currentDate.getFullYear(), currentDate.getFullYear() - 1].map((y) => ({ value: String(y), label: String(y) }))}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium">Month</label>
-                <Select value={String(payrollMonth)} onValueChange={(v) => setPayrollMonth(parseInt(v, 10))}>
-                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m) => (
-                      <SelectItem key={m} value={String(m)}>{monthName(m)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={String(payrollMonth)}
+                  onValueChange={(v) => setPayrollMonth(parseInt(v, 10))}
+                  className="w-32"
+                  options={MONTHS.map((m) => ({ value: String(m), label: monthName(m) }))}
+                />
               </div>
               <Button onClick={handleGeneratePayroll} disabled={generateLoading} variant="outline" className="gap-2">
                 {generateLoading ? "Generating…" : "Generate payroll for this month"}
@@ -266,13 +259,14 @@ export default function AdminSalary() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Type</label>
-                <Select value={lineForm.lineType} onValueChange={(v: "Deduction" | "Addition") => setLineForm((f) => ({ ...f, lineType: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Deduction">Deduction</SelectItem>
-                    <SelectItem value="Addition">Addition (Increment)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={lineForm.lineType}
+                  onValueChange={(v) => setLineForm((f) => ({ ...f, lineType: v as "Deduction" | "Addition" }))}
+                  options={[
+                    { value: "Deduction", label: "Deduction" },
+                    { value: "Addition", label: "Addition (Increment)" },
+                  ]}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Description</label>

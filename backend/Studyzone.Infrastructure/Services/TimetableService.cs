@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Studyzone.Application.Timetable;
 using Studyzone.Application.Common.Interfaces;
 using Studyzone.Domain.Entities;
@@ -7,6 +9,8 @@ namespace Studyzone.Infrastructure.Services;
 public class TimetableService : ITimetableService
 {
     private static readonly string[] DayNames = { "", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+    private static readonly JsonSerializerOptions BreakJsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly Regex HhMm = new(@"^\d{2}:\d{2}$", RegexOptions.Compiled);
 
     private readonly IPeriodConfigRepository _periodRepo;
     private readonly ITimetableSettingsRepository _settingsRepo;
@@ -35,24 +39,75 @@ public class TimetableService : ITimetableService
         return new TimetableSettingsDto
         {
             WorkingDayCount = row.WorkingDayCount,
-            PeriodsPerDay = row.PeriodsPerDay
+            PeriodsPerDay = row.PeriodsPerDay,
+            SchoolStartTime = string.IsNullOrWhiteSpace(row.SchoolStartTime) ? "08:00" : row.SchoolStartTime.Trim(),
+            PeriodDurationMinutes = row.PeriodDurationMinutes > 0 ? row.PeriodDurationMinutes : 45,
+            Breaks = ParseBreaks(row.BreaksJson),
         };
     }
 
     public async Task<TimetableSettingsDto> SaveTimetableSettingsAsync(TimetableSettingsDto dto, CancellationToken ct = default)
     {
+        var start = NormalizeSchoolStartTime(dto.SchoolStartTime);
+        var duration = Math.Clamp(dto.PeriodDurationMinutes, 5, 180);
+        var periodsPerDay = Math.Clamp(dto.PeriodsPerDay, 1, 20);
+        var sanitizedBreaks = SanitizeBreaks(dto.Breaks, periodsPerDay);
+        var breaksJson = JsonSerializer.Serialize(sanitizedBreaks, BreakJsonOptions);
+
         var entity = new TimetableSettings
         {
             Id = Guid.NewGuid(),
             WorkingDayCount = Math.Clamp(dto.WorkingDayCount, 1, 7),
-            PeriodsPerDay = Math.Clamp(dto.PeriodsPerDay, 1, 20)
+            PeriodsPerDay = periodsPerDay,
+            SchoolStartTime = start,
+            PeriodDurationMinutes = duration,
+            BreaksJson = breaksJson,
         };
         var saved = await _settingsRepo.AddOrUpdateAsync(entity, ct);
         return new TimetableSettingsDto
         {
             WorkingDayCount = saved.WorkingDayCount,
-            PeriodsPerDay = saved.PeriodsPerDay
+            PeriodsPerDay = saved.PeriodsPerDay,
+            SchoolStartTime = string.IsNullOrWhiteSpace(saved.SchoolStartTime) ? "08:00" : saved.SchoolStartTime.Trim(),
+            PeriodDurationMinutes = saved.PeriodDurationMinutes > 0 ? saved.PeriodDurationMinutes : 45,
+            Breaks = ParseBreaks(saved.BreaksJson),
         };
+    }
+
+    private static string NormalizeSchoolStartTime(string? raw)
+    {
+        var t = (raw ?? "").Trim();
+        if (HhMm.IsMatch(t) && TimeSpan.TryParse(t, out _)) return t;
+        return "08:00";
+    }
+
+    private static List<TimetableBreakDto> ParseBreaks(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new List<TimetableBreakDto>();
+        try
+        {
+            var list = JsonSerializer.Deserialize<List<TimetableBreakDto>>(json!, BreakJsonOptions);
+            return list ?? new List<TimetableBreakDto>();
+        }
+        catch
+        {
+            return new List<TimetableBreakDto>();
+        }
+    }
+
+    private static List<TimetableBreakDto> SanitizeBreaks(IReadOnlyList<TimetableBreakDto>? breaks, int periodsPerDay)
+    {
+        if (breaks == null || breaks.Count == 0) return new List<TimetableBreakDto>();
+        var maxAfter = Math.Max(1, periodsPerDay - 1);
+        return breaks
+            .Select(b => new TimetableBreakDto
+            {
+                Id = string.IsNullOrWhiteSpace(b.Id) ? Guid.NewGuid().ToString("N") : b.Id.Trim(),
+                AfterPeriod = Math.Clamp(b.AfterPeriod, 1, maxAfter),
+                DurationMinutes = Math.Clamp(b.DurationMinutes, 5, 120),
+                AppliesTo = string.IsNullOrWhiteSpace(b.AppliesTo) ? "all" : b.AppliesTo.Trim().ToLowerInvariant(),
+            })
+            .ToList();
     }
 
     public async Task<IReadOnlyList<TeacherForSubjectDto>> GetTeachersForSubjectAsync(string subjectName, CancellationToken ct = default)
@@ -236,5 +291,11 @@ public class TimetableService : ITimetableService
             s.IsPublished = true;
             await _slotRepo.UpdateAsync(s, ct);
         }
+    }
+
+    public async Task DeleteSlotAsync(string slotId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(slotId, out var id)) return;
+        await _slotRepo.DeleteAsync(id, ct);
     }
 }

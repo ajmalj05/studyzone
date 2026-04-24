@@ -10,4 +10,5 @@ public interface ITimetableService
     Task<IReadOnlyList<TimetableSlotDto>> GetSlotsByBatchAsync(string batchId, CancellationToken ct = default);
     Task<TimetableSlotDto> SaveSlotAsync(TimetableSlotDto dto, CancellationToken ct = default);
     Task PublishTimetableAsync(string batchId, CancellationToken ct = default);
+    Task DeleteSlotAsync(string slotId, CancellationToken ct = default);
 }

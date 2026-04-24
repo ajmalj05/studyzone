@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { useOptionalPageHeaderDispatch } from "@/context/PageHeaderContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import type { StudentAttendanceDetailDto } from "@/types/attendance";
 const StudentAttendanceDetail = () => {
   const { studentId } = useParams<{ studentId: string }>();
   const [searchParams] = useSearchParams();
+  const setPageHeader = useOptionalPageHeaderDispatch();
 
   const [fromDate, setFromDate] = useState(() => {
     const queryFrom = searchParams.get("from");
@@ -55,6 +56,17 @@ const StudentAttendanceDetail = () => {
       .finally(() => setLoading(false));
   }, [studentId, fromDate, toDate]);
 
+  useEffect(() => {
+    if (!setPageHeader) return;
+    const name = detail?.studentName ?? "Student attendance";
+    const cls = detail?.className ? `${detail.className} • ` : "";
+    setPageHeader({
+      title: name,
+      description: `${cls}From ${fromDate} to ${toDate}`,
+    });
+    return () => setPageHeader({});
+  }, [detail?.studentName, detail?.className, fromDate, toDate, setPageHeader]);
+
   const previewRows = useMemo(
     () =>
       detail?.records.map((r) => [
@@ -67,18 +79,8 @@ const StudentAttendanceDetail = () => {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader />
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">
-              {detail?.studentName || "Student Attendance Detail"}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {detail?.className ? `${detail.className} • ` : ""}
-              From {fromDate} to {toDate}
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-4">
           <Button
             variant="outline"
             className="rounded-xl gap-2 shadow-sm"

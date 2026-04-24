@@ -12,7 +12,7 @@ const adminNavItems: MobileBottomNavItem[] = [
   { path: "/admin/students", label: "Students", icon: Users },
   { path: "/admin/attendance", label: "Attendance", icon: ClipboardCheck },
   { path: "/admin/fees", label: "Fees", icon: DollarSign },
-  { path: "/admin/exams", label: "Exams", icon: FileText },
+  { path: "/admin/academics/exams", label: "Exams", icon: FileText },
 ];
 
 export function getAdminBottomNavItems(): MobileBottomNavItem[] {

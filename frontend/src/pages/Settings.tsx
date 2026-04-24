@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogContent,
@@ -83,6 +77,11 @@ export default function Settings() {
   // User form
   const [userForm, setUserForm] = useState({ userId: "", password: "", name: "", role: "teacher" });
   const [showUserForm, setShowUserForm] = useState(false);
+
+  usePageHeaderConfigEffect(
+    { title: "Settings", description: "School profile, users, roles, and audit log." },
+    [],
+  );
 
   const loadSchoolProfile = async () => {
     try {
@@ -216,7 +215,6 @@ export default function Settings() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Settings" />
         <div className="space-y-4">
           <Card className="border-dashed">
             <CardContent className="flex items-center justify-between py-4">
@@ -312,16 +310,18 @@ export default function Settings() {
                         </div>
                         <div className="space-y-1">
                           <Label>Role</Label>
-                          <Select value={userForm.role} onValueChange={(v) => setUserForm((f) => ({ ...f, role: v }))}>
-                            <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="teacher">Teacher</SelectItem>
-                              <SelectItem value="parent">Parent</SelectItem>
-                              <SelectItem value="accountant">Accountant</SelectItem>
-                              <SelectItem value="receptionist">Receptionist</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <SearchableSelect
+                            value={userForm.role}
+                            onValueChange={(v) => setUserForm((f) => ({ ...f, role: v }))}
+                            placeholder="Role"
+                            options={[
+                              { value: "admin", label: "Admin" },
+                              { value: "teacher", label: "Teacher" },
+                              { value: "parent", label: "Parent" },
+                              { value: "accountant", label: "Accountant" },
+                              { value: "receptionist", label: "Receptionist" },
+                            ]}
+                          />
                         </div>
                         <DialogFooter>
                           <Button type="button" variant="outline" onClick={() => setShowUserForm(false)}>Cancel</Button>

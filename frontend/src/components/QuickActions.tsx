@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 const actions = [
   { icon: UserPlus, label: "Add Student", description: "Enroll new student", path: "/admin/students" },
   { icon: DollarSign, label: "Collect Fee", description: "Open student billing", path: "/admin/fees/billing" },
-  { icon: FileText, label: "Create Exam", description: "Schedule new exam", path: "/admin/exams" },
+  { icon: FileText, label: "Create Exam", description: "Schedule new exam", path: "/admin/academics/exams" },
   { icon: ClipboardCheck, label: "Mark Attendance", description: "Today's attendance", path: "/admin/attendance" },
 ];
 

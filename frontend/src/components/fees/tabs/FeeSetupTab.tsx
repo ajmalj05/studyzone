@@ -3,14 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Pencil,
   Trash2,
   Plus,
@@ -32,16 +24,12 @@ import {
   parseBusFeeDisplay,
   busFeeStudentIdFromName,
   type FeeStructureRow,
-  type FeeSetupTab,
+  type FeeSetupTab as FeeSetupTabType,
 } from "@/lib/feeSetupGrouping";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { PillTabs, type PillTab } from "@/components/ui/pill-tabs";
 import { FeeTablePaginationBar } from "../FeeTablePaginationBar";
 import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
@@ -53,7 +41,7 @@ interface FeeSetupTabProps {
   batches: BatchDto[];
 }
 
-function tabEquals(a: FeeSetupTab, b: FeeSetupTab): boolean {
+function tabEquals(a: FeeSetupTabType, b: FeeSetupTabType): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === "other" && b.kind === "other") return a.baseLabel === b.baseLabel;
   return true;
@@ -65,7 +53,8 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [setupTab, setSetupTab] = useState<FeeSetupTab>({ kind: "tuition" });
+  const [activeTab, setActiveTab] = useState<string>("tuition");
+  const [otherTabLabel, setOtherTabLabel] = useState<string>("");
   const [search, setSearch] = useState("");
   const [frequencyFilter, setFrequencyFilter] = useState<string>(ALL);
   const [classFilter, setClassFilter] = useState<string>(ALL);
@@ -104,19 +93,19 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
   );
 
   const currentBucket = useMemo((): FeeStructureRow[] => {
-    switch (setupTab.kind) {
+    switch (activeTab) {
       case "tuition":
         return tuition;
       case "admission":
         return admission;
       case "bus":
         return bus;
-      case "other":
-        return otherTabs.find((t) => t.baseLabel === setupTab.baseLabel)?.items ?? [];
       default:
-        return [];
+        // For other tabs, find by baseLabel
+        const otherTab = otherTabs.find((t) => t.baseLabel === activeTab);
+        return otherTab?.items ?? [];
     }
-  }, [setupTab, tuition, admission, bus, otherTabs]);
+  }, [activeTab, tuition, admission, bus, otherTabs]);
 
   const filteredRows = useMemo(() => {
     let rows = currentBucket;
@@ -128,7 +117,7 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     }
     const q = search.trim().toLowerCase();
     if (!q) return rows;
-    if (setupTab.kind === "bus") {
+    if (activeTab === "bus") {
       return rows.filter((r) => {
         const { studentName, routeNote } = parseBusFeeDisplay(r);
         return (
@@ -139,11 +128,11 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
       });
     }
     return rows.filter((r) => (r.className || "").toLowerCase().includes(q));
-  }, [currentBucket, frequencyFilter, classFilter, search, setupTab.kind]);
+  }, [currentBucket, frequencyFilter, classFilter, search, activeTab]);
 
   useEffect(() => {
     setSetupTablePage(1);
-  }, [setupTab, search, frequencyFilter, classFilter]);
+  }, [activeTab, search, frequencyFilter, classFilter]);
 
   useEffect(() => {
     setSetupTablePage((p) => feeClampPage(p, filteredRows.length, FEE_UI_PAGE_SIZE));
@@ -154,144 +143,105 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     [filteredRows, setupTablePage]
   );
 
-  const frequencyOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of currentBucket) {
-      if (r.frequency) set.add(r.frequency);
-    }
-    return Array.from(set).sort();
-  }, [currentBucket]);
-
-  const tuitionTakenClassIds = useMemo(
-    () => tuition.map((f) => f.classId),
-    [tuition]
-  );
-  const admissionTakenClassIds = useMemo(
-    () => admission.map((f) => f.classId),
-    [admission]
-  );
-  const busTakenStudentIds = useMemo(
-    () =>
-      bus
-        .map((f) => busFeeStudentIdFromName(f, students))
-        .filter((x): x is string => !!x),
-    [bus, students]
-  );
-
-  const openAddModal = () => {
-    setEditStructure(null);
-    if (setupTab.kind === "tuition") setCreateDefaults({ feeKind: "tuition" });
-    else if (setupTab.kind === "admission") setCreateDefaults({ feeKind: "admission" });
-    else if (setupTab.kind === "bus") setCreateDefaults({ feeKind: "bus" });
-    else setCreateDefaults({ feeKind: "other", otherStructureName: setupTab.baseLabel });
-    setAddModalOpen(true);
-  };
-
-  const openEditModal = (row: FeeStructureRow) => {
-    setCreateDefaults(null);
-    setEditStructure(row);
-    setAddModalOpen(true);
-  };
-
-  const handleAddFeeSave = async (payload: AddFeeModalSavePayload, editingId?: string) => {
+  const handleAdd = async (payload: AddFeeModalSavePayload) => {
     try {
       setSaving(true);
-      if (editingId && editStructure) {
-        if (payload.feeKind === "bus") {
-          const student = students.find((s) => s.id === payload.studentId);
-          const studentName = student?.name || "Student";
-          const routePart = payload.routeNote ? ` - ${payload.routeNote}` : "";
-          await fetchApi(`/Fees/structures/${editingId}`, {
-            method: "PUT",
-            body: JSON.stringify({
-              name: `Bus fee - ${studentName}${routePart}`,
-              amount: payload.amount,
-              frequency: payload.frequency,
-            }),
-          });
-        } else {
-          let nameForPut = editStructure.name;
-          if (payload.feeKind === "tuition") nameForPut = "Tuition fee";
-          if (payload.feeKind === "admission") nameForPut = "Admission fee";
-          await fetchApi(`/Fees/structures/${editingId}`, {
-            method: "PUT",
-            body: JSON.stringify({
-              name: nameForPut,
-              amount: payload.amount,
-              frequency: payload.frequency,
-            }),
-          });
-        }
-        toast({ title: "Success", description: "Fee updated successfully" });
-      } else {
-        if (payload.feeKind === "tuition") {
-          await fetchApi("/Fees/structures", {
-            method: "POST",
-            body: JSON.stringify({
-              classId: payload.classId,
-              amount: payload.amount,
-              frequency: payload.frequency,
-              name: "Tuition fee",
-              academicYearId: selectedYearId,
-            }),
-          });
-        } else if (payload.feeKind === "admission") {
-          await fetchApi("/Fees/structures", {
-            method: "POST",
-            body: JSON.stringify({
-              classId: payload.classId,
-              amount: payload.amount,
-              frequency: "Once",
-              name: "Admission fee",
-              academicYearId: selectedYearId,
-            }),
-          });
-        } else if (payload.feeKind === "bus") {
-          const student = students.find((s) => s.id === payload.studentId);
-          if (!student) {
-            toast({ title: "Error", description: "Student not found", variant: "destructive" });
-            return;
-          }
-          const routePart = payload.routeNote ? ` - ${payload.routeNote}` : "";
-          const feeName = `Bus fee - ${student.name}${routePart}`;
-          await fetchApi("/Fees/structures", {
-            method: "POST",
-            body: JSON.stringify({
-              classId: student.classId,
-              amount: payload.amount,
-              frequency: payload.frequency,
-              name: feeName,
-              academicYearId: selectedYearId,
-            }),
-          });
-        } else {
-          const name = (payload.customStructureName || "").trim();
-          await fetchApi("/Fees/structures", {
-            method: "POST",
-            body: JSON.stringify({
-              classId: payload.classId,
-              amount: payload.amount,
-              frequency: payload.frequency,
-              name,
-              academicYearId: selectedYearId,
-            }),
-          });
-        }
-        toast({ title: "Success", description: "Fee saved successfully" });
+      
+      // Transform payload to match backend CreateFeeStructureRequest
+      const { feeKind, name, classId, studentId, amount, frequency, routeNote } = payload;
+      
+      // Determine the fee name based on type
+      let feeName = name || "";
+      if (feeKind === "tuition") feeName = "Tuition Fee";
+      else if (feeKind === "admission") feeName = "Admission Fee";
+      else if (feeKind === "bus" && studentId) {
+        const student = students.find((s) => s.id === studentId);
+        feeName = `Bus Fee${routeNote ? ` - ${routeNote}` : ""}`;
       }
+      // For custom ("other") fees, use the name field directly
+      
+      const body: any = {
+        classId,
+        amount,
+        frequency,
+        name: feeName,
+      };
+      
+      if (studentId) {
+        body.studentId = studentId;
+      }
+      if (routeNote) {
+        body.routeNote = routeNote;
+      }
+      
+      const { id } = payload as { id?: string };
+      if (id) {
+        await fetchApi("/Fees/structures", {
+          method: "PUT",
+          body: JSON.stringify({ id, ...body }),
+        });
+      } else {
+        await fetchApi("/Fees/structures", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      }
+      toast({ title: "Saved", description: "Fee structure saved." });
       setAddModalOpen(false);
-      setEditStructure(null);
       setCreateDefaults(null);
+      setEditStructure(null);
       await loadFees();
     } catch (e: unknown) {
       toast({
         title: "Error",
-        description: (e as Error).message || "Failed to save fee",
+        description:
+          (e as { message?: string })?.message || "Failed to save fee structure.",
         variant: "destructive",
       });
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    try {
+      setSaving(true);
+      await fetchApi(`/Fees/structures/${encodeURIComponent(deleteItem.id)}`, {
+        method: "DELETE",
+      });
+      toast({ title: "Deleted", description: "Fee structure deleted." });
+      setDeleteModalOpen(false);
+      setDeleteItem(null);
+      await loadFees();
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description:
+          (e as { message?: string })?.message || "Failed to delete fee structure.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openAddModal = (defaults?: AddFeeModalCreateDefaults) => {
+    setEditStructure(null);
+    const isOther = !["tuition", "admission", "bus"].includes(activeTab);
+    setCreateDefaults(
+      defaults ?? ({
+        kind: isOther ? "other" : (activeTab as "tuition" | "admission" | "bus"),
+        baseLabel: isOther ? activeTab : undefined,
+      } as unknown as AddFeeModalCreateDefaults)
+    );
+    setAddModalOpen(true);
+  };
+
+  const openEditModal = (fee: FeeStructureRow) => {
+    setEditStructure(fee);
+    setCreateDefaults(null);
+    setAddModalOpen(true);
   };
 
   const confirmDelete = (id: string, name: string) => {
@@ -299,407 +249,268 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     setDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteItem) return;
-    try {
-      setSaving(true);
-      await fetchApi(`/Fees/structures/${deleteItem.id}`, { method: "DELETE" });
-      toast({ title: "Success", description: "Fee deleted successfully" });
-      await loadFees();
-    } catch (e: unknown) {
-      toast({
-        title: "Error",
-        description: (e as Error).message || "Failed to delete fee",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteModalOpen(false);
-      setDeleteItem(null);
-      setSaving(false);
-    }
-  };
+  const frequencyOptions = useMemo(() => {
+    const allFreqs = new Set<string>();
+    allStructures.forEach((s) => {
+      if (s.frequency) allFreqs.add(s.frequency);
+    });
+    return Array.from(allFreqs).sort();
+  }, [allStructures]);
 
-  const tabDefs: { tab: FeeSetupTab; label: string; count: number; icon: typeof BookOpen }[] = [
-    { tab: { kind: "tuition" }, label: "Tuition", count: tuition.length, icon: BookOpen },
-    { tab: { kind: "admission" }, label: "Admission", count: admission.length, icon: GraduationCap },
-    { tab: { kind: "bus" }, label: "Bus fee", count: bus.length, icon: Bus },
-    ...otherTabs.map((ot) => ({
-      tab: { kind: "other" as const, baseLabel: ot.baseLabel },
-      label: ot.baseLabel,
-      count: ot.items.length,
-      icon: Layers,
-    })),
+  const tabs: PillTab[] = [
+    { value: "tuition", label: "Tuition", icon: BookOpen },
+    { value: "admission", label: "Admission", icon: GraduationCap },
+    { value: "bus", label: "Bus", icon: Bus },
+    ...otherTabs.map((t) => ({ value: t.baseLabel, label: t.baseLabel, icon: Layers })),
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  const getColumns = (): DataTableColumn<FeeStructureRow>[] => {
+    if (activeTab === "bus") {
+      return [
+        {
+          key: "student",
+          header: "Student",
+          cell: (fee) => {
+            const { studentName } = parseBusFeeDisplay(fee);
+            return (
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+                  {getInitials(studentName)}
+                </span>
+                <span className="font-medium text-slate-700 text-sm">{studentName}</span>
+              </div>
+            );
+          },
+        },
+        {
+          key: "className",
+          header: "Class",
+          cell: (fee) => <span className="text-slate-600 text-sm">{fee.className ?? "—"}</span>,
+        },
+        {
+          key: "amount",
+          header: "Amount (AED)",
+          cell: (fee) => <span className="text-slate-600 text-sm">{formatCurrency(fee.amount)}</span>,
+          align: "right",
+        },
+        {
+          key: "routeNote",
+          header: "Route / note",
+          cell: (fee) => {
+            const { routeNote } = parseBusFeeDisplay(fee);
+            return <span className="text-slate-600 text-sm">{routeNote || "—"}</span>;
+          },
+        },
+        {
+          key: "frequency",
+          header: "Frequency",
+          cell: (fee) => (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              {fee.frequency}
+            </span>
+          ),
+        },
+        {
+          key: "actions",
+          header: "",
+          align: "right",
+          cell: (fee) => (
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditModal(fee)} disabled={saving}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => {
+                  const { studentName } = parseBusFeeDisplay(fee);
+                  confirmDelete(fee.id, `${studentName} — ${formatCurrency(fee.amount)}`);
+                }} disabled={saving}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ),
+          },
+        ];
+      } else if (activeTab === "admission") {
+        return [
+          {
+            key: "className",
+            header: "Class",
+            cell: (fee) => <span className="text-slate-600 text-sm">{fee.className ?? "—"}</span>,
+          },
+          {
+            key: "amount",
+            header: "Amount (AED)",
+            cell: (fee) => <span className="text-slate-600 text-sm">{formatCurrency(fee.amount)}</span>,
+            align: "right",
+          },
+          {
+            key: "actions",
+            header: "",
+            align: "right",
+            cell: (fee) => (
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditModal(fee)} disabled={saving}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => confirmDelete(fee.id, `${fee.className ?? "—"} — ${formatCurrency(fee.amount)}`)} disabled={saving}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ),
+          },
+        ];
+      } else {
+        // Tuition and Other
+        return [
+          {
+            key: "className",
+            header: "Class",
+            cell: (fee) => <span className="text-slate-600 text-sm">{fee.className ?? "—"}</span>,
+          },
+          {
+            key: "frequency",
+            header: "Frequency",
+            cell: (fee) => (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                {fee.frequency}
+              </span>
+            ),
+          },
+          {
+            key: "amount",
+            header: "Amount (AED)",
+            cell: (fee) => <span className="text-slate-600 text-sm">{formatCurrency(fee.amount)}</span>,
+            align: "right",
+          },
+          {
+            key: "actions",
+            header: "",
+            align: "right",
+            cell: (fee) => (
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditModal(fee)} disabled={saving}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => confirmDelete(fee.id, `${fee.className ?? "—"} — ${formatCurrency(fee.amount)}`)} disabled={saving}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ),
+          },
+        ];
+      }
+  };
 
   return (
-    <div className="space-y-4">
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <CardHeader className="flex flex-col gap-4 border-b border-slate-100 bg-white sm:flex-row sm:items-start sm:justify-between sm:space-y-0 pb-4">
-          <div className="flex gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-              <Settings className="h-5 w-5" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-semibold text-slate-900">Fee Setup</CardTitle>
-              <CardDescription className="text-sm text-slate-500 mt-1">
-                Manage tuition, admission, bus and other fee types for all students.
-              </CardDescription>
-            </div>
-          </div>
-          <Button
-            onClick={openAddModal}
-            disabled={saving}
-            className="h-9 shrink-0 bg-[hsl(189,95%,43%)] hover:bg-[hsl(193,76%,36%)]"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add fee
-          </Button>
-        </CardHeader>
+    <Card>
 
-        <CardContent className="p-0">
-          <div className="border-b border-slate-100 px-2 pt-2 overflow-x-auto">
-            <nav className="flex gap-1 min-w-max pb-0">
-              {tabDefs.map(({ tab, label, count, icon: Icon }) => {
-                const active = tabEquals(setupTab, tab);
-                return (
-                  <button
-                    key={
-                      tab.kind === "other"
-                        ? `other-${tab.baseLabel}`
-                        : tab.kind
-                    }
-                    type="button"
-                    onClick={() => {
-                      setSetupTab(tab);
-                      setSearch("");
-                      setFrequencyFilter(ALL);
-                      setClassFilter(ALL);
-                    }}
-                    className={cn(
-                      "relative flex items-center gap-2 px-3 py-3 text-sm font-medium transition-colors rounded-t-md",
-                      active
-                        ? "text-[hsl(194,70%,27%)] bg-white"
-                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{label}</span>
-                    <span
-                      className={cn(
-                        "min-w-[1.25rem] rounded-full px-1.5 py-0 text-xs font-semibold tabular-nums",
-                        active
-                          ? "bg-[hsl(194,70%,27%)]/10 text-[hsl(194,70%,27%)]"
-                          : "bg-slate-100 text-slate-600"
-                      )}
-                    >
-                      {count}
-                    </span>
-                    {active && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[hsl(194,70%,27%)]" />
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
+      <CardContent className="space-y-4">
+        {/* Row 1: Title/Desc, Filters, Add Button */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Fee setup</h3>
+            <p className="text-sm text-slate-500">Manage tuition, admission, bus and other fee structures.</p>
           </div>
-
-          <div className="p-4 space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <Input
-                  placeholder={
-                    setupTab.kind === "bus" ? "Search student…" : "Search class…"
-                  }
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 max-w-xs bg-white"
-                />
-                <Select value={frequencyFilter} onValueChange={setFrequencyFilter}>
-                  <SelectTrigger className="h-9 w-[160px]">
-                    <SelectValue placeholder="Frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All frequencies</SelectItem>
-                    {frequencyOptions.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={classFilter} onValueChange={setClassFilter}>
-                  <SelectTrigger className="h-9 w-[160px]">
-                    <SelectValue placeholder="Class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All classes</SelectItem>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {setupTab.kind === "bus" && (
-                <p className="text-xs text-slate-500 shrink-0">Assigned per student individually</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchableSelect
+              value={activeTab}
+              onValueChange={setActiveTab}
+              placeholder="Select fee type"
+              className="w-[160px]"
+              options={[
+                { value: "tuition", label: "Tuition" },
+                { value: "admission", label: "Admission" },
+                { value: "bus", label: "Bus" },
+                ...otherTabs
+                  .filter((t) => t.baseLabel && t.baseLabel.trim() !== "")
+                  .map((t) => ({ value: t.baseLabel, label: t.baseLabel })),
+              ]}
+            />
+            <SearchableSelect
+              value={frequencyFilter}
+              onValueChange={setFrequencyFilter}
+              placeholder="Frequency"
+              className="w-[140px]"
+              options={[
+                { value: ALL, label: "All frequencies" },
+                ...frequencyOptions.map((f) => ({ value: f, label: f })),
+              ]}
+            />
+            <SearchableSelect
+              value={classFilter}
+              onValueChange={setClassFilter}
+              placeholder="Class"
+              className="w-[140px]"
+              options={[
+                { value: ALL, label: "All classes" },
+                ...classes.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
+            <Button
+              onClick={() => openAddModal()}
+              className="gap-2"
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
               )}
-            </div>
+              Add fee
+            </Button>
+          </div>
+        </div>
 
-            {setupTab.kind === "bus" ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Student
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Class
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Amount (AED)
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Route / note
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Frequency
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-sm text-slate-400">
-                        No bus fees to show.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    pagedFilteredRows.map((fee) => {
-                      const { studentName, routeNote } = parseBusFeeDisplay(fee);
-                      return (
-                        <TableRow key={fee.id} className="border-b border-slate-100">
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
-                                {getInitials(studentName)}
-                              </span>
-                              <span className="font-medium text-slate-700">{studentName}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-slate-600">{fee.className ?? "—"}</TableCell>
-                          <TableCell className="text-slate-600">{formatCurrency(fee.amount)}</TableCell>
-                          <TableCell className="text-slate-600">{routeNote || "—"}</TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                              {fee.frequency}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                                onClick={() => openEditModal(fee)}
-                                disabled={saving}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-red-600"
-                                onClick={() =>
-                                  confirmDelete(fee.id, `${studentName} — ${formatCurrency(fee.amount)}`)
-                                }
-                                disabled={saving}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            ) : setupTab.kind === "admission" ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Class
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Amount (AED)
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-10 text-sm text-slate-400">
-                        No admission fees to show.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    pagedFilteredRows.map((fee) => (
-                      <TableRow key={fee.id} className="border-b border-slate-100">
-                        <TableCell className="font-medium text-slate-700">{fee.className}</TableCell>
-                        <TableCell className="text-slate-600">{formatCurrency(fee.amount)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() => openEditModal(fee)}
-                              disabled={saving}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-red-600"
-                              onClick={() =>
-                                confirmDelete(fee.id, `${fee.className} — ${formatCurrency(fee.amount)}`)
-                              }
-                              disabled={saving}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Class
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Amount (AED)
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      Frequency
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-sm text-slate-400">
-                        No fees to show.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    pagedFilteredRows.map((fee) => (
-                      <TableRow key={fee.id} className="border-b border-slate-100">
-                        <TableCell className="font-medium text-slate-700">{fee.className}</TableCell>
-                        <TableCell className="text-slate-600">{formatCurrency(fee.amount)}</TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                            {fee.frequency}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-slate-700"
-                              onClick={() => openEditModal(fee)}
-                              disabled={saving}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-red-600"
-                              onClick={() =>
-                                confirmDelete(fee.id, `${fee.className} — ${formatCurrency(fee.amount)}`)
-                              }
-                              disabled={saving}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
+        
+      <div className="p-4 space-y-4 rounded-lg border border-slate-200">
+        <DataTable
+          data={pagedFilteredRows}
+          columns={getColumns()}
+          keyExtractor={(row) => row.id}
+          loading={loading}
+          emptyMessage={activeTab === "bus" ? "No bus fees to show" : activeTab === "admission" ? "No admission fees to show" : activeTab === "tuition" ? "No tuition fees to show" : "No fees to show"}
+          emptyDescription="Add fee structures to get started"
+        />
+
             <FeeTablePaginationBar
               page={setupTablePage}
               total={filteredRows.length}
               onPageChange={setSetupTablePage}
             />
           </div>
-        </CardContent>
-      </Card>
+
+      </CardContent>
 
       <AddFeeModal
         open={addModalOpen}
-        onOpenChange={(o) => {
-          setAddModalOpen(o);
-          if (!o) {
+        onOpenChange={(open) => {
+          setAddModalOpen(open);
+          if (!open) {
             setEditStructure(null);
             setCreateDefaults(null);
           }
         }}
-        onSave={handleAddFeeSave}
+        onSave={handleAdd}
+        editStructure={editStructure}
+        createDefaults={createDefaults}
         classes={classes}
         students={students}
         batches={batches}
-        saving={saving}
-        editStructure={editStructure}
-        createDefaults={createDefaults}
-        tuitionTakenClassIds={tuitionTakenClassIds}
-        admissionTakenClassIds={admissionTakenClassIds}
-        busTakenStudentIds={busTakenStudentIds}
+        tuitionTakenClassIds={tuition.map(t => t.classId).filter(Boolean) as string[]}
+        admissionTakenClassIds={admission.map(a => a.classId).filter(Boolean) as string[]}
+        busTakenStudentIds={bus
+          .map((b) => busFeeStudentIdFromName(b, students))
+          .filter(Boolean) as string[]}
         allStructures={allStructures}
+        saving={saving}
       />
 
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setDeleteItem(null);
-        }}
-        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
         title="Delete fee structure"
-        description="Are you sure you want to delete this fee? This action cannot be undone."
-        itemName={deleteItem?.name}
-        saving={saving}
+        description={deleteItem ? `Are you sure you want to delete ${deleteItem.name}? This action cannot be undone.` : "Are you sure you want to delete this fee structure?"}
       />
-    </div>
+    </Card>
   );
 }

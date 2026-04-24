@@ -11,6 +11,7 @@ interface MenuItem {
   icon: LucideIcon;
   path: string;
   subItems?: { title: string; path: string }[];
+  activeMatch?: (pathname: string) => boolean;
 }
 
 interface PortalLayoutProps {
@@ -53,7 +54,7 @@ export function PortalLayout({ children, menuItems, portalName, logoutPath }: Po
             </SheetContent>
           </Sheet>
         )}
-        <main className={`flex-1 w-full min-w-0 p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-20" : ""}`}>
+        <main className={`flex-1 w-full min-w-0 bg-muted/25 p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-20" : ""}`}>
           {children}
         </main>
         {isMobile && <MobileBottomNav items={getPortalBottomNavItems(menuItems)} />}

@@ -48,7 +48,7 @@ export interface StudentBillingRecord {
 
 export interface StudentCharge {
   id: string;
-  feeType: 'Tuition' | 'Bus' | 'Admission' | 'Manual';
+  feeType: string;
   month?: string;
   amount: number;
   paid: number;

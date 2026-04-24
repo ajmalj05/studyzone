@@ -1,25 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 interface EnquiryDto {
   id: string;
@@ -73,6 +61,8 @@ export default function Enquiry() {
   const [enquiryStatusFilter, setEnquiryStatusFilter] = useState<string>("");
   const [enquiryClassFilter, setEnquiryClassFilter] = useState<string>("");
   const initialLoadDone = useRef(false);
+
+  usePageHeaderConfigEffect({ title: "Enquiry", description: "Track leads and follow-ups before admission." }, []);
 
   const loadClasses = async () => {
     try {
@@ -203,58 +193,45 @@ export default function Enquiry() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Enquiry" />
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" /> Enquiry pipeline
-            </CardTitle>
-            <CardDescription>
-              Track enquiries: New → Contacted → Interview Scheduled → Admitted / Not Admitted
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2 items-center">
-              <Select
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                 Enquiry pipeline
+              </CardTitle>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center shrink-0">
+              <SearchableSelect
                 value={enquiryClassFilter || "all"}
                 onValueChange={(v) => setEnquiryClassFilter(v === "all" ? "" : v)}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
+                placeholder="Class"
+                className="w-[150px]"
+                options={[
+                  { value: "all", label: "All classes" },
+                  ...classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+                ]}
+              />
+              <SearchableSelect
                 value={enquiryStatusFilter || "all"}
                 onValueChange={(v) => setEnquiryStatusFilter(v === "all" ? "" : v)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {ENQUIRY_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={() => setShowEnquiryForm(true)}>Add enquiry</Button>
+                placeholder="Status"
+                className="w-[150px]"
+                options={[
+                  { value: "all", label: "All statuses" },
+                  ...ENQUIRY_STATUSES.map((s) => ({ value: s, label: s })),
+                ]}
+              />
+              <Button className="gap-1.5" onClick={() => setShowEnquiryForm(true)}>
+                <Plus className="h-4 w-4" /> Add enquiry
+              </Button>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <Dialog open={showEnquiryForm} onOpenChange={setShowEnquiryForm}>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add enquiry</DialogTitle>
-                  <DialogDescription>Student and guardian contact details.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateEnquiry} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
@@ -307,31 +284,23 @@ export default function Enquiry() {
                     </div>
                     <div className="space-y-1">
                       <Label>Source</Label>
-                      <Select
+                      <SearchableSelect
                         value={enquiryForm.source || ""}
                         onValueChange={(v) =>
                           setEnquiryForm((f) => ({ ...f, source: v }))
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Walk-in">Walk-in</SelectItem>
-                          <SelectItem value="Phone">Phone</SelectItem>
-                          <SelectItem value="Online">Online</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        placeholder="Source"
+                        options={[
+                          { value: "Walk-in", label: "Walk-in" },
+                          { value: "Phone", label: "Phone" },
+                          { value: "Online", label: "Online" },
+                        ]}
+                      />
                     </div>
+
                     <div className="space-y-1 col-span-2">
                       <Label>Follow-up date</Label>
-                      <Input
-                        type="date"
-                        value={enquiryForm.followUpDate}
-                        onChange={(e) =>
-                          setEnquiryForm((f) => ({ ...f, followUpDate: e.target.value }))
-                        }
-                      />
+                      <DatePicker value={enquiryForm.followUpDate} onChange={(v) => setEnquiryForm((f) => ({ ...f, followUpDate: v }))} />
                     </div>
                     <div className="space-y-1 col-span-2">
                       <Label>Notes</Label>
@@ -356,62 +325,62 @@ export default function Enquiry() {
                 </form>
               </DialogContent>
             </Dialog>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Follow-up</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedEnquiries.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.studentName}</TableCell>
-                    <TableCell>{e.phone || e.email || "—"}</TableCell>
-                    <TableCell>{e.classOfInterest ?? "—"}</TableCell>
-                    <TableCell>{e.status}</TableCell>
-                    <TableCell>
-                      {e.followUpDate
-                        ? new Date(e.followUpDate).toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Select
-                          value={e.status}
-                          onValueChange={(v) => handleUpdateEnquiryStatus(e.id, v)}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ENQUIRY_STATUSES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {e.status === "Admitted" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openApplicationFromEnquiry(e)}
-                          >
-                            Create admission
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+
+            <DataTable
+              data={displayedEnquiries}
+              columns={[
+                {
+                  key: "student",
+                  header: "Student",
+                  cell: (e) => (
+                    <span className="font-semibold capitalize text-slate-700 dark:text-slate-200">
+                      {e.studentName}
+                      {e.classOfInterest && <span className="ml-2 text-xs font-normal text-slate-500">({e.classOfInterest})</span>}
+                    </span>
+                  ),
+                },
+                {
+                  key: "contact",
+                  header: "Contact",
+                  cell: (e) => <span className="text-slate-600 dark:text-slate-400">{e.phone || e.email || "—"}</span>,
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  badge: (e) => ({
+                    label: e.status,
+                    variant:
+                      e.status === "New" ? "info" :
+                      e.status === "Contacted" ? "amber" :
+                      e.status === "InterviewScheduled" ? "violet" :
+                      e.status === "Admitted" ? "success" : "destructive",
+                  }),
+                },
+                {
+                  key: "actions",
+                  header: "",
+                  align: "right",
+                  cell: (e) => (
+                    <div className="flex items-center justify-end gap-2">
+                      <SearchableSelect
+                        value={e.status}
+                        onValueChange={(v) => handleUpdateEnquiryStatus(e.id, v)}
+                        className="w-[150px]"
+                        options={ENQUIRY_STATUSES.map((s) => ({ value: s, label: s }))}
+                      />
+                      {e.status === "Admitted" && (
+                        <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => openApplicationFromEnquiry(e)}>
+                          Create admission
+                        </Button>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+              keyExtractor={(e) => e.id}
+              emptyMessage="No enquiries found"
+              emptyDescription="Add an enquiry to start tracking leads"
+            />
           </CardContent>
         </Card>
       </div>

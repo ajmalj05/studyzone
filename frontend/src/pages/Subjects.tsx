@@ -1,24 +1,11 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +27,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { BookOpen, Pencil, Trash2, Plus, Link2 } from "lucide-react";
+import { AcademicsCardIconLead } from "@/components/AcademicsCardIconLead";
 
 interface SubjectDto {
   id: string;
@@ -66,6 +54,11 @@ export default function Subjects() {
   const [classSubjectIds, setClassSubjectIds] = useState<Set<string>>(new Set());
   const [mappingLoading, setMappingLoading] = useState(false);
   const [savingMapping, setSavingMapping] = useState(false);
+
+  usePageHeaderConfigEffect(
+    { title: "Subjects", description: "Add subjects and map them to classes." },
+    [],
+  );
 
   const loadSubjects = async () => {
     try {
@@ -219,6 +212,36 @@ export default function Subjects() {
     }
   };
 
+  // Table columns
+  const subjectColumns: DataTableColumn<SubjectDto>[] = [
+    {
+      key: "name",
+      header: "Name",
+      cell: (s) => <span className="font-semibold text-slate-700 dark:text-slate-200">{s.name}</span>,
+    },
+    {
+      key: "code",
+      header: "Code",
+      badge: (s) => s.code ? { label: s.code, variant: "default" } : null,
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "w-[100px]",
+      cell: (s) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEdit(s)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => setDeleteId(s.id)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
@@ -229,110 +252,48 @@ export default function Subjects() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader
-        title="Subjects"
-        description="Add subjects and map them to classes"
-      />
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" /> All Subjects
-            </CardTitle>
-            <CardDescription>
-              Create and edit subjects. Then map them to classes below.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button onClick={openAdd} className="rounded-xl gap-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
+            <AcademicsCardIconLead
+              icon={BookOpen}
+              title="All Subjects"
+              description="Create and edit subjects. Map them to classes."
+            />
+            <Button type="button" onClick={openAdd} className="shrink-0 gap-2 rounded-lg">
               <Plus className="h-4 w-4" /> Add Subject
             </Button>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subjects.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-muted-foreground text-center py-8">
-                      No subjects yet. Add one to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  subjects.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>{s.code ?? "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl"
-                            onClick={() => openEdit(s)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeleteId(s.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <DataTable
+              data={subjects}
+              columns={subjectColumns}
+              keyExtractor={(s) => s.id}
+              emptyMessage="No subjects yet"
+              emptyDescription="Add a subject to get started"
+            />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 self-start lg:sticky lg:top-4 lg:z-[1]">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5" /> Map Subjects to Class
-            </CardTitle>
-            <CardDescription>
-              Select a class and choose which subjects apply to it.
-            </CardDescription>
+            <AcademicsCardIconLead
+              icon={Link2}
+              title="Map Subjects to Class"
+              description="Select a class and choose which subjects apply to it."
+            />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="space-y-2">
-                <Label>Class</Label>
-                <Select
-                  value={selectedClassId}
-                  onValueChange={setSelectedClassId}
-                >
-                  <SelectTrigger className="w-[220px] rounded-xl">
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedClassId && (
-                <Button
-                  onClick={saveMapping}
-                  disabled={mappingLoading || savingMapping}
-                  className="rounded-xl gap-2"
-                >
-                  {savingMapping ? "Saving..." : "Save mapping"}
-                </Button>
-              )}
+          <CardContent className="space-y-4 pt-0">
+            <div className="w-full min-w-0 space-y-2 pt-3">
+              <Label htmlFor="map-subjects-class" className="text-sm font-medium">
+                Class
+              </Label>
+              <SearchableSelect
+                value={selectedClassId}
+                onValueChange={setSelectedClassId}
+                placeholder="Select class"
+                options={classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+              />
             </div>
             {selectedClassId && (
               <div className="space-y-2">
@@ -341,29 +302,39 @@ export default function Subjects() {
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 ) : subjects.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Add subjects above first.
+                    Add subjects in the list first.
                   </p>
                 ) : (
-                  <div className="flex flex-wrap gap-4 border rounded-xl p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {subjects.map((s) => (
                       <label
                         key={s.id}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-input bg-background px-3 py-2 shadow-sm transition-colors hover:border-muted-foreground/30 hover:bg-muted/25 has-[:checked]:border-[hsl(194,70%,27%)]/45 has-[:checked]:bg-muted/35"
                       >
                         <input
                           type="checkbox"
                           checked={classSubjectIds.has(s.id)}
                           onChange={() => toggleClassSubject(s.id)}
-                          className="rounded border-input"
+                          className="size-4 shrink-0 rounded border-input accent-[hsl(194,70%,27%)]"
                         />
-                        <span className="text-sm">
-                          {s.name}
-                          {s.code ? ` (${s.code})` : ""}
+                        <span className="min-w-0 flex-1 leading-tight">
+                          <span className="block text-sm font-medium">{s.name}</span>
+                          {s.code ? (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">{s.code}</span>
+                          ) : null}
                         </span>
                       </label>
                     ))}
                   </div>
                 )}
+                <Button
+                  type="button"
+                  onClick={saveMapping}
+                  disabled={mappingLoading || savingMapping}
+                  className="mt-2 w-full gap-2 rounded-lg"
+                >
+                  {savingMapping ? "Saving..." : "Save mapping"}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -388,7 +359,7 @@ export default function Subjects() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Mathematics"
-                className="rounded-xl"
+                className="rounded-lg"
               />
             </div>
             <div className="space-y-2">
@@ -398,19 +369,14 @@ export default function Subjects() {
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                 placeholder="e.g. MATH"
-                className="rounded-xl"
+                className="rounded-lg"
               />
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setFormOpen(false)}
-                className="rounded-xl"
-              >
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)} className="rounded-lg">
                 Cancel
               </Button>
-              <Button type="submit" className="rounded-xl">
+              <Button type="submit" className="rounded-lg">
                 {editingId ? "Update" : "Create"}
               </Button>
             </DialogFooter>
@@ -428,10 +394,10 @@ export default function Subjects() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>

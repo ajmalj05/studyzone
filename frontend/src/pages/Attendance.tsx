@@ -1,15 +1,9 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { Users, GraduationCap } from "lucide-react";
@@ -160,7 +154,6 @@ export default function Attendance() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Attendance" />
         <div className="space-y-4">
           <Tabs defaultValue="student" className="space-y-4">
             <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -173,43 +166,97 @@ export default function Attendance() {
             </TabsList>
             <TabsContent value="student" className="space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Mark student attendance</CardTitle>
-                  <CardDescription>Select class and date, then mark Present / Absent / Late per student.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+                  <div>
+                    <CardTitle>Mark student attendance</CardTitle>
+                    <CardDescription>Select class and date, then mark Present / Absent / Late per student.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium">Class</label>
+                      <SearchableSelect
+                        value={classId}
+                        onValueChange={setClassId}
+                        placeholder="Select class"
+                        className="w-[180px]"
+                        options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium">Date</label>
+                      <DatePicker value={date} onChange={setDate} placeholder="Select date" className="w-[180px]" />
+                    </div>
+                    {students.length > 0 && (
+                      <Button onClick={handleSave} disabled={saving} className="mb-0.5">{saving ? "Saving..." : "Save"}</Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-3">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Class</label>
-                      <Select value={classId} onValueChange={setClassId}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select class" /></SelectTrigger>
-                        <SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Date</label>
-                      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm" />
-                    </div>
-                  </div>
                   {loading ? (
                     <p className="text-muted-foreground">Loading...</p>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        {students.map((s) => (
-                          <div key={s.id} className="flex items-center justify-between rounded-lg border px-4 py-2">
-                            <span className="font-medium">{s.name}</span>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant={statusByStudent[s.id] === "Present" ? "default" : "outline"} onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Present" }))}>Present</Button>
-                              <Button size="sm" variant={statusByStudent[s.id] === "Absent" ? "destructive" : "outline"} onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Absent" }))}>Absent</Button>
-                              <Button size="sm" variant={statusByStudent[s.id] === "Late" ? "secondary" : "outline"} onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Late" }))}>Late</Button>
-                            </div>
-                          </div>
-                        ))}
+
+                      {/* Beautiful Table */}
+                      <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-border/60">
+                                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Student</th>
+                                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {students.map((s) => (
+                                <tr key={s.id} className="border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                                  <td className="px-4 py-3">
+                                    <span className="font-semibold text-slate-700 dark:text-slate-200">{s.name}</span>
+                                    <span className="ml-2 text-xs text-slate-500 dark:text-slate-400 font-mono">{s.admissionNumber}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Present" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByStudent[s.id] === "Present" 
+                                            ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Present
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Absent" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByStudent[s.id] === "Absent" 
+                                            ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Absent
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusByStudent((p) => ({ ...p, [s.id]: "Late" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByStudent[s.id] === "Late" 
+                                            ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Late
+                                      </button>
+                                      <span className="ml-2 text-xs font-medium text-muted-foreground">
+                                        {statusByStudent[s.id] ? statusByStudent[s.id].charAt(0).toUpperCase() + statusByStudent[s.id].slice(1).toLowerCase() : '-'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                      {students.length > 0 && (
-                        <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save attendance"}</Button>
-                      )}
                     </>
                   )}
                 </CardContent>
@@ -217,36 +264,87 @@ export default function Attendance() {
             </TabsContent>
             <TabsContent value="teacher" className="space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Mark teacher attendance</CardTitle>
-                  <CardDescription>Select date and mark Present / Absent / Late per teacher.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+                  <div>
+                    <CardTitle>Mark teacher attendance</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium">Date</label>
+                      <DatePicker value={teacherDate} onChange={setTeacherDate} placeholder="Select date" className="w-[180px]" />
+                    </div>
+                    {teachers.length > 0 && (
+                      <Button onClick={handleSaveTeacherAttendance} disabled={teacherSaving} className="mb-0.5">{teacherSaving ? "Saving..." : "Save"}</Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-3">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Date</label>
-                      <input type="date" value={teacherDate} onChange={(e) => setTeacherDate(e.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm" />
-                    </div>
-                  </div>
                   {teacherLoading ? (
                     <p className="text-muted-foreground">Loading...</p>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        {teachers.map((t) => (
-                          <div key={t.teacherUserId} className="flex items-center justify-between rounded-lg border px-4 py-2">
-                            <span className="font-medium">{t.teacherName}</span>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant={statusByTeacher[t.teacherUserId] === "Present" ? "default" : "outline"} onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Present" }))}>Present</Button>
-                              <Button size="sm" variant={statusByTeacher[t.teacherUserId] === "Absent" ? "destructive" : "outline"} onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Absent" }))}>Absent</Button>
-                              <Button size="sm" variant={statusByTeacher[t.teacherUserId] === "Late" ? "secondary" : "outline"} onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Late" }))}>Late</Button>
-                            </div>
-                          </div>
-                        ))}
+
+                      {/* Beautiful Table */}
+                      <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-border/60">
+                                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Teacher</th>
+                                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {teachers.map((t) => (
+                                <tr key={t.teacherUserId} className="border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                                  <td className="px-4 py-3">
+                                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                      {t.teacherName ? t.teacherName.charAt(0).toUpperCase() + t.teacherName.slice(1).toLowerCase() : '-'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Present" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByTeacher[t.teacherUserId] === "Present" 
+                                            ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Present
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Absent" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByTeacher[t.teacherUserId] === "Absent" 
+                                            ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Absent
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusByTeacher((p) => ({ ...p, [t.teacherUserId]: "Late" }))}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                          statusByTeacher[t.teacherUserId] === "Late" 
+                                            ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        Late
+                                      </button>
+                                      <span className="ml-2 text-xs font-medium text-muted-foreground">
+                                        {statusByTeacher[t.teacherUserId] ? statusByTeacher[t.teacherUserId].charAt(0).toUpperCase() + statusByTeacher[t.teacherUserId].slice(1).toLowerCase() : '-'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                      {teachers.length > 0 && (
-                        <Button onClick={handleSaveTeacherAttendance} disabled={teacherSaving}>{teacherSaving ? "Saving..." : "Save teacher attendance"}</Button>
-                      )}
                     </>
                   )}
                 </CardContent>

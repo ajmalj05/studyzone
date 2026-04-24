@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, History } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface TeacherSalaryDto {
   id: string;
@@ -32,6 +33,10 @@ interface TeacherSalaryPaymentDto {
 
 const TeacherSalary = () => {
   const { user } = useAuth();
+  usePageHeaderConfigEffect(
+    { title: "Payroll", description: "Your salary package and payment history." },
+    [],
+  );
   const [data, setData] = useState<TeacherSalaryDto | null>(null);
   const [payments, setPayments] = useState<TeacherSalaryPaymentDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +70,6 @@ const TeacherSalary = () => {
 
   return (
     <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-foreground">Payroll</h1>
-
         {loading && (
           <Card className="rounded-[var(--radius)] shadow-card">
             <CardContent className="py-12 text-center text-muted-foreground">Loading...</CardContent>

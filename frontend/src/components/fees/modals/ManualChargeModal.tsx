@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface ManualChargeModalProps {
   isOpen: boolean;
@@ -83,14 +84,13 @@ export function ManualChargeModal({
               />
             </div>
 
+
             <div className="space-y-1.5">
               <Label className="text-sm">Date</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.date}
-                onChange={(e) => setFormData((f) => ({ ...f, date: e.target.value }))}
+                onChange={(v) => setFormData((f) => ({ ...f, date: v }))}
                 className="h-9 text-sm"
-                required
               />
             </div>
           </div>

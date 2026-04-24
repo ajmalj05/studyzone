@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Studyzone.Application.Portal;
 using Studyzone.Application.Students;
 
 namespace Studyzone.Api.Controllers;
@@ -12,23 +13,35 @@ public class StudentsController : ControllerBase
 {
     private readonly IStudentService _service;
     private readonly IBatchService _batchService;
+    private readonly IPortalService _portal;
 
-    public StudentsController(IStudentService service, IBatchService batchService)
+    public StudentsController(IStudentService service, IBatchService batchService, IPortalService portal)
     {
         _service = service;
         _batchService = batchService;
+        _portal = portal;
     }
 
     [HttpGet]
     public async Task<ActionResult<StudentListResponse>> GetAll([FromQuery] string? classId, [FromQuery] string? batchId, [FromQuery] string? status, [FromQuery] string? academicYearId, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
     {
-        if (!string.IsNullOrWhiteSpace(batchId) && User.IsInRole("Teacher") && !User.IsInRole("Admin"))
+        if (User.IsInRole("Teacher") && !User.IsInRole("Admin"))
         {
-            var batch = await _batchService.GetByIdAsync(batchId, ct);
-            if (batch == null) return NotFound();
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(currentUserId) || batch.ClassTeacherUserId != currentUserId)
-                return Forbid();
+            if (string.IsNullOrEmpty(currentUserId))
+                return Unauthorized();
+            if (!string.IsNullOrWhiteSpace(batchId))
+            {
+                var allowed = await _portal.IsTeacherAssignedToBatchAsync(currentUserId, batchId, ct);
+                if (!allowed)
+                    return Forbid();
+            }
+            if (!string.IsNullOrWhiteSpace(classId))
+            {
+                var assigned = await _portal.GetTeacherAssignedClassIdsAsync(currentUserId, ct);
+                if (assigned.Count == 0 || !assigned.Contains(classId))
+                    return Forbid();
+            }
         }
         var (items, total) = await _service.GetAllAsync(classId, batchId, status, academicYearId, skip, take, ct);
         return Ok(new StudentListResponse { Items = items, Total = total });

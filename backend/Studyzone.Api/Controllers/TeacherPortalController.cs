@@ -55,4 +55,18 @@ public class TeacherPortalController : ControllerBase
         var list = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
         return Ok(list);
     }
+
+    /// <summary>Marks visibility rules for a class: class teachers see all subjects; subject-only teachers are limited to timetable subjects.</summary>
+    [HttpGet("marks-scope")]
+    public async Task<ActionResult<TeacherMarksScopeDto>> GetMarksScope([FromQuery] string classId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(classId))
+            return BadRequest(new { message = "classId is required." });
+        var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, classId, ct);
+        if (scope == null)
+            return Forbid();
+        return Ok(scope);
+    }
 }

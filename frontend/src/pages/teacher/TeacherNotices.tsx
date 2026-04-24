@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Download } from "lucide-react";
@@ -17,6 +18,7 @@ interface AnnouncementDto {
 
 const TeacherNotices = () => {
   const { user } = useAuth();
+  usePageHeaderConfigEffect({ title: "Notices", description: "School announcements and circulars." }, []);
   const [notices, setNotices] = useState<AnnouncementDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +59,6 @@ const TeacherNotices = () => {
 
   return (
     <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-foreground">Notices</h1>
-
         {loading && (
           <Card><CardContent className="py-12 text-center text-muted-foreground">Loading...</CardContent></Card>
         )}

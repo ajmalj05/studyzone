@@ -5,6 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { Users, DollarSign, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchApi } from "@/lib/api";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface ParentChildDto {
   studentId: string;
@@ -27,6 +28,14 @@ const ParentDashboard = () => {
   const [data, setData] = useState<ParentDashboardDto | null>(null);
   const [loading, setLoading] = useState(true);
 
+  usePageHeaderConfigEffect(
+    {
+      title: "Dashboard",
+      description: "Overview of your linked children, fees, and recent notices.",
+    },
+    [],
+  );
+
   useEffect(() => {
     fetchApi("/ParentPortal/dashboard")
       .then((d) => setData(d as ParentDashboardDto))
@@ -46,7 +55,7 @@ const ParentDashboard = () => {
         className="gradient-hero rounded-[var(--radius)] p-8 text-primary-foreground"
       >
         <h2 className="text-lg font-semibold">Welcome, {name}</h2>
-        <p className="mt-1 text-primary-foreground/80">Overview of your linked children</p>
+        <p className="mt-1 text-primary-foreground/80">A quick snapshot for your family</p>
       </motion.div>
 
       {loading ? (

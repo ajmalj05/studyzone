@@ -7,6 +7,7 @@ using Studyzone.Application.Fees;
 using Studyzone.Application.Portal;
 using Studyzone.Application.TeacherSalary;
 using Studyzone.Application.Timetable;
+using Studyzone.Domain.Entities;
 
 namespace Studyzone.Infrastructure.Services;
 
@@ -159,7 +160,7 @@ public class PortalService : IPortalService
         var list = new List<StudentExamResultDto>();
         foreach (var exam in exams)
         {
-            var marks = await _examService.GetMarksByExamAsync(exam.Id.ToString(), ct);
+            var marks = await _examService.GetMarksByExamAsync(exam.Id.ToString(), approvedOnly: true, ct);
             foreach (var m in marks.Where(x => x.StudentId == profile.Id))
                 list.Add(new StudentExamResultDto { ExamId = exam.Id.ToString(), ExamName = exam.Name, Subject = m.Subject, MarksObtained = m.MarksObtained, MaxMarks = m.MaxMarks });
         }
@@ -262,22 +263,83 @@ public class PortalService : IPortalService
 
     public async Task<IReadOnlyList<TeacherAssignedBatchDto>> GetTeacherAssignedBatchesAsync(string teacherUserGuid, CancellationToken ct = default)
     {
+        if (!Guid.TryParse(teacherUserGuid, out var teacherId))
+            return Array.Empty<TeacherAssignedBatchDto>();
         var batchIds = await GetTeacherAssignedBatchIdsAsync(teacherUserGuid, ct);
+        var allSlots = await _slotRepo.GetByTeacherUserIdAsync(teacherId, ct);
         var result = new List<TeacherAssignedBatchDto>();
         foreach (var batchId in batchIds)
         {
             var batch = await _batchRepo.GetByIdAsync(batchId, ct);
             if (batch == null) continue;
             var cls = await _classRepo.GetByIdAsync(batch.ClassId, ct);
+            var subjects = allSlots
+                .Where(s => s.BatchId == batchId && !string.IsNullOrWhiteSpace(s.Subject))
+                .Select(s => s.Subject.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             result.Add(new TeacherAssignedBatchDto
             {
                 Id = batch.Id.ToString(),
                 Name = batch.Name,
                 ClassId = batch.ClassId.ToString(),
-                ClassName = cls?.Name ?? ""
+                ClassName = cls?.Name ?? "",
+                IsClassTeacher = batch.ClassTeacherUserId == teacherId,
+                SubjectsTaught = subjects
             });
         }
         return result;
+    }
+
+    public async Task<TeacherMarksScopeDto?> GetTeacherMarksScopeForClassAsync(string teacherUserGuid, string classId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(teacherUserGuid, out var teacherId))
+            return null;
+        if (!Guid.TryParse(classId, out var classGuid))
+            return null;
+
+        var assignedBatchIds = await GetTeacherAssignedBatchIdsAsync(teacherUserGuid, ct);
+        if (assignedBatchIds.Count == 0)
+            return null;
+
+        var currentYear = await _academicYearRepo.GetCurrentAsync(ct);
+        IReadOnlyList<Batch> batchesInClass;
+        if (currentYear != null)
+            batchesInClass = await _batchRepo.GetByClassIdAndAcademicYearAsync(classGuid, currentYear.Id, ct);
+        else
+            batchesInClass = await _batchRepo.GetByClassIdAsync(classGuid, ct);
+
+        var assignedSet = new HashSet<Guid>(assignedBatchIds);
+        var relevantBatches = batchesInClass.Where(b => assignedSet.Contains(b.Id)).ToList();
+        if (relevantBatches.Count == 0)
+            return null;
+
+        var isClassTeacher = relevantBatches.Any(b => b.ClassTeacherUserId == teacherId);
+        var allSlots = await _slotRepo.GetByTeacherUserIdAsync(teacherId, ct);
+        var subjectSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var batch in relevantBatches)
+        {
+            foreach (var slot in allSlots.Where(s => s.BatchId == batch.Id))
+            {
+                if (!string.IsNullOrWhiteSpace(slot.Subject))
+                    subjectSet.Add(slot.Subject.Trim());
+            }
+        }
+
+        return new TeacherMarksScopeDto
+        {
+            IsClassTeacher = isClassTeacher,
+            SubjectScope = subjectSet.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList()
+        };
+    }
+
+    public async Task<bool> IsTeacherAssignedToBatchAsync(string teacherUserGuid, string batchId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(batchId, out var bid))
+            return false;
+        var ids = await GetTeacherAssignedBatchIdsAsync(teacherUserGuid, ct);
+        return ids.Contains(bid);
     }
 
     private async Task<IReadOnlyList<Guid>> GetTeacherAssignedBatchIdsAsync(string teacherUserGuid, CancellationToken ct = default)

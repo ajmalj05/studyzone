@@ -23,6 +23,25 @@ public class ExamsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ExamDto>>> GetAll([FromQuery] string? classId, CancellationToken ct)
     {
+        if (IsTeacher())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var assigned = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
+            if (assigned.Count == 0)
+                return Ok(Array.Empty<ExamDto>());
+            if (!string.IsNullOrWhiteSpace(classId))
+            {
+                if (!assigned.Contains(classId))
+                    return Forbid();
+                var filtered = await _service.GetAllAsync(classId, ct);
+                return Ok(filtered);
+            }
+            var forClasses = await _service.GetAllForClassIdsAsync(assigned, ct);
+            return Ok(forClasses);
+        }
+
         var list = await _service.GetAllAsync(classId, ct);
         return Ok(list);
     }
@@ -32,10 +51,22 @@ public class ExamsController : ControllerBase
     {
         var dto = await _service.GetByIdAsync(id, ct);
         if (dto == null) return NotFound();
+        if (IsTeacher())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            if (string.IsNullOrEmpty(dto.ClassId))
+                return Forbid();
+            var assigned = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
+            if (!assigned.Contains(dto.ClassId))
+                return Forbid();
+        }
         return Ok(dto);
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<ActionResult<ExamDto>> Create([FromBody] CreateExamRequest request, CancellationToken ct)
     {
         var dto = await _service.CreateAsync(request, ct);
@@ -45,14 +76,79 @@ public class ExamsController : ControllerBase
     [HttpGet("{examId}/marks")]
     public async Task<ActionResult<IReadOnlyList<MarksEntryDto>>> GetMarks(string examId, CancellationToken ct)
     {
-        var list = await _service.GetMarksByExamAsync(examId, ct);
+        var approvedOnly = User.IsInRole("Parent") || User.IsInRole("parent")
+            || User.IsInRole("Student") || User.IsInRole("student");
+        var list = await _service.GetMarksByExamAsync(examId, approvedOnly, ct);
+
+        if (IsTeacher())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var exam = await _service.GetByIdAsync(examId, ct);
+            if (exam == null)
+                return NotFound();
+            if (string.IsNullOrEmpty(exam.ClassId))
+                return Forbid();
+            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, exam.ClassId, ct);
+            if (scope == null)
+                return Forbid();
+            if (scope.IsClassTeacher)
+                return Ok(list);
+            if (scope.SubjectScope.Count == 0)
+                return Ok(Array.Empty<MarksEntryDto>());
+            list = list.Where(m => SubjectInScope(m.Subject, scope.SubjectScope)).ToList();
+        }
+
         return Ok(list);
+    }
+
+    [HttpPost("{examId}/marks/approve-all")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<ActionResult<object>> ApproveAllMarks(string examId, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+        try
+        {
+            var count = await _service.ApproveAllPendingMarksForExamAsync(examId, userId, ct);
+            return Ok(new { approvedCount = count });
+        }
+        catch (ArgumentException)
+        {
+            return BadRequest();
+        }
+    }
+
+    [HttpPost("marks/{entryId}/approve")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<IActionResult> ApproveMarksEntry(string entryId, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+        var ok = await _service.ApproveMarksEntryAsync(entryId, userId, ct);
+        if (!ok) return NotFound();
+        return NoContent();
+    }
+
+    [HttpPost("marks/{entryId}/reject")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<IActionResult> RejectMarksEntry(string entryId, [FromBody] RejectMarksEntryRequest? body, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+        var ok = await _service.RejectMarksEntryAsync(entryId, body?.Reason, userId, ct);
+        if (!ok) return NotFound();
+        return NoContent();
     }
 
     [HttpPost("marks")]
     public async Task<IActionResult> SaveMarks([FromBody] SaveMarksRequest request, CancellationToken ct)
     {
-        if (User.IsInRole("Teacher") || User.IsInRole("teacher"))
+        if (IsTeacher())
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
@@ -62,9 +158,16 @@ public class ExamsController : ControllerBase
                 return NotFound();
             if (string.IsNullOrEmpty(exam.ClassId))
                 return BadRequest(new { message = "Exam is not linked to a class." });
-            var assignedClassIds = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
-            if (assignedClassIds.Count == 0 || !assignedClassIds.Contains(exam.ClassId))
+            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, exam.ClassId, ct);
+            if (scope == null)
                 return Forbid();
+            if (!scope.IsClassTeacher)
+            {
+                if (scope.SubjectScope.Count == 0)
+                    return Forbid();
+                if (!SubjectInScope(request.Subject, scope.SubjectScope))
+                    return Forbid();
+            }
         }
         try
         {
@@ -72,5 +175,70 @@ public class ExamsController : ControllerBase
             return NoContent();
         }
         catch (ArgumentException) { return BadRequest(); }
+    }
+
+    [HttpGet("{examId}/schedule")]
+    public async Task<ActionResult<IReadOnlyList<ExamScheduleEntryDto>>> GetSchedule(string examId, CancellationToken ct)
+    {
+        var list = await _service.GetScheduleByExamIdAsync(examId, ct);
+        return Ok(list);
+    }
+
+    [HttpGet("schedule/mine")]
+    [Authorize(Roles = "Teacher,teacher")]
+    public async Task<ActionResult<IReadOnlyList<ExamScheduleEntryDto>>> GetMySchedule(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        var list = await _service.GetScheduleForTeacherAsync(userId, ct);
+        return Ok(list);
+    }
+
+    [HttpPost("{examId}/schedule")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<ActionResult<ExamScheduleEntryDto>> CreateScheduleEntry(string examId, [FromBody] CreateExamScheduleEntryRequest request, CancellationToken ct)
+    {
+        request.ExamId = examId;
+        try
+        {
+            var dto = await _service.CreateScheduleEntryAsync(request, ct);
+            return CreatedAtAction(nameof(GetSchedule), new { examId }, dto);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPut("schedule/{entryId}")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<ActionResult<ExamScheduleEntryDto>> UpdateScheduleEntry(string entryId, [FromBody] UpdateExamScheduleEntryRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _service.UpdateScheduleEntryAsync(entryId, request, ct);
+            return Ok(dto);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("schedule/{entryId}")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<IActionResult> DeleteScheduleEntry(string entryId, CancellationToken ct)
+    {
+        try
+        {
+            await _service.DeleteScheduleEntryAsync(entryId, ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    private bool IsTeacher() => User.IsInRole("Teacher") || User.IsInRole("teacher");
+
+    private static bool SubjectInScope(string subject, IReadOnlyList<string> scope)
+    {
+        if (string.IsNullOrWhiteSpace(subject))
+            return false;
+        var t = subject.Trim();
+        return scope.Any(s => string.Equals(s, t, StringComparison.OrdinalIgnoreCase));
     }
 }

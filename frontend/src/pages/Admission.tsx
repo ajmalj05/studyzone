@@ -1,28 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Plus } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 
 interface ApplicationDto {
   id: string;
@@ -61,6 +47,11 @@ export default function Admission() {
   const [applicationClassId, setApplicationClassId] = useState<string>("");
   const [applicationBatchId, setApplicationBatchId] = useState<string>("");
   const initialLoadDone = useRef(false);
+
+  usePageHeaderConfigEffect(
+    { title: "Admission", description: "Applications and enrollment pipeline for the selected year." },
+    [],
+  );
 
   const loadApplications = async () => {
     try {
@@ -124,87 +115,77 @@ export default function Admission() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Admission" />
-        <CurrentAcademicYearBadge />
-      </div>
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" /> Applications
-            </CardTitle>
-            <CardDescription>
-              Create and manage admission applications. Click a row to open the full application form.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2 items-center">
-              <Select
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Applications
+              </CardTitle>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center shrink-0">
+              <SearchableSelect
                 value={applicationClassId || "all"}
-                onValueChange={(v) => {
-                  setApplicationClassId(v === "all" ? "" : v);
-                  setApplicationBatchId("");
-                }}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
+                onValueChange={(v) => { setApplicationClassId(v === "all" ? "" : v); setApplicationBatchId(""); }}
+                placeholder="Class"
+                className="w-[150px]"
+                options={[
+                  { value: "all", label: "All classes" },
+                  ...classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+                ]}
+              />
+              <SearchableSelect
                 value={applicationBatchId || "all"}
                 onValueChange={(v) => setApplicationBatchId(v === "all" ? "" : v)}
                 disabled={!applicationClassId}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All batches</SelectItem>
-                  {batchesForApplicationClass.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                      {b.section ? ` (${b.section})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={() => navigate("/admin/admission/application/new")}>
-                Add application
+                placeholder="Batch"
+                className="w-[150px]"
+                options={[
+                  { value: "all", label: "All batches" },
+                  ...batchesForApplicationClass.map((b) => ({ value: b.id, label: `${b.name}${b.section ? ` (${b.section})` : ""}` })),
+                ]}
+              />
+              <Button className="gap-1.5" onClick={() => navigate("/admin/admission/application/new")}>
+                <Plus className="h-4 w-4" /> Add application
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Admission #</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {applications.map((a) => (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/admin/admission/application/${a.id}`)}
-                  >
-                    <TableCell>{a.studentName}</TableCell>
-                    <TableCell>{a.classApplied ?? "—"}</TableCell>
-                    <TableCell>{a.admissionNumber ?? "—"}</TableCell>
-                    <TableCell>{new Date(a.createdAt).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              data={applications}
+              columns={[
+                {
+                  key: "student",
+                  header: "Student",
+                  cell: (a) => <span className="font-semibold capitalize text-slate-700 dark:text-slate-200">{a.studentName}</span>,
+                },
+                {
+                  key: "class",
+                  header: "Class",
+                  badge: (a) => a.classApplied ? { label: a.classApplied, variant: "indigo" } : null,
+                },
+                {
+                  key: "admissionNo",
+                  header: "Admission #",
+                  cell: (a) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{a.admissionNumber ?? "—"}</span>,
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  badge: (a) => ({
+                    label: a.status,
+                    variant:
+                      a.status === "Pending" ? "warning" :
+                      a.status === "Approved" ? "success" :
+                      a.status === "Rejected" ? "destructive" : "secondary",
+                  }),
+                },
+              ] as DataTableColumn<typeof applications[0]>[]}
+              keyExtractor={(a) => a.id}
+              onRowClick={(a) => navigate(`/admin/admission/application/${a.id}`)}
+              emptyMessage="No applications found"
+              emptyDescription="Add an application or adjust the filters"
+            />
           </CardContent>
         </Card>
       </div>

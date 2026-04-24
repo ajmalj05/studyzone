@@ -147,7 +147,7 @@ public class ParentPortalService : IParentPortalService
         var list = new List<StudentExamResultDto>();
         foreach (var exam in exams)
         {
-            var marks = await _examService.GetMarksByExamAsync(exam.Id.ToString(), ct);
+            var marks = await _examService.GetMarksByExamAsync(exam.Id.ToString(), approvedOnly: true, ct);
             foreach (var m in marks.Where(x => x.StudentId == studentId))
                 list.Add(new StudentExamResultDto { ExamId = exam.Id.ToString(), ExamName = exam.Name, Subject = m.Subject, MarksObtained = m.MarksObtained, MaxMarks = m.MaxMarks });
         }

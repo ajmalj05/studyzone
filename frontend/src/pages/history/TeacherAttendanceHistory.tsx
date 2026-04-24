@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadModal } from "@/components/DownloadModal";
 import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { useOptionalPageHeaderDispatch } from "@/context/PageHeaderContext";
 
 interface TeacherAttendanceItemDto {
   teacherUserId: string;
@@ -26,6 +26,7 @@ interface AttendanceRecordDto {
 const TeacherAttendanceHistory = () => {
   const { user } = useAuth();
   const isTeacher = user?.role === "teacher";
+  const setPageHeader = useOptionalPageHeaderDispatch();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -41,6 +42,17 @@ const TeacherAttendanceHistory = () => {
 
   const [adminRecords, setAdminRecords] = useState<TeacherAttendanceItemDto[]>([]);
   const [myRecords, setMyRecords] = useState<AttendanceRecordDto[]>([]);
+
+  useEffect(() => {
+    if (!setPageHeader) return;
+    setPageHeader({
+      title: isTeacher ? "My attendance history" : "Teacher attendance history",
+      description: isTeacher
+        ? "Your attendance in the selected date range."
+        : "Teacher attendance by date.",
+    });
+    return () => setPageHeader({});
+  }, [isTeacher, setPageHeader]);
 
   useEffect(() => {
     if (isTeacher && user?._id) {
@@ -73,15 +85,7 @@ const TeacherAttendanceHistory = () => {
 
   const content = (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">
-            {isTeacher ? "My Attendance History" : "Teacher Attendance History"}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {isTeacher ? "View your attendance records in the selected date range." : "View teacher attendance by date."}
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button variant="outline" className="rounded-xl gap-2 shadow-sm" onClick={() => setShowDownload(true)}>
           <Download className="h-4 w-4" /> Export
         </Button>
@@ -280,7 +284,6 @@ const TeacherAttendanceHistory = () => {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader />
       {content}
     </div>
   );

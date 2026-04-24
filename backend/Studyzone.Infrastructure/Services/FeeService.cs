@@ -184,6 +184,36 @@ public class FeeService : IFeeService
         var academicYearId = await ResolveAcademicYearIdAsync(
             string.IsNullOrWhiteSpace(request.AcademicYearId) ? null : request.AcademicYearId, ct)
             ?? throw new InvalidOperationException("Academic year is required. Set current academic year in settings.");
+        
+        // Check if a fee with the same name already exists for this class and year
+        var existingStructures = await _structureRepo.GetByClassIdAndAcademicYearAsync(classId, academicYearId, ct);
+        var existingFee = existingStructures.FirstOrDefault(s => 
+            string.Equals(s.Name, request.Name, StringComparison.OrdinalIgnoreCase));
+        
+        if (existingFee != null)
+        {
+            // Update existing fee instead of creating new one
+            existingFee.Amount = request.Amount;
+            existingFee.Frequency = request.Frequency;
+            existingFee.EffectiveFrom = DateTime.UtcNow.Date;
+            await _structureRepo.UpdateAsync(existingFee, ct);
+            
+            var c = await _classRepo.GetByIdAsync(classId, ct);
+            var ay = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
+            return new FeeStructureDto
+            {
+                Id = existingFee.Id.ToString(),
+                ClassId = existingFee.ClassId.ToString(),
+                ClassName = c?.Name ?? "",
+                AcademicYearId = existingFee.AcademicYearId.ToString(),
+                AcademicYearName = ay?.Name,
+                Name = existingFee.Name,
+                Amount = existingFee.Amount,
+                Frequency = existingFee.Frequency,
+                EffectiveFrom = existingFee.EffectiveFrom
+            };
+        }
+        
         var entity = new FeeStructure
         {
             Id = Guid.NewGuid(),
@@ -196,15 +226,15 @@ public class FeeService : IFeeService
             CreatedAt = DateTime.UtcNow
         };
         var added = await _structureRepo.AddAsync(entity, ct);
-        var c = await _classRepo.GetByIdAsync(classId, ct);
-        var ay = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
+        var c2 = await _classRepo.GetByIdAsync(classId, ct);
+        var ay2 = await _academicYearRepo.GetByIdAsync(academicYearId, ct);
         return new FeeStructureDto
         {
             Id = added.Id.ToString(),
             ClassId = added.ClassId.ToString(),
-            ClassName = c?.Name ?? "",
+            ClassName = c2?.Name ?? "",
             AcademicYearId = added.AcademicYearId.ToString(),
-            AcademicYearName = ay?.Name,
+            AcademicYearName = ay2?.Name,
             Name = added.Name,
             Amount = added.Amount,
             Frequency = added.Frequency,

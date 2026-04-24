@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Users, ClipboardCheck, DollarSign, FileText, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchApi } from "@/lib/api";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface ParentChildDto {
   studentId: string;
@@ -19,6 +20,14 @@ const ParentChildren = () => {
   const [children, setChildren] = useState<ParentChildDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  usePageHeaderConfigEffect(
+    {
+      title: "My children",
+      description: "Students linked to your parent account.",
+    },
+    [],
+  );
+
   useEffect(() => {
     fetchApi("/ParentPortal/my-children")
       .then((list) => setChildren(Array.isArray(list) ? list : []))
@@ -28,7 +37,6 @@ const ParentChildren = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">My Children</h1>
       {loading ? (
         <Card className="rounded-[var(--radius)]"><CardContent className="p-8">Loading...</CardContent></Card>
       ) : children.length === 0 ? (

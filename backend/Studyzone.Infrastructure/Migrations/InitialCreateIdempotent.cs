@@ -266,6 +266,10 @@ CREATE TABLE IF NOT EXISTS ""MarksEntries"" (
     ""MarksObtained"" numeric NOT NULL,
     ""MaxMarks"" numeric NOT NULL,
     ""CreatedAt"" timestamp with time zone NOT NULL,
+    ""Status"" text NOT NULL DEFAULT 'Approved',
+    ""ApprovedAt"" timestamp with time zone NULL,
+    ""ApprovedByUserId"" uuid NULL,
+    ""RejectionReason"" text NULL,
     CONSTRAINT ""PK_MarksEntries"" PRIMARY KEY (""Id"")
 );
 
@@ -806,6 +810,10 @@ END $$;");
             AddColumnIfNotExists(mb, "MarksEntries", "MarksObtained", "numeric", false, "0");
             AddColumnIfNotExists(mb, "MarksEntries", "MaxMarks", "numeric", false, "0");
             AddColumnIfNotExists(mb, "MarksEntries", "CreatedAt", "timestamp with time zone", false, "now()");
+            AddColumnIfNotExists(mb, "MarksEntries", "Status", "text", false, "'Approved'");
+            AddColumnIfNotExists(mb, "MarksEntries", "ApprovedAt", "timestamp with time zone", true, "NULL");
+            AddColumnIfNotExists(mb, "MarksEntries", "ApprovedByUserId", "uuid", true, "NULL");
+            AddColumnIfNotExists(mb, "MarksEntries", "RejectionReason", "text", true, "NULL");
         }
 
         private static void EnsureColumnsNotifications(MigrationBuilder mb)
@@ -1025,6 +1033,9 @@ END $$;");
             AddColumnIfNotExists(mb, "TimetableSettings", "Id", "uuid", false, "gen_random_uuid()");
             AddColumnIfNotExists(mb, "TimetableSettings", "WorkingDayCount", "integer", false, "0");
             AddColumnIfNotExists(mb, "TimetableSettings", "PeriodsPerDay", "integer", false, "0");
+            AddColumnIfNotExists(mb, "TimetableSettings", "SchoolStartTime", "text", false, "'08:00'");
+            AddColumnIfNotExists(mb, "TimetableSettings", "PeriodDurationMinutes", "integer", false, "45");
+            AddColumnIfNotExists(mb, "TimetableSettings", "BreaksJson", "text", true, "");
         }
 
         private static void EnsureColumnsTimetableSlots(MigrationBuilder mb)
@@ -1113,6 +1124,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FeeStructures_ClassId_AcademicYearId_Name
 CREATE INDEX IF NOT EXISTS ""IX_LeaveRequests_Status"" ON ""LeaveRequests"" (""Status"");
 CREATE INDEX IF NOT EXISTS ""IX_LeaveRequests_TeacherUserId"" ON ""LeaveRequests"" (""TeacherUserId"");
 CREATE INDEX IF NOT EXISTS ""IX_MarksEntries_ExamId"" ON ""MarksEntries"" (""ExamId"");
+CREATE INDEX IF NOT EXISTS ""IX_MarksEntries_ExamId_Status"" ON ""MarksEntries"" (""ExamId"", ""Status"");
 CREATE INDEX IF NOT EXISTS ""IX_MarksEntries_ExamId_StudentId_Subject"" ON ""MarksEntries"" (""ExamId"", ""StudentId"", ""Subject"");
 CREATE INDEX IF NOT EXISTS ""IX_Notifications_CreatedAt"" ON ""Notifications"" (""CreatedAt"");
 CREATE INDEX IF NOT EXISTS ""IX_Notifications_UserId"" ON ""Notifications"" (""UserId"");

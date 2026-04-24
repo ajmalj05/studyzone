@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { fetchApi } from "@/lib/api";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface ParentChildDto {
   studentId: string;
@@ -64,22 +65,21 @@ const ParentAttendance = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Attendance</h1>
       <Card className="rounded-[var(--radius)] shadow-card">
         <CardHeader>
           <CardTitle className="text-lg">Select child and date range</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
-          <Select value={studentId} onValueChange={setStudentId}>
-            <SelectTrigger className="w-[220px] rounded-xl">
-              <SelectValue placeholder="Select child" />
-            </SelectTrigger>
-            <SelectContent>
-              {children.map((c) => (
-                <SelectItem key={c.studentId} value={c.studentId}>{c.name} {c.className ? `(${c.className})` : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={studentId}
+            onValueChange={setStudentId}
+            placeholder="Select child"
+            className="w-[220px] rounded-xl"
+            options={children.map((c) => ({
+              value: c.studentId,
+              label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
+            }))}
+          />
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border border-input bg-background px-4 py-2 text-sm" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border border-input bg-background px-4 py-2 text-sm" />
         </CardContent>

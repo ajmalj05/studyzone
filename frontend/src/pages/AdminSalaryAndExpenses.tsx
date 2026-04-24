@@ -1,15 +1,9 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +76,11 @@ export default function AdminSalaryAndExpenses() {
   const [teacherPaymentsLoading, setTeacherPaymentsLoading] = useState(false);
   const [detailPayment, setDetailPayment] = useState<TeacherSalaryPaymentDto | null>(null);
 
+  usePageHeaderConfigEffect(
+    { title: "Salary & expenses", description: "View paid salaries and teacher-wise payment history." },
+    [],
+  );
+
   const loadPaidSalaries = async () => {
     setPaidLoading(true);
     try {
@@ -139,8 +138,6 @@ export default function AdminSalaryAndExpenses() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Salary & Expenses" description="View paid salaries and teacher-wise details." />
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="paid" className="gap-2">
@@ -163,25 +160,21 @@ export default function AdminSalaryAndExpenses() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium">Year from</label>
-                  <Select value={String(paidYearFrom)} onValueChange={(v) => setPaidYearFrom(parseInt(v, 10))}>
-                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[currentDate.getFullYear(), currentDate.getFullYear() - 1, currentDate.getFullYear() - 2].map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={String(paidYearFrom)}
+                    onValueChange={(v) => setPaidYearFrom(parseInt(v, 10))}
+                    className="w-28"
+                    options={[currentDate.getFullYear(), currentDate.getFullYear() - 1, currentDate.getFullYear() - 2].map((y) => ({ value: String(y), label: String(y) }))}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium">Year to</label>
-                  <Select value={String(paidYearTo)} onValueChange={(v) => setPaidYearTo(parseInt(v, 10))}>
-                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[currentDate.getFullYear(), currentDate.getFullYear() - 1, currentDate.getFullYear() - 2].map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={String(paidYearTo)}
+                    onValueChange={(v) => setPaidYearTo(parseInt(v, 10))}
+                    className="w-28"
+                    options={[currentDate.getFullYear(), currentDate.getFullYear() - 1, currentDate.getFullYear() - 2].map((y) => ({ value: String(y), label: String(y) }))}
+                  />
                 </div>
                 <Button variant="outline" size="sm" onClick={loadPaidSalaries}>Refresh</Button>
               </div>
@@ -237,15 +230,16 @@ export default function AdminSalaryAndExpenses() {
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <label className="text-sm font-medium">Teacher</label>
-                <Select value={selectedTeacherId || "_none"} onValueChange={(v) => setSelectedTeacherId(v === "_none" ? "" : v)}>
-                  <SelectTrigger className="w-64"><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">Select teacher</SelectItem>
-                    {teachers.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedTeacherId || "_none"}
+                  onValueChange={(v) => setSelectedTeacherId(v === "_none" ? "" : v)}
+                  placeholder="Select teacher"
+                  className="w-64"
+                  options={[
+                    { value: "_none", label: "Select teacher" },
+                    ...teachers.map((t) => ({ value: t.id, label: t.name })),
+                  ]}
+                />
               </div>
               {teacherPaymentsLoading ? (
                 <p className="text-sm text-muted-foreground py-4">Loading…</p>

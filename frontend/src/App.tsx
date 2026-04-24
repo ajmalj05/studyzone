@@ -12,7 +12,9 @@ import { ParentLayout } from "./layouts/ParentLayout";
 import Index from "./pages/Index";
 import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
+import StaffAttendance from "./pages/StaffAttendance";
 import TeacherOfferLetter from "./pages/TeacherOfferLetter";
+import TeacherManagement from "./pages/TeacherManagement";
 import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
 import Attendance from "./pages/Attendance";
@@ -25,10 +27,12 @@ import Admission from "./pages/Admission";
 import Enquiry from "./pages/Enquiry";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
 import Classes from "./pages/Classes";
+import Batches from "./pages/Batches";
 import Subjects from "./pages/Subjects";
 import Timetable from "./pages/Timetable";
 import Reports from "./pages/Reports";
-import Communication from "./pages/Communication";
+import CommunicationLayout from "./pages/CommunicationLayout";
+import CircularPage from "./pages/CircularPage";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import VerifyProfile from "./pages/VerifyProfile";
@@ -58,6 +62,10 @@ import TeacherSalary from "./pages/teacher/TeacherSalary";
 import TeacherMyBatch from "./pages/teacher/TeacherMyBatch";
 import TeacherNotices from "./pages/teacher/TeacherNotices";
 import TeacherClassesAndStudents from "./pages/teacher/TeacherClassesAndStudents";
+import TeacherBatchLayout from "./pages/teacher/batch/TeacherBatchLayout";
+import TeacherBatchOverview from "./pages/teacher/batch/TeacherBatchOverview";
+import TeacherBatchRoster from "./pages/teacher/batch/TeacherBatchRoster";
+import TeacherBatchAttendance from "./pages/teacher/batch/TeacherBatchAttendance";
 import AdminSalary from "./pages/AdminSalary";
 import AdminSalaryAndExpenses from "./pages/AdminSalaryAndExpenses";
 import Expenses from "./pages/Expenses";
@@ -73,6 +81,7 @@ import ParentTimetable from "./pages/parent/ParentTimetable";
 import ParentAnnouncements from "./pages/parent/ParentAnnouncements";
 import ParentRequests from "./pages/parent/ParentRequests";
 import ClassTeacherAssign from "./pages/ClassTeacherAssign";
+import AcademicsManagement from "./pages/AcademicsManagement";
 
 const queryClient = new QueryClient();
 
@@ -100,17 +109,35 @@ const App = () => (
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="dashboard" element={<Index />} />
                 <Route path="students" element={<Students />} />
-                <Route path="teachers" element={<Teachers />} />
-                <Route path="teachers/offer-letter" element={<TeacherOfferLetter />} />
+                <Route path="teachers" element={<TeacherManagement />}>
+                  <Route index element={<Navigate to="/admin/teachers/list" replace />} />
+                  <Route path="list" element={<Teachers />} />
+                  <Route path="offer-letter" element={<TeacherOfferLetter />} />
+                  <Route path="assign" element={<ClassTeacherAssign />} />
+                  <Route path="attendance" element={<StaffAttendance />} />
+                </Route>
                 <Route path="payroll" element={<AdminSalary />} />
                 <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />
                 <Route path="fees/ledger" element={<StudentLedger />} />
                 <Route path="attendance" element={<Attendance />} />
-                <Route path="exams" element={<Exams />} />
+
+                <Route path="academics" element={<AcademicsManagement />}>
+                  <Route index element={<Navigate to="/admin/academics/classes" replace />} />
+                  <Route path="classes" element={<Classes />} />
+                  <Route path="batches" element={<Batches />} />
+                  <Route path="subjects" element={<Subjects />} />
+                  <Route path="timetable" element={<Timetable />} />
+                  <Route path="exams" element={<Exams />} />
+                  <Route path="years" element={<AcademicYearPage />} />
+                </Route>
+                <Route path="classes" element={<Navigate to="/admin/academics/classes" replace />} />
+                <Route path="subjects" element={<Navigate to="/admin/academics/subjects" replace />} />
+                <Route path="timetable" element={<Navigate to="/admin/academics/timetable" replace />} />
+                <Route path="exams" element={<Navigate to="/admin/academics/exams" replace />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />
-                <Route path="requests/teacher" element={<AdminTeacherRequests />} />
-                <Route path="requests/parent" element={<AdminParentRequests />} />
+                <Route path="requests/teacher" element={<Navigate to="/admin/communication/teacher-requests" replace />} />
+                <Route path="requests/parent" element={<Navigate to="/admin/communication/parent-requests" replace />} />
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/student-attendance/:studentId" element={<StudentAttendanceDetail />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
@@ -118,16 +145,18 @@ const App = () => (
                 <Route path="admission" element={<Admission />} />
                 <Route path="admission/application/new" element={<ApplicationFormPage />} />
                 <Route path="admission/application/:id" element={<ApplicationFormPage />} />
-                <Route path="classes" element={<Classes />} />
-                <Route path="subjects" element={<Subjects />} />
-                <Route path="timetable" element={<Timetable />} />
                 <Route path="parents" element={<AdminParentManagement />} />
-                <Route path="communication" element={<Communication />} />
+                <Route path="communication" element={<CommunicationLayout />}>
+                  <Route index element={<Navigate to="/admin/communication/circular" replace />} />
+                  <Route path="circular" element={<CircularPage />} />
+                  <Route path="teacher-requests" element={<AdminTeacherRequests />} />
+                  <Route path="parent-requests" element={<AdminParentRequests />} />
+                </Route>
                 <Route path="reports" element={<Reports />} />
-                <Route path="academic-year" element={<AcademicYearPage />} />
+                <Route path="academic-year" element={<Navigate to="/admin/academics/years" replace />} />
                 <Route path="year/:yearId" element={<AcademicYearDetailPage />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="class-teacher" element={<ClassTeacherAssign />} />
+                <Route path="class-teacher" element={<Navigate to="/admin/teachers/assign" replace />} />
                 <Route path="salary-expenses" element={<AdminSalaryAndExpenses />} />
                 <Route path="expenses" element={<Expenses />} />
               </Route>
@@ -155,6 +184,11 @@ const App = () => (
                 <Route path="dashboard" element={<TeacherDashboard />} />
                 <Route path="my-batch" element={<TeacherMyBatch />} />
                 <Route path="classes" element={<TeacherClassesAndStudents />} />
+                <Route path="batches/:batchId" element={<TeacherBatchLayout />}>
+                  <Route index element={<TeacherBatchOverview />} />
+                  <Route path="roster" element={<TeacherBatchRoster />} />
+                  <Route path="attendance" element={<TeacherBatchAttendance />} />
+                </Route>
                 <Route path="attendance" element={<TeacherAttendance />} />
                 <Route path="students" element={<TeacherStudents />} />
                 <Route path="marks" element={<TeacherExams />} />

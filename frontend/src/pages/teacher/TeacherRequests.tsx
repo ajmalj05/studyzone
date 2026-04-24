@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import {
     LayoutDashboard, Users, Calendar, GraduationCap, Clock, MessageSquare, Bell, UserCircle, Send, CheckCircle, XCircle
 } from "lucide-react";
@@ -29,6 +31,11 @@ const TeacherRequests = () => {
     const [message, setMessage] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);
 
+    usePageHeaderConfigEffect(
+        { title: "My requests", description: "Submit requests to admin and track their status." },
+        [],
+    );
+
     useEffect(() => {
         if (user?._id) {
             loadRequests();
@@ -37,7 +44,7 @@ const TeacherRequests = () => {
 
     const loadRequests = async () => {
         try {
-            const data = await fetchApi(`/requests?role=teacher&userId=${user?._id}`);
+            const data = await fetchApi(`/requests?role=teacher&userId=${user?._id}`) as any[];
             setRequests(data);
         } catch (error: any) {
             toast({ title: "Error", description: "Failed to load requests", variant: "destructive" });
@@ -74,8 +81,6 @@ const TeacherRequests = () => {
 
     return (
         <div className="space-y-4">
-                <h1 className="text-lg font-semibold text-foreground">My Requests</h1>
-
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <Card className="rounded-[var(--radius)] shadow-card">
                         <CardHeader>
@@ -85,9 +90,13 @@ const TeacherRequests = () => {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label className="text-sm font-medium text-foreground">Request Type</label>
-                                    <select value={type} onChange={e => setType(e.target.value)} className="mt-1 flex h-10 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:ring-2 focus-visible:ring-ring appearance-none">
-                                        {requestTypes.map(rt => <option key={rt} value={rt}>{rt}</option>)}
-                                    </select>
+                                    <SearchableSelect
+                                        value={type}
+                                        onValueChange={(v) => setType(v)}
+                                        placeholder="Select request type"
+                                        options={requestTypes.map(rt => ({ value: rt, label: rt }))}
+                                        className="mt-1"
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-foreground">Subject</label>

@@ -13,7 +13,22 @@ function getInitials(name: string | undefined, role: string): string {
   return role === "teacher" ? "TR" : role === "parent" ? "PA" : "AK";
 }
 
-export function DashboardHeader({ title, description }: { title?: string; description?: string }) {
+export function DashboardHeader({
+  title,
+  description,
+  /** When false, parent supplies sticky positioning (e.g. admin header bar). Default true. */
+  sticky = true,
+  /** When false, notifications/avatar/welcome are omitted (e.g. admin bar renders them by the year badge). Default true. */
+  showActions = true,
+  /** When true with showActions, shows “Welcome, …” next to the avatar. Default true. */
+  showWelcomeMessage = true,
+}: {
+  title?: string;
+  description?: string;
+  sticky?: boolean;
+  showActions?: boolean;
+  showWelcomeMessage?: boolean;
+}) {
   const { user } = useAuth();
   const mobileMenu = useMobileMenu();
   const today = new Date().toLocaleDateString("en-US", {
@@ -24,8 +39,10 @@ export function DashboardHeader({ title, description }: { title?: string; descri
   const initials = getInitials(user?.name, role);
 
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex flex-wrap items-center justify-between gap-2 pb-2">
-      <div className="flex items-center gap-2 min-w-0">
+    <header
+      className={`${sticky ? "sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 " : ""}flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 pb-0 sm:pb-0`}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {mobileMenu?.isMobile && (
           <Button
             variant="ghost"
@@ -37,7 +54,7 @@ export function DashboardHeader({ title, description }: { title?: string; descri
             <Menu className="h-5 w-5" />
           </Button>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
         {title ? (
           <>
             <h1 className="text-lg font-semibold text-foreground truncate">{title}</h1>
@@ -48,17 +65,21 @@ export function DashboardHeader({ title, description }: { title?: string; descri
         )}
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <NotificationDropdown />
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 overflow-hidden rounded-full gradient-primary flex items-center justify-center">
-            <span className="text-xs font-semibold text-primary-foreground">{initials}</span>
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-xs font-medium text-foreground">Welcome, {displayName}</p>
+      {showActions ? (
+        <div className="flex shrink-0 items-center gap-3">
+          <NotificationDropdown />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full gradient-primary">
+              <span className="text-xs font-semibold text-primary-foreground">{initials}</span>
+            </div>
+            {showWelcomeMessage ? (
+              <div className="hidden sm:block">
+                <p className="text-xs font-medium text-foreground">Welcome, {displayName}</p>
+              </div>
+            ) : null}
           </div>
         </div>
-      </div>
+      ) : null}
     </header>
   );
 }

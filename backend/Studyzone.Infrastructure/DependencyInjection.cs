@@ -93,6 +93,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IExamRepository, ExamRepository>();
         services.AddScoped<IMarksEntryRepository, MarksEntryRepository>();
+        services.AddScoped<IExamScheduleRepository, ExamScheduleRepository>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IReportsService, ReportsService>();
         services.AddScoped<IPortalService, PortalService>();

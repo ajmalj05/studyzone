@@ -10,13 +10,38 @@ public class ExamService : IExamService
     private readonly IMarksEntryRepository _marksRepo;
     private readonly IClassRepository _classRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IExamScheduleRepository _scheduleRepo;
+    private readonly ITimetableSlotRepository _slotRepo;
+    private readonly IBatchRepository _batchRepo;
 
-    public ExamService(IExamRepository examRepo, IMarksEntryRepository marksRepo, IClassRepository classRepo, IStudentRepository studentRepo)
+    public ExamService(IExamRepository examRepo, IMarksEntryRepository marksRepo, IClassRepository classRepo, IStudentRepository studentRepo, IExamScheduleRepository scheduleRepo, ITimetableSlotRepository slotRepo, IBatchRepository batchRepo)
     {
         _examRepo = examRepo;
         _marksRepo = marksRepo;
         _classRepo = classRepo;
         _studentRepo = studentRepo;
+        _scheduleRepo = scheduleRepo;
+        _slotRepo = slotRepo;
+        _batchRepo = batchRepo;
+    }
+
+    private async Task<(List<string> classIds, List<string> classNames, string? firstClassId, string? firstClassName)> ResolveClassesAsync(Guid examId, Guid? legacyClassId, CancellationToken ct)
+    {
+        var links = await _examRepo.GetExamClassesByExamIdAsync(examId, ct);
+        var ids = new List<string>();
+        var names = new List<string>();
+        foreach (var link in links)
+        {
+            var c = await _classRepo.GetByIdAsync(link.ClassId, ct);
+            if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+        }
+        // Fall back to legacy ClassId if no junction rows
+        if (ids.Count == 0 && legacyClassId.HasValue)
+        {
+            var c = await _classRepo.GetByIdAsync(legacyClassId.Value, ct);
+            if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+        }
+        return (ids, names, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
     }
 
     public async Task<ExamDto?> GetByIdAsync(string id, CancellationToken ct = default)
@@ -24,19 +49,17 @@ public class ExamService : IExamService
         if (!Guid.TryParse(id, out var guid)) return null;
         var e = await _examRepo.GetByIdAsync(guid, ct);
         if (e == null) return null;
-        string? className = null;
-        if (e.ClassId.HasValue)
-        {
-            var c = await _classRepo.GetByIdAsync(e.ClassId.Value, ct);
-            className = c?.Name;
-        }
+        var (classIds, classNames, firstClassId, firstName) = await ResolveClassesAsync(e.Id, e.ClassId, ct);
         return new ExamDto
         {
             Id = e.Id.ToString(),
             Name = e.Name,
             Type = e.Type,
-            ClassId = e.ClassId?.ToString(),
-            ClassName = className,
+            ClassId = firstClassId,
+            ClassName = firstName,
+            ClassIds = classIds,
+            ClassNames = classNames,
+            MaxMarks = e.MaxMarks,
             ExamDate = e.ExamDate,
             CreatedAt = e.CreatedAt
         };
@@ -46,22 +69,74 @@ public class ExamService : IExamService
     {
         Guid? cid = string.IsNullOrWhiteSpace(classId) || !Guid.TryParse(classId, out var g) ? null : g;
         var list = await _examRepo.GetAllAsync(cid, ct);
+        var examIds = list.Select(e => e.Id).ToList().AsReadOnly();
+        var allLinks = await _examRepo.GetExamClassesByExamIdsAsync(examIds, ct);
+        var linksByExam = allLinks.GroupBy(l => l.ExamId).ToDictionary(gr => gr.Key, gr => gr.ToList());
         var dtos = new List<ExamDto>();
         foreach (var e in list)
         {
-            string? className = null;
-            if (e.ClassId.HasValue)
-            {
-                var c = await _classRepo.GetByIdAsync(e.ClassId.Value, ct);
-                className = c?.Name;
-            }
+            var (classIds, classNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
             dtos.Add(new ExamDto
             {
                 Id = e.Id.ToString(),
                 Name = e.Name,
                 Type = e.Type,
-                ClassId = e.ClassId?.ToString(),
-                ClassName = className,
+                ClassId = firstClassId,
+                ClassName = firstName,
+                ClassIds = classIds,
+                ClassNames = classNames,
+                MaxMarks = e.MaxMarks,
+                ExamDate = e.ExamDate,
+                CreatedAt = e.CreatedAt
+            });
+        }
+        return dtos;
+    }
+
+    private async Task<(List<string> classIds, List<string> classNames, string? firstClassId, string? firstName)> ResolveClassesFromLinks(Exam e, List<ExamClass>? links, CancellationToken ct)
+    {
+        var ids = new List<string>();
+        var names = new List<string>();
+        if (links != null)
+        {
+            foreach (var link in links)
+            {
+                var c = await _classRepo.GetByIdAsync(link.ClassId, ct);
+                if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+            }
+        }
+        if (ids.Count == 0 && e.ClassId.HasValue)
+        {
+            var c = await _classRepo.GetByIdAsync(e.ClassId.Value, ct);
+            if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+        }
+        return (ids, names, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
+    }
+
+    public async Task<IReadOnlyList<ExamDto>> GetAllForClassIdsAsync(IReadOnlyList<string> classIds, CancellationToken ct = default)
+    {
+        if (classIds == null || classIds.Count == 0)
+            return Array.Empty<ExamDto>();
+        var guids = classIds.Select(s => Guid.TryParse(s, out var g) ? (Guid?)g : null).Where(g => g.HasValue).Select(g => g!.Value).ToList().AsReadOnly();
+        if (guids.Count == 0) return Array.Empty<ExamDto>();
+        var list = await _examRepo.GetAllForClassIdsAsync(guids, ct);
+        var examIds = list.Select(e => e.Id).ToList().AsReadOnly();
+        var allLinks = await _examRepo.GetExamClassesByExamIdsAsync(examIds, ct);
+        var linksByExam = allLinks.GroupBy(l => l.ExamId).ToDictionary(gr => gr.Key, gr => gr.ToList());
+        var dtos = new List<ExamDto>();
+        foreach (var e in list)
+        {
+            var (cIds, cNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
+            dtos.Add(new ExamDto
+            {
+                Id = e.Id.ToString(),
+                Name = e.Name,
+                Type = e.Type,
+                ClassId = firstClassId,
+                ClassName = firstName,
+                ClassIds = cIds,
+                ClassNames = cNames,
+                MaxMarks = e.MaxMarks,
                 ExamDate = e.ExamDate,
                 CreatedAt = e.CreatedAt
             });
@@ -71,39 +146,57 @@ public class ExamService : IExamService
 
     public async Task<ExamDto> CreateAsync(CreateExamRequest request, CancellationToken ct = default)
     {
-        Guid? classId = string.IsNullOrWhiteSpace(request.ClassId) || !Guid.TryParse(request.ClassId, out var cg) ? null : cg;
+        // Collect class IDs from both ClassIds list and legacy ClassId
+        var classGuids = new List<Guid>();
+        if (request.ClassIds != null)
+        {
+            foreach (var s in request.ClassIds)
+                if (Guid.TryParse(s, out var g)) classGuids.Add(g);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.ClassId) && Guid.TryParse(request.ClassId, out var single))
+        {
+            classGuids.Add(single);
+        }
+        classGuids = classGuids.Distinct().ToList();
+
         var entity = new Exam
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
             Type = request.Type,
-            ClassId = classId,
+            ClassId = null, // Use ExamClasses junction going forward
+            MaxMarks = request.MaxMarks,
             ExamDate = request.ExamDate,
             CreatedAt = DateTime.UtcNow
         };
         var added = await _examRepo.AddAsync(entity, ct);
-        string? className = null;
-        if (added.ClassId.HasValue)
+
+        if (classGuids.Count > 0)
         {
-            var c = await _classRepo.GetByIdAsync(added.ClassId.Value, ct);
-            className = c?.Name;
+            var links = classGuids.Select(cg => new ExamClass { Id = Guid.NewGuid(), ExamId = added.Id, ClassId = cg }).ToList();
+            await _examRepo.AddExamClassesAsync(links, ct);
         }
+
+        var (classIds, classNames, firstClassId, firstName) = await ResolveClassesAsync(added.Id, added.ClassId, ct);
         return new ExamDto
         {
             Id = added.Id.ToString(),
             Name = added.Name,
             Type = added.Type,
-            ClassId = added.ClassId?.ToString(),
-            ClassName = className,
+            ClassId = firstClassId,
+            ClassName = firstName,
+            ClassIds = classIds,
+            ClassNames = classNames,
+            MaxMarks = added.MaxMarks,
             ExamDate = added.ExamDate,
             CreatedAt = added.CreatedAt
         };
     }
 
-    public async Task<IReadOnlyList<MarksEntryDto>> GetMarksByExamAsync(string examId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<MarksEntryDto>> GetMarksByExamAsync(string examId, bool approvedOnly = false, CancellationToken ct = default)
     {
         if (!Guid.TryParse(examId, out var eid)) return Array.Empty<MarksEntryDto>();
-        var list = await _marksRepo.GetByExamIdAsync(eid, ct);
+        var list = await _marksRepo.GetByExamIdAsync(eid, approvedOnly, ct);
         var dtos = new List<MarksEntryDto>();
         foreach (var m in list)
         {
@@ -116,7 +209,11 @@ public class ExamService : IExamService
                 StudentName = s?.Name ?? "",
                 Subject = m.Subject,
                 MarksObtained = m.MarksObtained,
-                MaxMarks = m.MaxMarks
+                MaxMarks = m.MaxMarks,
+                Status = m.Status,
+                ApprovedAt = m.ApprovedAt,
+                ApprovedByUserId = m.ApprovedByUserId?.ToString(),
+                RejectionReason = m.RejectionReason
             });
         }
         return dtos;
@@ -137,5 +234,215 @@ public class ExamService : IExamService
             MaxMarks = request.MaxMarks
         };
         await _marksRepo.AddOrUpdateAsync(entry, ct);
+    }
+
+    public async Task<int> ApproveAllPendingMarksForExamAsync(string examId, string approvedByUserId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(examId, out var eid))
+            throw new ArgumentException("Invalid exam id.", nameof(examId));
+        if (!Guid.TryParse(approvedByUserId, out var uid))
+            throw new ArgumentException("Invalid user id.", nameof(approvedByUserId));
+        return await _marksRepo.ApproveAllPendingForExamAsync(eid, uid, ct);
+    }
+
+    public async Task<bool> ApproveMarksEntryAsync(string marksEntryId, string approvedByUserId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(marksEntryId, out var mid))
+            return false;
+        if (!Guid.TryParse(approvedByUserId, out var uid))
+            return false;
+        return await _marksRepo.ApproveEntryAsync(mid, uid, ct);
+    }
+
+    public async Task<bool> RejectMarksEntryAsync(string marksEntryId, string? reason, string approvedByUserId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(marksEntryId, out var mid))
+            return false;
+        if (!Guid.TryParse(approvedByUserId, out var uid))
+            return false;
+        return await _marksRepo.RejectEntryAsync(mid, uid, reason, ct);
+    }
+
+    public async Task<IReadOnlyList<ExamScheduleEntryDto>> GetScheduleByExamIdAsync(string examId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(examId, out var eid)) return Array.Empty<ExamScheduleEntryDto>();
+        var exam = await _examRepo.GetByIdAsync(eid, ct);
+        var entries = await _scheduleRepo.GetByExamIdAsync(eid, ct);
+        return await MapScheduleEntriesAsync(entries, exam, ct);
+    }
+
+    public async Task<IReadOnlyList<ExamScheduleEntryDto>> GetScheduleForTeacherAsync(string teacherUserId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(teacherUserId, out var teacherGuid))
+            return Array.Empty<ExamScheduleEntryDto>();
+        var slots = await _slotRepo.GetByTeacherUserIdAsync(teacherGuid, ct);
+        var classIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var slot in slots)
+        {
+            var batch = await _batchRepo.GetByIdAsync(slot.BatchId, ct);
+            if (batch != null) classIds.Add(batch.ClassId.ToString());
+        }
+
+        if (classIds.Count == 0) return Array.Empty<ExamScheduleEntryDto>();
+
+        var classGuids = classIds
+            .Select(s => Guid.TryParse(s, out var g) ? (Guid?)g : null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList()
+            .AsReadOnly();
+        var exams = await _examRepo.GetAllForClassIdsAsync(classGuids, ct);
+        if (exams.Count == 0) return Array.Empty<ExamScheduleEntryDto>();
+
+        var examIds = exams.Select(e => e.Id).ToList();
+        var entries = await _scheduleRepo.GetByExamIdsAsync(examIds, ct);
+        var filtered = entries;
+
+        var examMap = exams.ToDictionary(e => e.Id);
+        var result = new List<ExamScheduleEntryDto>();
+        foreach (var entry in filtered)
+        {
+            examMap.TryGetValue(entry.ExamId, out var exam);
+            string? className = null;
+            if (entry.ClassId.HasValue)
+            {
+                var cls = await _classRepo.GetByIdAsync(entry.ClassId.Value, ct);
+                className = cls?.Name;
+            }
+            else if (exam?.ClassId.HasValue == true)
+            {
+                var cls = await _classRepo.GetByIdAsync(exam.ClassId.Value, ct);
+                className = cls?.Name;
+            }
+            result.Add(new ExamScheduleEntryDto
+            {
+                Id = entry.Id.ToString(),
+                ExamId = entry.ExamId.ToString(),
+                ExamName = exam?.Name,
+                SubjectName = entry.SubjectName,
+                ClassId = entry.ClassId?.ToString(),
+                ClassName = className,
+                ScheduledDate = entry.ScheduledDate,
+                StartTime = entry.StartTime,
+                EndTime = entry.EndTime,
+                Venue = entry.Venue,
+                CreatedAt = entry.CreatedAt
+            });
+        }
+        return result;
+    }
+
+    public async Task<ExamScheduleEntryDto> CreateScheduleEntryAsync(CreateExamScheduleEntryRequest request, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(request.ExamId, out var examId))
+            throw new ArgumentException("Invalid exam id.", nameof(request));
+        Guid? classId = string.IsNullOrWhiteSpace(request.ClassId) || !Guid.TryParse(request.ClassId, out var cg) ? null : cg;
+        var entity = new ExamScheduleEntry
+        {
+            Id = Guid.NewGuid(),
+            ExamId = examId,
+            SubjectName = request.SubjectName,
+            ClassId = classId,
+            ScheduledDate = request.ScheduledDate,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            Venue = request.Venue,
+            CreatedAt = DateTime.UtcNow
+        };
+        var added = await _scheduleRepo.AddAsync(entity, ct);
+        var exam = await _examRepo.GetByIdAsync(examId, ct);
+        string? className = null;
+        if (added.ClassId.HasValue)
+        {
+            var cls = await _classRepo.GetByIdAsync(added.ClassId.Value, ct);
+            className = cls?.Name;
+        }
+        return new ExamScheduleEntryDto
+        {
+            Id = added.Id.ToString(),
+            ExamId = added.ExamId.ToString(),
+            ExamName = exam?.Name,
+            SubjectName = added.SubjectName,
+            ClassId = added.ClassId?.ToString(),
+            ClassName = className,
+            ScheduledDate = added.ScheduledDate,
+            StartTime = added.StartTime,
+            EndTime = added.EndTime,
+            Venue = added.Venue,
+            CreatedAt = added.CreatedAt
+        };
+    }
+
+    public async Task<ExamScheduleEntryDto> UpdateScheduleEntryAsync(string entryId, UpdateExamScheduleEntryRequest request, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(entryId, out var id))
+            throw new ArgumentException("Invalid entry id.", nameof(entryId));
+        var entry = await _scheduleRepo.GetByIdAsync(id, ct)
+            ?? throw new KeyNotFoundException($"Schedule entry {entryId} not found.");
+        Guid? classId = string.IsNullOrWhiteSpace(request.ClassId) || !Guid.TryParse(request.ClassId, out var cg) ? null : cg;
+        entry.SubjectName = request.SubjectName;
+        entry.ClassId = classId;
+        entry.ScheduledDate = request.ScheduledDate;
+        entry.StartTime = request.StartTime;
+        entry.EndTime = request.EndTime;
+        entry.Venue = request.Venue;
+        await _scheduleRepo.UpdateAsync(entry, ct);
+        var exam = await _examRepo.GetByIdAsync(entry.ExamId, ct);
+        string? className = null;
+        if (entry.ClassId.HasValue)
+        {
+            var cls = await _classRepo.GetByIdAsync(entry.ClassId.Value, ct);
+            className = cls?.Name;
+        }
+        return new ExamScheduleEntryDto
+        {
+            Id = entry.Id.ToString(),
+            ExamId = entry.ExamId.ToString(),
+            ExamName = exam?.Name,
+            SubjectName = entry.SubjectName,
+            ClassId = entry.ClassId?.ToString(),
+            ClassName = className,
+            ScheduledDate = entry.ScheduledDate,
+            StartTime = entry.StartTime,
+            EndTime = entry.EndTime,
+            Venue = entry.Venue,
+            CreatedAt = entry.CreatedAt
+        };
+    }
+
+    public async Task DeleteScheduleEntryAsync(string entryId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(entryId, out var id))
+            throw new ArgumentException("Invalid entry id.", nameof(entryId));
+        await _scheduleRepo.DeleteAsync(id, ct);
+    }
+
+    private async Task<IReadOnlyList<ExamScheduleEntryDto>> MapScheduleEntriesAsync(IReadOnlyList<ExamScheduleEntry> entries, Exam? exam, CancellationToken ct)
+    {
+        var result = new List<ExamScheduleEntryDto>();
+        foreach (var entry in entries)
+        {
+            string? className = null;
+            if (entry.ClassId.HasValue)
+            {
+                var cls = await _classRepo.GetByIdAsync(entry.ClassId.Value, ct);
+                className = cls?.Name;
+            }
+            result.Add(new ExamScheduleEntryDto
+            {
+                Id = entry.Id.ToString(),
+                ExamId = entry.ExamId.ToString(),
+                ExamName = exam?.Name,
+                SubjectName = entry.SubjectName,
+                ClassId = entry.ClassId?.ToString(),
+                ClassName = className,
+                ScheduledDate = entry.ScheduledDate,
+                StartTime = entry.StartTime,
+                EndTime = entry.EndTime,
+                Venue = entry.Venue,
+                CreatedAt = entry.CreatedAt
+            });
+        }
+        return result;
     }
 }

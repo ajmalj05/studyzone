@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, Download } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { openAnnouncementPdf, SchoolInfo } from "@/lib/announcementPdf";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface AnnouncementDto {
   id: string;
@@ -19,6 +20,14 @@ const ParentAnnouncements = () => {
   const [loading, setLoading] = useState(true);
   const [printing, setPrinting] = useState<string | null>(null);
   const [school, setSchool] = useState<SchoolInfo>({ name: "Studyzone School" });
+
+  usePageHeaderConfigEffect(
+    {
+      title: "Announcements",
+      description: "School notices published for parents.",
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchApi("/ParentPortal/announcements?take=50")
@@ -50,7 +59,6 @@ const ParentAnnouncements = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Announcements</h1>
       {loading ? (
         <Card className="rounded-[var(--radius)]"><CardContent className="p-8">Loading...</CardContent></Card>
       ) : list.length === 0 ? (

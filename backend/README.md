@@ -49,6 +49,8 @@ If all three `Seed__*` are set, the first run will create one admin user when th
    ```bash
    dotnet run --project Studyzone.Api
    ```
+   On Windows, after `docker compose up -d db`, you can use the same defaults as compose by running `.\run-api-local.ps1` from `backend/` instead of setting variables manually.
+
    API: http://localhost:5000  
    Swagger: http://localhost:5000/swagger  
 
@@ -62,6 +64,10 @@ dotnet build
 ```
 
 ## Troubleshooting
+
+### Browser shows a CORS error on login (preflight 204 but fetch fails)
+
+The allowed origin must **exactly** match what appears in the address bar. `http://127.0.0.1:5173` and `http://localhost:5173` are different origins. Add every origin you use to `CORS__Origins` (semicolon-separated), then restart the API. Docker Compose and `run-api-local.ps1` include common `localhost` / `127.0.0.1` dev URLs for ports 5173, 3000, and 8080.
 
 ### "Application Control policy has blocked this file" (0x800711C7)
 

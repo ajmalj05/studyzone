@@ -39,6 +39,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Substitution> Substitutions => Set<Substitution>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<Exam> Exams => Set<Exam>();
+    public DbSet<ExamClass> ExamClasses => Set<ExamClass>();
     public DbSet<MarksEntry> MarksEntries => Set<MarksEntry>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<TeacherSalary> TeacherSalaries => Set<TeacherSalary>();
@@ -51,6 +52,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<StudentFeeOffer> StudentFeeOffers => Set<StudentFeeOffer>();
     public DbSet<TeacherOfferLetter> TeacherOfferLetters => Set<TeacherOfferLetter>();
     public DbSet<OfferLetterFieldConfig> OfferLetterFieldConfigs => Set<OfferLetterFieldConfig>();
+    public DbSet<ExamScheduleEntry> ExamScheduleEntries => Set<ExamScheduleEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -156,6 +158,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<MarksEntry>(e =>
         {
             e.HasIndex(x => x.ExamId);
+            e.HasIndex(x => new { x.ExamId, x.Status });
             e.HasIndex(x => new { x.ExamId, x.StudentId, x.Subject });
         });
         modelBuilder.Entity<Announcement>(e =>
@@ -217,6 +220,16 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => x.FieldKey).IsUnique();
             e.HasIndex(x => x.Section);
             e.HasIndex(x => x.DisplayOrder);
+        });
+        modelBuilder.Entity<ExamScheduleEntry>(e =>
+        {
+            e.HasIndex(x => x.ExamId);
+            e.HasIndex(x => new { x.ExamId, x.SubjectName });
+        });
+        modelBuilder.Entity<ExamClass>(e =>
+        {
+            e.HasIndex(x => x.ExamId);
+            e.HasIndex(x => new { x.ExamId, x.ClassId }).IsUnique();
         });
     }
 }

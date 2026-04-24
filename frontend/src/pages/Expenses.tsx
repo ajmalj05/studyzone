@@ -1,15 +1,10 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +54,11 @@ export default function Expenses() {
     description: "",
     amount: "",
   });
+
+  usePageHeaderConfigEffect(
+    { title: "Expenses", description: "Add, edit, and filter school expenses by date range and category." },
+    [],
+  );
 
   const loadExpenses = async () => {
     setExpensesLoading(true);
@@ -153,8 +153,6 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Expenses" description="Add, edit, and filter school expenses by date range and category." />
-
       <Card className="rounded-[var(--radius)]">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -166,23 +164,23 @@ export default function Expenses() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">From</label>
-              <Input type="date" value={expenseDateFrom} onChange={(e) => setExpenseDateFrom(e.target.value)} className="w-40" />
+              <DatePicker value={expenseDateFrom} onChange={setExpenseDateFrom} placeholder="From" className="w-40" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">To</label>
-              <Input type="date" value={expenseDateTo} onChange={(e) => setExpenseDateTo(e.target.value)} className="w-40" />
+              <DatePicker value={expenseDateTo} onChange={setExpenseDateTo} placeholder="To" className="w-40" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Category</label>
-              <Select value={expenseCategoryFilter} onValueChange={setExpenseCategoryFilter}>
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All</SelectItem>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={expenseCategoryFilter}
+                onValueChange={setExpenseCategoryFilter}
+                className="w-36"
+                options={[
+                  { value: "All", label: "All" },
+                  ...EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c })),
+                ]}
+              />
             </div>
             <Button variant="outline" size="sm" onClick={loadExpenses}>Apply</Button>
             <Button size="sm" className="gap-1" onClick={openAddExpense}>
@@ -195,34 +193,48 @@ export default function Expenses() {
             <p className="text-sm text-muted-foreground py-4">No expenses match the filter.</p>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-24"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expenses.map((e) => (
-                      <TableRow key={e.id}>
-                        <TableCell>{new Date(e.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{e.category}</TableCell>
-                        <TableCell>{e.description}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(e.amount)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => openEditExpense(e)}><Pencil className="h-3 w-3" /></Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteExpense(e.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+
+              {/* Beautiful Table */}
+              <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-border/60">
+                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Date</th>
+                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Category</th>
+                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Description</th>
+                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Amount</th>
+                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 w-[80px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenses.map((e) => (
+                        <tr key={e.id} className="border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{new Date(e.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium border ${
+                              e.category === "Salaries" ? "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800" :
+                              e.category === "Utilities" ? "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800" :
+                              e.category === "Supplies" ? "bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800" :
+                              e.category === "Maintenance" ? "bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800" :
+                              "bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600"
+                            }`}>
+                              {e.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{e.description}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(e.amount)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7" onClick={() => openEditExpense(e)}><Pencil className="h-3.5 w-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteExpense(e.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <p className="text-sm font-medium text-muted-foreground">Total: {formatCurrency(expenseTotal)}</p>
             </>
@@ -237,20 +249,17 @@ export default function Expenses() {
             <DialogDescription>Enter date, category, description, and amount.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((f) => ({ ...f, date: e.target.value }))} />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Date</label>
+            <DatePicker value={expenseForm.date} onChange={(v) => setExpenseForm((f) => ({ ...f, date: v }))} />
+          </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Category</label>
-              <Select value={expenseForm.category} onValueChange={(v) => setExpenseForm((f) => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={expenseForm.category}
+                onValueChange={(v) => setExpenseForm((f) => ({ ...f, category: v }))}
+                options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>

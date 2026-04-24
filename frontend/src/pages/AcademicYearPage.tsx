@@ -1,21 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Calendar, Plus, Eye } from "lucide-react";
+import { Calendar, Plus, Check, Archive } from "lucide-react";
+import { AcademicsCardIconLead } from "@/components/AcademicsCardIconLead";
 
 interface AcademicYearDto {
   id: string;
@@ -29,7 +32,6 @@ interface AcademicYearDto {
 export default function AcademicYearPage() {
   const navigate = useNavigate();
   const [academicYears, setAcademicYears] = useState<AcademicYearDto[]>([]);
-  const [currentYear, setCurrentYear] = useState<AcademicYearDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newYearForm, setNewYearForm] = useState({ name: "", startDate: "", endDate: "" });
@@ -37,7 +39,7 @@ export default function AcademicYearPage() {
   const loadAcademicYears = async () => {
     try {
       const list = await fetchApi("/AcademicYears?includeArchived=true") as AcademicYearDto[];
-      setAcademicYears(list.map((y: Record<string, unknown>) => ({
+      setAcademicYears(list.map((y: AcademicYearDto) => ({
         id: y.id as string,
         name: y.name as string,
         startDate: (y.startDate as string).split("T")[0],
@@ -45,16 +47,6 @@ export default function AcademicYearPage() {
         isCurrent: y.isCurrent as boolean,
         isArchived: y.isArchived as boolean,
       })));
-      const current = await fetchApi("/AcademicYears/current") as AcademicYearDto | null;
-      if (current) {
-        setCurrentYear({
-          ...current,
-          startDate: (current.startDate as string).split("T")[0],
-          endDate: (current.endDate as string).split("T")[0],
-        });
-      } else {
-        setCurrentYear(null);
-      }
     } catch (e: unknown) {
       toast({
         title: "Error",
@@ -77,14 +69,6 @@ export default function AcademicYearPage() {
       await fetchApi(`/AcademicYears/${id}/set-current`, { method: "POST" });
       toast({ title: "Success", description: "Current academic year updated." });
       await loadAcademicYears();
-      const current = await fetchApi("/AcademicYears/current") as AcademicYearDto | null;
-      if (current) {
-        setCurrentYear({
-          ...current,
-          startDate: (current.startDate as string).split("T")[0],
-          endDate: (current.endDate as string).split("T")[0],
-        });
-      }
     } catch (e: unknown) {
       toast({
         title: "Error",
@@ -94,204 +78,181 @@ export default function AcademicYearPage() {
     }
   };
 
-  const handleCreateAcademicYear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newYearForm.name.trim() || !newYearForm.startDate || !newYearForm.endDate) {
+  const handleArchive = async (id: string) => {
+    try {
+      await fetchApi(`/AcademicYears/${id}/archive`, { method: "POST" });
+      toast({ title: "Success", description: "Year archived." });
+      await loadAcademicYears();
+    } catch (e: unknown) {
       toast({
-        title: "Validation",
-        description: "Name, start date and end date are required.",
+        title: "Error",
+        description: (e as Error).message || "Failed to archive",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUnarchive = async (id: string) => {
+    try {
+      await fetchApi(`/AcademicYears/${id}/unarchive`, { method: "POST" });
+      toast({ title: "Success", description: "Year unarchived." });
+      await loadAcademicYears();
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: (e as Error).message || "Failed to unarchive",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddYear = async () => {
+    if (!newYearForm.name.trim() || !newYearForm.startDate || !newYearForm.endDate) {
+      toast({ title: "Validation", description: "All fields are required", variant: "destructive" });
       return;
     }
     try {
       await fetchApi("/AcademicYears", {
         method: "POST",
         body: JSON.stringify({
-          name: newYearForm.name.trim(),
+          name: newYearForm.name,
           startDate: newYearForm.startDate,
           endDate: newYearForm.endDate,
         }),
       });
       toast({ title: "Success", description: "Academic year created." });
-      setNewYearForm({ name: "", startDate: "", endDate: "" });
       setAddModalOpen(false);
+      setNewYearForm({ name: "", startDate: "", endDate: "" });
       await loadAcademicYears();
-    } catch (err: unknown) {
+    } catch (e: unknown) {
       toast({
         title: "Error",
-        description: (err as Error).message || "Failed to create",
+        description: (e as Error).message || "Failed to create",
         variant: "destructive",
       });
     }
   };
 
-  const activeYears = academicYears.filter((y) => !y.isArchived);
-  const archivedYears = academicYears.filter((y) => y.isArchived);
+  // Table columns
+  const yearColumns: DataTableColumn<AcademicYearDto>[] = [
+    {
+      key: "name",
+      header: "Year",
+      cell: (y) => (
+        <div>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{y.name}</span>
+          {y.isCurrent && (
+            <Badge className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Current</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "period",
+      header: "Period",
+      cell: (y) => (
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {new Date(y.startDate).toLocaleDateString()} - {new Date(y.endDate).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      badge: (y) => y.isArchived 
+        ? { label: "Archived", variant: "secondary" }
+        : y.isCurrent 
+          ? { label: "Active", variant: "success" }
+          : { label: "Inactive", variant: "default" },
+    },
+
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      className: "w-[120px]",
+      cell: (y) => (
+        <div className="flex items-center justify-end gap-2">
+          {!y.isCurrent && !y.isArchived && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => handleSetCurrentYear(y.id)}
+            >
+              <Check className="h-3 w-3 mr-1" /> Set Current
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Academic Year" />
-      <p className="text-muted-foreground text-sm">
-        Add and manage academic years (e.g. 2024-2025). Set one as current so new admissions and forms use it.
-      </p>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Current Academic Year
-              </CardTitle>
-              <CardDescription>
-                The active year used for new applications and admission numbers.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {currentYear ? (
-                <p className="text-sm">
-                  Current: <strong>{currentYear.name}</strong> ({currentYear.startDate} – {currentYear.endDate})
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No academic year set as current. Add a year below and set it as current.
-                </p>
-              )}
-              <div className="space-y-2">
-                {activeYears.map((y) => (
-                  <div
-                    key={y.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <span>
-                      {y.name} ({y.startDate} – {y.endDate})
-                      {y.isCurrent && (
-                        <span className="ml-2 text-primary font-medium">(Current)</span>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => navigate(`/admin/year/${y.id}`)}
-                        className="gap-1"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View data
-                      </Button>
-                      {!y.isCurrent && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSetCurrentYear(y.id)}
-                        >
-                          Set as current
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {activeYears.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-2">
-                    No academic years yet. Add one below.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {archivedYears.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Archived years</CardTitle>
-                <CardDescription>View data for past academic years.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {archivedYears.map((y) => (
-                  <div
-                    key={y.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <span className="text-muted-foreground">
-                      {y.name} ({y.startDate} – {y.endDate})
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => navigate(`/admin/year/${y.id}`)}
-                      className="gap-1"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View data
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          <Button onClick={() => setAddModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add academic year
+      <Card>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
+          <AcademicsCardIconLead
+            icon={Calendar}
+            title="Academic Years"
+            description=""
+          />
+          <Button onClick={() => setAddModalOpen(true)} className="shrink-0 gap-2 rounded-lg">
+            <Plus className="h-4 w-4" /> Add Year
           </Button>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            data={academicYears}
+            columns={yearColumns}
+            keyExtractor={(y) => y.id}
+            emptyMessage="No academic years found"
+            emptyDescription="Add your first academic year to get started"
+          />
+        </CardContent>
+      </Card>
 
-          <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add academic year</DialogTitle>
-                <DialogDescription>
-                  Create a new academic year (e.g. 2025-2026 for the next year).
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateAcademicYear} className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input
-                    value={newYearForm.name}
-                    onChange={(e) =>
-                      setNewYearForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                    placeholder="e.g. 2024-2025 or 2025-2026"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Start date</Label>
-                  <Input
-                    type="date"
-                    value={newYearForm.startDate}
-                    onChange={(e) =>
-                      setNewYearForm((f) => ({ ...f, startDate: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>End date</Label>
-                  <Input
-                    type="date"
-                    value={newYearForm.endDate}
-                    onChange={(e) =>
-                      setNewYearForm((f) => ({ ...f, endDate: e.target.value }))
-                    }
-                  />
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setAddModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Academic Year</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={newYearForm.name}
+                onChange={(e) => setNewYearForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. 2024-2025"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <DatePicker
+                  value={newYearForm.startDate}
+                  onChange={(v) => setNewYearForm((f) => ({ ...f, startDate: v }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <DatePicker
+                  value={newYearForm.endDate}
+                  onChange={(v) => setNewYearForm((f) => ({ ...f, endDate: v }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddYear}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

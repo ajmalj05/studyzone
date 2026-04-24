@@ -20,6 +20,9 @@ public interface IPortalService
     Task<IReadOnlyList<TimetableSlotDto>> GetTeacherTimetableAsync(string teacherUserGuid, CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetTeacherAssignedClassIdsAsync(string teacherUserGuid, CancellationToken ct = default);
     Task<IReadOnlyList<TeacherAssignedBatchDto>> GetTeacherAssignedBatchesAsync(string teacherUserGuid, CancellationToken ct = default);
+    /// <summary>Returns null if the teacher has no assignment to this class. Subject scope is all subjects when <see cref="TeacherMarksScopeDto.IsClassTeacher"/> is true; otherwise timetable subjects only.</summary>
+    Task<TeacherMarksScopeDto?> GetTeacherMarksScopeForClassAsync(string teacherUserGuid, string classId, CancellationToken ct = default);
+    Task<bool> IsTeacherAssignedToBatchAsync(string teacherUserGuid, string batchId, CancellationToken ct = default);
 }
 
 public class TeacherAssignedBatchDto
@@ -28,6 +31,18 @@ public class TeacherAssignedBatchDto
     public string Name { get; set; } = string.Empty;
     public string ClassId { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
+    /// <summary>True when this teacher is the designated class teacher for this batch.</summary>
+    public bool IsClassTeacher { get; set; }
+    /// <summary>Distinct subjects from timetable slots for this teacher in this batch.</summary>
+    public IReadOnlyList<string> SubjectsTaught { get; set; } = Array.Empty<string>();
+}
+
+public class TeacherMarksScopeDto
+{
+    /// <summary>True when this teacher is class teacher for at least one batch in this class.</summary>
+    public bool IsClassTeacher { get; set; }
+    /// <summary>When <see cref="IsClassTeacher"/> is false, marks are limited to these subjects (from timetable). Empty means no subject assignment.</summary>
+    public IReadOnlyList<string> SubjectScope { get; set; } = Array.Empty<string>();
 }
 
 public class StudentExamResultDto

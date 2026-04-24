@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderDispatch } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,27 @@ export default function AcademicYearDetailPage() {
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [batchSearch, setBatchSearch] = useState("");
+  const setPageHeader = usePageHeaderDispatch();
+
+  useEffect(() => {
+    if (!yearId) {
+      setPageHeader({ title: "Academic Year", description: "Invalid year selected." });
+      return () => setPageHeader({});
+    }
+    if (loadingYear) {
+      setPageHeader({ title: "Academic Year", description: "Loading year details…" });
+      return () => setPageHeader({});
+    }
+    if (!year) {
+      setPageHeader({});
+      return () => setPageHeader({});
+    }
+    setPageHeader({
+      title: `Academic Year: ${year.name}`,
+      description: `${year.startDate} – ${year.endDate}${year.isCurrent ? " (Current)" : ""}`,
+    });
+    return () => setPageHeader({});
+  }, [yearId, loadingYear, year, setPageHeader]);
 
   // Sync context so selected year = this page's year
   useEffect(() => {
@@ -213,7 +234,6 @@ export default function AcademicYearDetailPage() {
   if (!yearId) {
     return (
       <div className="space-y-4">
-        <DashboardHeader title="Academic Year" />
         <p className="text-muted-foreground">Invalid year. <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/admin/academic-year")}>Back to Academic Year</Button></p>
       </div>
     );
@@ -236,10 +256,6 @@ export default function AcademicYearDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
       </div>
-      <DashboardHeader
-        title={`Academic Year: ${year.name}`}
-        description={`${year.startDate} – ${year.endDate}${year.isCurrent ? " (Current)" : ""}`}
-      />
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="flex flex-wrap">

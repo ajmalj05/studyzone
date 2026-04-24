@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,13 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +23,6 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { FeeStructureDto, ClassDto, formatCurrency } from "@/types/fees";
 import { Pencil, Trash2 } from "lucide-react";
 import { FeeTablePaginationBar } from "@/components/fees/FeeTablePaginationBar";
@@ -182,10 +174,6 @@ export default function FeeStructures() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader title="Fee Structures" />
-        <CurrentAcademicYearBadge />
-      </div>
       <Card>
         <CardHeader>
           <CardTitle>Fee structures</CardTitle>
@@ -206,26 +194,22 @@ export default function FeeStructures() {
                     <p className="text-sm text-muted-foreground py-1.5">{currentYear.name}</p>
                   </div>
                 )}
-                <div className="space-y-1"><Label>Class</Label><Select value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))}><SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger><SelectContent>{classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-1"><Label>Class</Label><SearchableSelect value={structureForm.classId} onValueChange={(v) => setStructureForm((f) => ({ ...f, classId: v }))} placeholder="Class" options={classes.map((c) => ({ value: c.id, label: c.name }))} /></div>
                 <div className="space-y-1"><Label>Name</Label><Input value={structureForm.name} onChange={(e) => setStructureForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition" /></div>
                 <div className="space-y-1"><Label>Amount (AED)</Label><Input type="number" min="0" step="0.01" value={structureForm.amount} onChange={(e) => setStructureForm((f) => ({ ...f, amount: e.target.value }))} /></div>
                 <div className="space-y-1">
                   <Label>Frequency</Label>
-                  <Select
+                  <SearchableSelect
                     value={structureForm.frequency}
                     onValueChange={(v) => setStructureForm((f) => ({ ...f, frequency: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Quarterly">Quarterly</SelectItem>
-                      <SelectItem value="HalfYearly">Half-yearly</SelectItem>
-                      <SelectItem value="Yearly">Yearly</SelectItem>
-                      <SelectItem value="Once">One-time (e.g. Admission fee)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "Monthly", label: "Monthly" },
+                      { value: "Quarterly", label: "Quarterly" },
+                      { value: "HalfYearly", label: "Half-yearly" },
+                      { value: "Yearly", label: "Yearly" },
+                      { value: "Once", label: "One-time (e.g. Admission fee)" },
+                    ]}
+                  />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setStructureModalOpen(false)}>Cancel</Button>
@@ -298,16 +282,17 @@ export default function FeeStructures() {
                 </div>
                 <div className="space-y-1">
                   <Label>Frequency</Label>
-                  <Select value={editForm.frequency} onValueChange={(v) => setEditForm((f) => ({ ...f, frequency: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Quarterly">Quarterly</SelectItem>
-                      <SelectItem value="HalfYearly">Half-yearly</SelectItem>
-                      <SelectItem value="Yearly">Yearly</SelectItem>
-                      <SelectItem value="Once">One-time (e.g. Admission fee)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={editForm.frequency}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, frequency: v }))}
+                    options={[
+                      { value: "Monthly", label: "Monthly" },
+                      { value: "Quarterly", label: "Quarterly" },
+                      { value: "HalfYearly", label: "Half-yearly" },
+                      { value: "Yearly", label: "Yearly" },
+                      { value: "Once", label: "One-time (e.g. Admission fee)" },
+                    ]}
+                  />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>

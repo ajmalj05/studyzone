@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
@@ -17,6 +15,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: studyzone-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Database=studyzone;Username=postgres;Password=123456qw
+      - Jwt__Key=your-super-secret-development-key-must-be-32-chars!
+      - Jwt__Issuer=Studyzone.Api
+      - Jwt__Audience=Studyzone.App
+      - CORS__Origins=http://localhost:5173;http://127.0.0.1:5173;http://localhost:3000;http://127.0.0.1:3000;http://localhost:8080;http://127.0.0.1:8080
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres-data:

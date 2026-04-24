@@ -11,6 +11,8 @@ export interface MenuItem {
   icon: LucideIcon;
   path: string;
   subItems?: { title: string; path: string }[];
+  /** When set, sidebar highlight uses this instead of only matching `path` (and subItems). */
+  activeMatch?: (pathname: string) => boolean;
 }
 
 export interface PortalSidebarContentProps {
@@ -75,7 +77,10 @@ export function PortalSidebarContent({
 
         <nav className="sidebar-nav-scroll flex-1 space-y-1 px-3 overflow-y-auto">
           {menuItems.map((item, index) => {
-            const isActive = location.pathname === item.path || (item.subItems && item.subItems.some(sub => location.pathname === sub.path));
+            const isActive =
+              item.activeMatch?.(location.pathname) ??
+              (location.pathname === item.path ||
+                Boolean(item.subItems?.some((sub) => location.pathname === sub.path)));
             const isExpanded = expandedMenuKey === item.title;
 
             return (

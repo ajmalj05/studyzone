@@ -11,12 +11,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
   return (
     <MobileMenuProvider open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-      <div className="flex min-h-screen bg-background">
-        {!isMobile && <AppSidebar />}
+      <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
+        {!isMobile && <AppSidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />}
         {isMobile && (
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetContent
@@ -37,7 +38,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </SheetContent>
           </Sheet>
         )}
-        <main className={`flex-1 w-full min-w-0 p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-20" : ""}`}>
+        <main
+          className={`flex min-h-0 flex-1 w-full min-w-0 flex-col overflow-x-hidden overflow-y-hidden bg-muted/25 p-3 lg:p-4 transition-[margin] duration-300 ml-0 ${isMobile ? "pb-20" : sidebarCollapsed ? "md:ml-20" : "md:ml-64"}`}
+        >
           {children}
         </main>
         {isMobile && <MobileBottomNav items={getAdminBottomNavItems()} />}

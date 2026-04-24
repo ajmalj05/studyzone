@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,13 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchApi } from "@/lib/api";
@@ -119,6 +113,11 @@ export default function Reports() {
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("enrollment");
+
+  usePageHeaderConfigEffect(
+    { title: "Reports", description: "Predefined reports and export" },
+    [],
+  );
 
   useEffect(() => {
     (async () => {
@@ -330,12 +329,10 @@ export default function Reports() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader title="Reports" description="Predefined reports and export" />
       <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
               Reports & Analytics
             </CardTitle>
             <CardDescription>View and export enrollment, financial, attendance, and academic reports.</CardDescription>
@@ -355,17 +352,16 @@ export default function Reports() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
                     <Label>Class</Label>
-                    <Select value={classFilter} onValueChange={setClassFilter}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="All classes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All classes</SelectItem>
-                        {classes.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={classFilter}
+                      onValueChange={setClassFilter}
+                      placeholder="All classes"
+                      className="w-48"
+                      options={[
+                        { value: "all", label: "All classes" },
+                        ...classes.map((c) => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
                   </div>
                   <Button onClick={loadEnrollment} disabled={loading}>Load</Button>
                   <Button variant="outline" size="icon" onClick={exportEnrollment} disabled={enrollment.length === 0}>
@@ -394,17 +390,16 @@ export default function Reports() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
                     <Label>Class</Label>
-                    <Select value={classFilter} onValueChange={setClassFilter}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="All classes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All classes</SelectItem>
-                        {classes.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={classFilter}
+                      onValueChange={setClassFilter}
+                      placeholder="All classes"
+                      className="w-48"
+                      options={[
+                        { value: "all", label: "All classes" },
+                        ...classes.map((c) => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
                   </div>
                   <Button onClick={loadBatchStrength} disabled={loading}>Load</Button>
                   <Button variant="outline" size="icon" onClick={exportBatchStrength} disabled={batchStrength.length === 0}>
@@ -492,17 +487,16 @@ export default function Reports() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
                     <Label>Class</Label>
-                    <Select value={classFilter} onValueChange={setClassFilter}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {classes.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={classFilter}
+                      onValueChange={setClassFilter}
+                      placeholder="All"
+                      className="w-48"
+                      options={[
+                        { value: "all", label: "All" },
+                        ...classes.map((c) => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>From</Label>
@@ -549,16 +543,13 @@ export default function Reports() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
                     <Label>Exam</Label>
-                    <Select value={examId} onValueChange={setExamId}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="Select exam" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {exams.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>{e.name} {e.className ? `(${e.className})` : ""}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={examId}
+                      onValueChange={setExamId}
+                      placeholder="Select exam"
+                      className="w-64"
+                      options={exams.map((e) => ({ value: e.id, label: `${e.name}${e.className ? ` (${e.className})` : ""}` }))}
+                    />
                   </div>
                   <Button onClick={loadAcademic} disabled={loading || !examId}>Load</Button>
                   <Button variant="outline" size="icon" onClick={exportAcademic} disabled={!academic?.rows?.length}>
@@ -600,15 +591,15 @@ export default function Reports() {
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
                     <Label>Report type</Label>
-                    <Select value={customReportType} onValueChange={(v: "admission" | "workload") => setCustomReportType(v)}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admission">Admission Conversion</SelectItem>
-                        <SelectItem value="workload">Teacher Workload</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={customReportType}
+                      onValueChange={(v) => setCustomReportType(v as "admission" | "workload")}
+                      className="w-48"
+                      options={[
+                        { value: "admission", label: "Admission Conversion" },
+                        { value: "workload", label: "Teacher Workload" },
+                      ]}
+                    />
                   </div>
                   {customReportType === "admission" && (
                     <>

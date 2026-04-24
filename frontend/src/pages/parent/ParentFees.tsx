@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchApi } from "@/lib/api";
 import { buildReceiptHtml, type SchoolProfileForReceipt } from "@/lib/receiptHtml";
 import type { FeeReceiptDto } from "@/types/fees";
 import { Printer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 
 interface ParentChildDto {
   studentId: string;
@@ -104,19 +105,18 @@ const ParentFees = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-foreground">Fees</h1>
       <Card className="rounded-[var(--radius)]">
         <CardContent className="pt-6">
-          <Select value={studentId} onValueChange={setStudentId}>
-            <SelectTrigger className="w-[280px] rounded-xl">
-              <SelectValue placeholder="Select child" />
-            </SelectTrigger>
-            <SelectContent>
-              {children.map((c) => (
-                <SelectItem key={c.studentId} value={c.studentId}>{c.name} {c.className ? `(${c.className})` : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={studentId}
+            onValueChange={setStudentId}
+            placeholder="Select child"
+            className="w-[280px] rounded-xl"
+            options={children.map((c) => ({
+              value: c.studentId,
+              label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
+            }))}
+          />
         </CardContent>
       </Card>
       {studentId && (
@@ -139,84 +139,106 @@ const ParentFees = () => {
                   <CardContent><span className="text-lg font-semibold">AED {ledger.balance.toLocaleString()}</span></CardContent>
                 </Card>
               </div>
+
+              {/* Charges - Beautiful Table */}
               <Card>
                 <CardHeader>
                   <CardTitle>Charges</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fee Type</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(ledger.charges ?? []).length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            No charges found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        (ledger.charges ?? []).map((c, i) => (
-                          <TableRow key={c.id ?? i}>
-                            <TableCell>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                                {c.particularName || "Fee"}
-                              </span>
-                            </TableCell>
-                            <TableCell>{c.period}</TableCell>
-                            <TableCell className="text-right">AED {c.amount.toLocaleString()}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                  <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-border/60">
+                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Fee Type</th>
+                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Period</th>
+                            <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(ledger.charges ?? []).length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="text-center py-8 text-sm text-muted-foreground">
+                                No charges found
+                              </td>
+                            </tr>
+                          ) : (
+                            (ledger.charges ?? []).map((c, i) => (
+                              <tr key={c.id ?? i} className="border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center rounded-md bg-amber-50 dark:bg-amber-900/20 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-800">
+                                    {c.particularName || "Fee"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{c.period}</td>
+                                <td className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">AED {c.amount.toLocaleString()}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
+
+              {/* Payments - Beautiful Table */}
               <Card>
                 <CardHeader><CardTitle>Payments</CardTitle></CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Fee type</TableHead>
-                        <TableHead>Receipt</TableHead>
-                        <TableHead>Mode</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="w-[100px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(ledger.payments ?? []).map((p, i) => (
-                        <TableRow key={p.id ?? i}>
-                          <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
-                          <TableCell>{(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</TableCell>
-                          <TableCell>{p.receiptNumber}</TableCell>
-                          <TableCell>{p.mode ?? "—"}</TableCell>
-                          <TableCell className="text-right">AED {p.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            {p.id && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={!!printingId}
-                                onClick={() => handlePrintReceipt(p.id)}
-                                className="gap-1"
-                              >
-                                <Printer className="h-3.5 w-3.5" />
-                                Print
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-border/60">
+                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Date</th>
+                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Fee Type</th>
+                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Receipt</th>
+                            <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Amount</th>
+                            <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400 w-[80px]"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(ledger.payments ?? []).length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="text-center py-8 text-sm text-muted-foreground">
+                                No payments found
+                              </td>
+                            </tr>
+                          ) : (
+                            (ledger.payments ?? []).map((p, i) => (
+                              <tr key={p.id ?? i} className="border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{new Date(p.paidAt).toLocaleDateString()}</td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/20 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 border border-green-100 dark:border-green-800">
+                                    {(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{p.receiptNumber}</td>
+                                <td className="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400">AED {p.amount.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-right">
+                                  {p.id && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={!!printingId}
+                                      onClick={() => handlePrintReceipt(p.id)}
+                                      className="h-7 px-2 text-xs gap-1"
+                                    >
+                                      <Printer className="h-3 w-3" />
+                                      Print
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </>

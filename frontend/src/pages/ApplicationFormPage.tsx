@@ -1,18 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi, API_URL } from "@/lib/api";
 import { useAcademicYearOptional } from "@/context/AcademicYearContext";
@@ -24,28 +19,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Save, UserPlus, Printer, Upload, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  UserPlus,
+  Printer,
+  Upload,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  AlertCircle,
+  User,
+  FileText,
+  Users,
+  Heart,
+  Eye
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const SPORTS = [
-  "Football",
-  "Basketball",
-  "Cricket",
-  "Badminton",
-  "Table tennis",
-  "Swimming",
-  "Athletics",
-  "Chess",
+  "Football", "Basketball", "Cricket", "Badminton",
+  "Table tennis", "Swimming", "Athletics", "Chess",
 ];
 const ACTIVITIES = [
-  "Music",
-  "Elocution",
-  "Quiz",
-  "Debate",
-  "Choir",
-  "School Band",
-  "Dramatics",
-  "Art & Craft",
-  "Self-defense",
+  "Music", "Elocution", "Quiz", "Debate", "Choir",
+  "School Band", "Dramatics", "Art & Craft", "Self-defense",
 ];
 
 interface ClassDto {
@@ -83,8 +82,28 @@ function toDateStr(d: string | undefined): string {
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  if (!s) return "";
+  // Escape HTML entities for print view
+  let r = s;
+  r = r.replace(/&/g, "and");
+  r = r.replace(/</g, "[");
+  r = r.replace(/>/g, "]");
+  r = r.replace(/"/g, "'");
+  return r;
 }
+
+// Auto-save key generator
+const getDraftKey = (id: string | undefined) => `admission-draft-${id || "new"}`;
+
+const TABS = [
+  { id: "student", label: "Student", icon: User, description: "Basic information" },
+  { id: "documents", label: "Documents", icon: FileText, description: "Passport, Visa & ID" },
+  { id: "father", label: "Father", icon: Users, description: "Father/Guardian info" },
+  { id: "mother", label: "Mother", icon: Heart, description: "Mother/Guardian info" },
+  { id: "review", label: "Review", icon: Eye, description: "Review & submit" },
+] as const;
+
+type TabId = typeof TABS[number]["id"];
 
 function buildPrintDocumentHtml(
   profile: SchoolProfileDto | null,
@@ -92,7 +111,7 @@ function buildPrintDocumentHtml(
   classes: ClassDto[],
   batches: BatchDto[]
 ): string {
-  const v = (key: string) => esc(String(form[key] ?? "—"));
+  const v = (key: string) => esc(String(((form as unknown) as Record<string, string | undefined>)[key] ?? "—"));
   const classId = (form.classId as string) ?? "";
   const batchId = (form.batchId as string) ?? "";
   const className = classes.find((c) => c.id === classId)?.name ?? (classId || "—");
@@ -249,6 +268,50 @@ function buildPrintDocumentHtml(
 </body></html>`;
 }
 
+// Validation functions for each tab
+const validateStudentTab = (form: any): string[] => {
+  const errors: string[] = [];
+  if (!form.studentName?.trim()) errors.push("Student name is required");
+  if (!form.academicYear) errors.push("Academic year is required");
+  if (!form.gender) errors.push("Gender is required");
+  if (!form.dateOfBirth) errors.push("Date of birth is required");
+  if (!form.nationality?.trim()) errors.push("Nationality is required");
+  if (!form.religion?.trim()) errors.push("Religion is required");
+  if (!form.placeOfBirth?.trim()) errors.push("Place of birth is required");
+  return errors;
+};
+
+const validateDocumentsTab = (form: any): string[] => {
+  const errors: string[] = [];
+  if (!form.passportNo?.trim()) errors.push("Passport number is required");
+  if (!form.passportDateOfIssue) errors.push("Passport date of issue is required");
+  if (!form.passportDateOfExpiry) errors.push("Passport date of expiry is required");
+  if (!form.passportPlaceOfIssue?.trim()) errors.push("Passport place of issue is required");
+  if (!form.emiratesIdNo?.trim()) errors.push("Emirates ID is required");
+  if (!form.emiratesIdDateOfExpiry) errors.push("Emirates ID expiry is required");
+  if (!form.residenceVisaNo?.trim()) errors.push("Residence visa number is required");
+  if (!form.residenceVisaDateOfIssue) errors.push("Residence visa date of issue is required");
+  if (!form.residenceVisaDateOfExpiry) errors.push("Residence visa date of expiry is required");
+  if (!form.residenceVisaPlaceOfIssue?.trim()) errors.push("Residence visa place of issue is required");
+  return errors;
+};
+
+const validateFatherTab = (form: any): string[] => {
+  const errors: string[] = [];
+  if (!form.fatherNameAsInPassport?.trim()) errors.push("Father's name is required");
+  if (!form.fatherMobileNumber?.trim()) errors.push("Father's mobile number is required");
+  if (!form.fatherEmailAddress?.trim()) errors.push("Father's email is required");
+  return errors;
+};
+
+const validateMotherTab = (form: any): string[] => {
+  const errors: string[] = [];
+  if (!form.motherNameAsInPassport?.trim()) errors.push("Mother's name is required");
+  if (!form.motherMobileNumber?.trim()) errors.push("Mother's mobile number is required");
+  if (!form.motherEmailAddress?.trim()) errors.push("Mother's email is required");
+  return errors;
+};
+
 export default function ApplicationFormPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -265,6 +328,10 @@ export default function ApplicationFormPage() {
   const [batches, setBatches] = useState<BatchDto[]>([]);
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileDto | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("student");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showValidation, setShowValidation] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
@@ -339,9 +406,45 @@ export default function ApplicationFormPage() {
     declarationDate: "",
   });
 
+  usePageHeaderConfigEffect(
+    {
+      title: loading ? "Application" : isNew ? "New Application" : "Edit Application",
+      description: loading ? "Loading form…" : "Fill in the admission details below.",
+    },
+    [loading, isNew],
+  );
+
   const batchesForClass = form.classId
     ? batches.filter((b) => b.classId === form.classId)
     : [];
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    if (!isNew) return;
+    const draftKey = getDraftKey(id);
+    const saved = localStorage.getItem(draftKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Only restore if we have actual data
+        if (parsed && (parsed.studentName || parsed.academicYear || parsed.fatherNameAsInPassport || parsed.motherNameAsInPassport)) {
+          setForm((prev) => ({ ...prev, ...parsed }));
+          toast({ title: "Draft restored", description: "Your previous progress has been restored." });
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+  }, [id, isNew]);
+
+  // Auto-save to localStorage on every form change (throttled)
+  useEffect(() => {
+    if (!isNew) return;
+    const draftKey = getDraftKey(id);
+    // Save immediately on form change
+    localStorage.setItem(draftKey, JSON.stringify(form));
+    setLastSaved(new Date());
+  }, [form, id, isNew]);
 
   useEffect(() => {
     (async () => {
@@ -487,7 +590,6 @@ export default function ApplicationFormPage() {
     }
   }, [id, isNew, enquiryId]);
 
-  // Resolve classApplied (name) to classAppliedClassId when classes are loaded (e.g. old data or from enquiry)
   useEffect(() => {
     if (!form.classApplied?.trim() || form.classAppliedClassId || classes.length === 0) return;
     const match = classes.find((c) => c.name?.trim().toLowerCase() === form.classApplied.trim().toLowerCase());
@@ -515,7 +617,72 @@ export default function ApplicationFormPage() {
     }));
   };
 
-  // Direct admission: do not send enquiryId when opening from "Add application"; no enquiry is created.
+  const getTabErrors = (tabId: TabId): number => {
+    switch (tabId) {
+      case "student":
+        return validateStudentTab(form).length;
+      case "documents":
+        return validateDocumentsTab(form).length;
+      case "father":
+        return validateFatherTab(form).length;
+      case "mother":
+        return validateMotherTab(form).length;
+      default:
+        return 0;
+    }
+  };
+
+  const validateAllTabs = (): { tab: TabId; errors: string[] }[] => {
+    const results = [
+      { tab: "student" as TabId, errors: validateStudentTab(form) },
+      { tab: "documents" as TabId, errors: validateDocumentsTab(form) },
+      { tab: "father" as TabId, errors: validateFatherTab(form) },
+      { tab: "mother" as TabId, errors: validateMotherTab(form) },
+    ];
+    return results;
+  };
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    setValidationErrors([]);
+  };
+
+  const handleNext = () => {
+    const currentIndex = TABS.findIndex(t => t.id === activeTab);
+    if (currentIndex < TABS.length - 1) {
+      setActiveTab(TABS[currentIndex + 1].id);
+      setValidationErrors([]);
+    }
+  };
+
+  const handleFinalSubmit = () => {
+    const allValidations = validateAllTabs();
+    const allErrors = allValidations.filter(v => v.errors.length > 0);
+    
+    if (allErrors.length > 0) {
+      const firstErrorTab = allErrors[0].tab;
+      setActiveTab(firstErrorTab);
+      setValidationErrors(allErrors[0].errors);
+      setShowValidation(true);
+      toast({ 
+        title: `Validation Error - ${TABS.find(t => t.id === firstErrorTab)?.label} tab`, 
+        description: `Please fix ${allErrors[0].errors.length} error(s) before submitting.`,
+        variant: "destructive" 
+      });
+      return false;
+    }
+    setShowValidation(false);
+    return true;
+  };
+
+  const handlePrevious = () => {
+    const currentIndex = TABS.findIndex(t => t.id === activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(TABS[currentIndex - 1].id);
+      setValidationErrors([]);
+    }
+  };
+
   const buildPayload = () => ({
     enquiryId: isNew ? enquiryId : undefined,
     academicYear: form.academicYear || undefined,
@@ -602,6 +769,8 @@ export default function ApplicationFormPage() {
           method: "POST",
           body: JSON.stringify(buildPayload()),
         })) as { id: string };
+        // Clear draft after successful save
+        localStorage.removeItem(getDraftKey(id));
         toast({ title: "Success", description: "Application created." });
         navigate(`/admin/admission/application/${created.id}`, { replace: true });
       } else {
@@ -636,6 +805,7 @@ export default function ApplicationFormPage() {
     setSubmitting(true);
     try {
       await fetchApi(`/AdmissionApplications/${id}/submit-and-enroll`, { method: "POST" });
+      localStorage.removeItem(getDraftKey(id));
       toast({ title: "Success", description: "Student created and enrolled." });
       navigate("/admin/admission", { replace: true });
     } catch (e) {
@@ -705,41 +875,651 @@ export default function ApplicationFormPage() {
     }
   };
 
+  // Tab content components
+  const renderStudentTab = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Academic Year *</Label>
+        <SearchableSelect
+          value={form.academicYear || ""}
+          onValueChange={(v) => update("academicYear", v)}
+          placeholder="Select academic year"
+          options={[
+            ...academicYears.map((y) => ({ value: y.name, label: y.name })),
+            ...(form.academicYear && !academicYears.some((y) => y.name === form.academicYear)
+              ? [{ value: form.academicYear, label: form.academicYear }]
+              : []),
+          ]}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Student Name (as in Emirates ID) *</Label>
+        <Input value={form.studentName} onChange={(e) => update("studentName", e.target.value)} placeholder="Full name" />
+      </div>
+      <div className="space-y-2">
+        <Label>Gender *</Label>
+        <SearchableSelect
+          value={form.gender}
+          onValueChange={(v) => update("gender", v)}
+          placeholder="Select gender"
+          options={[
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+          ]}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Date of Birth *</Label>
+        <DatePicker 
+          value={form.dateOfBirth} 
+          onChange={(v) => update("dateOfBirth", v)} 
+          placeholder="Select date of birth"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Place of Birth (as per passport) *</Label>
+        <Input value={form.placeOfBirth} onChange={(e) => update("placeOfBirth", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Nationality *</Label>
+        <Input value={form.nationality} onChange={(e) => update("nationality", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Religion *</Label>
+        <Input value={form.religion} onChange={(e) => update("religion", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Class Applied For</Label>
+        <SearchableSelect
+          value={form.classAppliedClassId || "_none"}
+          onValueChange={(v) => setForm((f) => ({ ...f, classAppliedClassId: v === "_none" ? "" : v }))}
+          placeholder="Select class"
+          options={[
+            { value: "_none", label: "— Select class —" },
+            ...classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+          ]}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Previous School</Label>
+        <Input value={form.previousSchool} onChange={(e) => update("previousSchool", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Previous Class</Label>
+        <Input value={form.previousClass} onChange={(e) => update("previousClass", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Emirate (if inside UAE)</Label>
+        <Input value={form.emirateIfInsideUae} onChange={(e) => update("emirateIfInsideUae", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Country (if outside UAE)</Label>
+        <Input value={form.countryIfOutsideUae} onChange={(e) => update("countryIfOutsideUae", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Syllabus – Previous School *</Label>
+        <Input value={form.syllabusPreviousSchool} onChange={(e) => update("syllabusPreviousSchool", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>2nd Lang in Previous School</Label>
+        <Input value={form.secondLangPreviousSchool} onChange={(e) => update("secondLangPreviousSchool", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Date of Last Attendance</Label>
+        <DatePicker 
+          value={form.dateOfLastAttendance} 
+          onChange={(v) => update("dateOfLastAttendance", v)} 
+          placeholder="Select date of last attendance"
+        />
+      </div>
+    </div>
+  );
+
+  const renderDocumentsTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Passport No *</Label>
+          <Input value={form.passportNo} onChange={(e) => update("passportNo", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Place of Issue (Passport) *</Label>
+          <Input value={form.passportPlaceOfIssue} onChange={(e) => update("passportPlaceOfIssue", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Date of Issue (Passport) *</Label>
+          <DatePicker 
+            value={form.passportDateOfIssue} 
+            onChange={(v) => update("passportDateOfIssue", v)} 
+            placeholder="Select issue date"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Date of Expiry (Passport) *</Label>
+          <DatePicker 
+            value={form.passportDateOfExpiry} 
+            onChange={(v) => update("passportDateOfExpiry", v)} 
+            placeholder="Select expiry date"
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Emirates ID No *</Label>
+          <Input value={form.emiratesIdNo} onChange={(e) => update("emiratesIdNo", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Date of Expiry (Emirates ID) *</Label>
+          <DatePicker 
+            value={form.emiratesIdDateOfExpiry} 
+            onChange={(v) => update("emiratesIdDateOfExpiry", v)} 
+            placeholder="Select expiry date"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Residence Visa No *</Label>
+          <Input value={form.residenceVisaNo} onChange={(e) => update("residenceVisaNo", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Place of Issue (Residence Visa) *</Label>
+          <Input value={form.residenceVisaPlaceOfIssue} onChange={(e) => update("residenceVisaPlaceOfIssue", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Date of Issue (Residence Visa) *</Label>
+          <DatePicker 
+            value={form.residenceVisaDateOfIssue} 
+            onChange={(v) => update("residenceVisaDateOfIssue", v)} 
+            placeholder="Select issue date"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Date of Expiry (Residence Visa) *</Label>
+          <DatePicker 
+            value={form.residenceVisaDateOfExpiry} 
+            onChange={(v) => update("residenceVisaDateOfExpiry", v)} 
+            placeholder="Select expiry date"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 pt-4">
+        <Checkbox id="specialNeeds" checked={form.anySpecialNeeds} onCheckedChange={(c) => update("anySpecialNeeds", !!c)} />
+        <Label htmlFor="specialNeeds">Any Special Needs</Label>
+      </div>
+      {form.anySpecialNeeds && (
+        <div className="space-y-2">
+          <Label>If Yes, Please mention</Label>
+          <Input value={form.specialNeedsDetails} onChange={(e) => update("specialNeedsDetails", e.target.value)} />
+        </div>
+      )}
+    </div>
+  );
+
+  const renderFatherTab = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label>Name as in Passport *</Label>
+        <Input value={form.fatherNameAsInPassport} onChange={(e) => update("fatherNameAsInPassport", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Religion</Label>
+        <Input value={form.fatherReligion} onChange={(e) => update("fatherReligion", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Nationality</Label>
+        <Input value={form.fatherNationality} onChange={(e) => update("fatherNationality", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Qualification</Label>
+        <Input value={form.fatherQualification} onChange={(e) => update("fatherQualification", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Mobile Number *</Label>
+        <Input value={form.fatherMobileNumber} onChange={(e) => update("fatherMobileNumber", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Email Address *</Label>
+        <Input type="email" value={form.fatherEmailAddress} onChange={(e) => update("fatherEmailAddress", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Occupation</Label>
+        <Input value={form.fatherOccupation} onChange={(e) => update("fatherOccupation", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Company Name</Label>
+        <Input value={form.fatherCompanyName} onChange={(e) => update("fatherCompanyName", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Designation</Label>
+        <Input value={form.fatherDesignation} onChange={(e) => update("fatherDesignation", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>P.O.Box/Emirate</Label>
+        <Input value={form.fatherPoBoxEmirate} onChange={(e) => update("fatherPoBoxEmirate", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Office Telephone</Label>
+        <Input value={form.fatherOfficeTelephone} onChange={(e) => update("fatherOfficeTelephone", e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label>Emirates ID Number</Label>
+        <Input value={form.fatherEmiratesIdNumber} onChange={(e) => update("fatherEmiratesIdNumber", e.target.value)} />
+      </div>
+      <div className="space-y-2 md:col-span-2">
+        <Label>Address of Residence</Label>
+        <Input value={form.fatherAddressOfResidence} onChange={(e) => update("fatherAddressOfResidence", e.target.value)} />
+      </div>
+      <div className="space-y-2 md:col-span-2">
+        <Label>Address in Home Country</Label>
+        <Input value={form.fatherAddressInHomeCountry} onChange={(e) => update("fatherAddressInHomeCountry", e.target.value)} />
+      </div>
+    </div>
+  );
+
+  const renderMotherTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Name as in Passport *</Label>
+          <Input value={form.motherNameAsInPassport} onChange={(e) => update("motherNameAsInPassport", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Religion</Label>
+          <Input value={form.motherReligion} onChange={(e) => update("motherReligion", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Nationality</Label>
+          <Input value={form.motherNationality} onChange={(e) => update("motherNationality", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Qualification</Label>
+          <Input value={form.motherQualification} onChange={(e) => update("motherQualification", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Mobile Number *</Label>
+          <Input value={form.motherMobileNumber} onChange={(e) => update("motherMobileNumber", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Email Address *</Label>
+          <Input type="email" value={form.motherEmailAddress} onChange={(e) => update("motherEmailAddress", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Occupation</Label>
+          <Input value={form.motherOccupation} onChange={(e) => update("motherOccupation", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Company Name</Label>
+          <Input value={form.motherCompanyName} onChange={(e) => update("motherCompanyName", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Designation</Label>
+          <Input value={form.motherDesignation} onChange={(e) => update("motherDesignation", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>P.O.Box/Emirate</Label>
+          <Input value={form.motherPoBoxEmirate} onChange={(e) => update("motherPoBoxEmirate", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Office Telephone</Label>
+          <Input value={form.motherOfficeTelephone} onChange={(e) => update("motherOfficeTelephone", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Emirates ID Number</Label>
+          <Input value={form.motherEmiratesIdNumber} onChange={(e) => update("motherEmiratesIdNumber", e.target.value)} />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Address of Residence</Label>
+          <Input value={form.motherAddressOfResidence} onChange={(e) => update("motherAddressOfResidence", e.target.value)} />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Address in Home Country</Label>
+          <Input value={form.motherAddressInHomeCountry} onChange={(e) => update("motherAddressInHomeCountry", e.target.value)} />
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Extra-curricular Activities</CardTitle>
+          <CardDescription>Select areas of interest</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-orange-600 font-semibold">Sports/Games</Label>
+            <div className="flex flex-wrap gap-4 mt-2">
+              {SPORTS.map((s) => (
+                <div key={s} className="flex items-center gap-2">
+                  <Checkbox id={`sport-${s}`} checked={form.extraCurricularSports.includes(s)} onCheckedChange={() => toggleSport(s)} />
+                  <Label htmlFor={`sport-${s}`} className="font-normal">{s}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-orange-600 font-semibold">Extra-curricular Activities</Label>
+            <div className="flex flex-wrap gap-4 mt-2">
+              {ACTIVITIES.map((a) => (
+                <div key={a} className="flex items-center gap-2">
+                  <Checkbox id={`act-${a}`} checked={form.extraCurricularActivities.includes(a)} onCheckedChange={() => toggleActivity(a)} />
+                  <Label htmlFor={`act-${a}`} className="font-normal">{a}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Other Children in School</CardTitle>
+          <CardDescription>Siblings studying in this school</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Class</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {form.otherChildrenInSchool.map((row, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Input 
+                      value={row.name} 
+                      onChange={(e) => {
+                        const next = [...form.otherChildrenInSchool];
+                        next[i] = { ...next[i], name: e.target.value };
+                        update("otherChildrenInSchool", next);
+                      }} 
+                      placeholder="Name" 
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      value={row.class} 
+                      onChange={(e) => {
+                        const next = [...form.otherChildrenInSchool];
+                        next[i] = { ...next[i], class: e.target.value };
+                        update("otherChildrenInSchool", next);
+                      }} 
+                      placeholder="Class" 
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderReviewTab = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Student Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <div><span className="text-muted-foreground">Name:</span> {form.studentName || "—"}</div>
+          <div><span className="text-muted-foreground">Gender:</span> {form.gender || "—"}</div>
+          <div><span className="text-muted-foreground">DOB:</span> {form.dateOfBirth || "—"}</div>
+          <div><span className="text-muted-foreground">Nationality:</span> {form.nationality || "—"}</div>
+          <div><span className="text-muted-foreground">Religion:</span> {form.religion || "—"}</div>
+          <div><span className="text-muted-foreground">Class Applied:</span> {form.classAppliedClassId ? classes.find(c => c.id === form.classAppliedClassId)?.name : "—"}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <div><span className="text-muted-foreground">Passport:</span> {form.passportNo || "—"}</div>
+          <div><span className="text-muted-foreground">Emirates ID:</span> {form.emiratesIdNo || "—"}</div>
+          <div><span className="text-muted-foreground">Residence Visa:</span> {form.residenceVisaNo || "—"}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Father/Guardian
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <div><span className="text-muted-foreground">Name:</span> {form.fatherNameAsInPassport || "—"}</div>
+          <div><span className="text-muted-foreground">Mobile:</span> {form.fatherMobileNumber || "—"}</div>
+          <div><span className="text-muted-foreground">Email:</span> {form.fatherEmailAddress || "—"}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="h-5 w-5" />
+            Mother/Guardian
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <div><span className="text-muted-foreground">Name:</span> {form.motherNameAsInPassport || "—"}</div>
+          <div><span className="text-muted-foreground">Mobile:</span> {form.motherMobileNumber || "—"}</div>
+          <div><span className="text-muted-foreground">Email:</span> {form.motherEmailAddress || "—"}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Declaration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            I hereby declare that the information given above is true and correct to the best of my knowledge 
+            and I will abide by the rules and regulations of the School.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Parent Name & Signature *</Label>
+              <Input 
+                value={form.declarationParentNameAndSignature} 
+                onChange={(e) => update("declarationParentNameAndSignature", e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <DatePicker 
+                value={form.declarationDate} 
+                onChange={(v) => update("declarationDate", v)} 
+                placeholder="Select declaration date"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-orange-200 bg-orange-50/50">
+        <CardHeader>
+          <CardTitle>For Office Use Only</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Allotted Class</Label>
+            <SearchableSelect
+              value={form.classId}
+              onValueChange={(v) => update("classId", v)}
+              placeholder="Select class"
+              options={classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Batch</Label>
+            <SearchableSelect
+              value={form.batchId}
+              onValueChange={(v) => update("batchId", v)}
+              disabled={!form.classId}
+              placeholder="Select batch"
+              options={batchesForClass.map((b) => ({ value: b.id, label: `${b.name}${b.section ? ` (${b.section})` : ""}` }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>SIS No</Label>
+            <Input value={form.sisNo} onChange={(e) => update("sisNo", e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Reg No</Label>
+            <Input value={form.regNo} onChange={(e) => update("regNo", e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="space-y-4">
-        <DashboardHeader title="Application" />
         <div className="flex justify-center min-h-[40vh] items-center">Loading...</div>
       </div>
     );
   }
 
+  const ActiveIcon = TABS.find(t => t.id === activeTab)?.icon || User;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-8">
+      {/* Header Actions */}
       <div className="flex items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin/admission")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <DashboardHeader title={isNew ? "New application" : "Application"} />
+          {isNew && lastSaved && (
+            <span className="text-xs text-muted-foreground">
+              Draft saved {lastSaved.toLocaleTimeString()}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" /> {saving ? "Saving..." : "Save"}
-          </Button>
           {!isNew && (
             <Button onClick={handleSubmitAndEnroll} disabled={submitting}>
-              <UserPlus className="h-4 w-4 mr-2" /> {submitting ? "Submitting..." : "Submit & create student"}
+              <UserPlus className="h-4 w-4 mr-2" /> {submitting ? "Submitting..." : "Submit & Create Student"}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Print-only: exact admission form document (hidden on screen) */}
+      {/* Progress Tabs */}
+      <div className="print:hidden">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const errorCount = tab.id !== "review" ? getTabErrors(tab.id) : 0;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium transition-all rounded-md flex-1",
+                  isActive 
+                    ? "bg-white text-slate-900 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700 hover:bg-white/50",
+                  showValidation && errorCount > 0 && !isActive && "text-red-600 hover:text-red-700"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              {showValidation && errorCount > 0 && (
+                  <span className="ml-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                    {errorCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
+            <div className="text-sm text-red-700">
+              <p className="font-medium">Please fix the following errors:</p>
+              <ul className="list-disc list-inside mt-1">
+                {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Active Tab Content */}
+      <Card className="print:hidden">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2">
+            <ActiveIcon className="h-5 w-5" />
+            {TABS.find(t => t.id === activeTab)?.label}
+          </CardTitle>
+          <CardDescription>
+            {TABS.find(t => t.id === activeTab)?.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activeTab === "student" && renderStudentTab()}
+          {activeTab === "documents" && renderDocumentsTab()}
+          {activeTab === "father" && renderFatherTab()}
+          {activeTab === "mother" && renderMotherTab()}
+          {activeTab === "review" && renderReviewTab()}
+        </CardContent>
+      </Card>
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between print:hidden">
+        <Button
+          variant="outline"
+          onClick={handlePrevious}
+          disabled={activeTab === "student"}
+          className="gap-2"
+        >
+          <ChevronLeft className="h-4 w-4" /> Previous
+        </Button>
+        
+        {activeTab === "review" ? (
+          <div className="flex gap-2">
+            <Button onClick={() => { if (handleFinalSubmit()) handleSave(); }} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" /> {saving ? "Saving..." : "Save Application"}
+            </Button>
+            {!isNew && (
+              <Button onClick={() => { if (handleFinalSubmit()) handleSubmitAndEnroll(); }} disabled={submitting}>
+                <UserPlus className="h-4 w-4 mr-2" /> {submitting ? "Submitting..." : "Submit & Create Student"}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button onClick={handleNext} className="gap-2">
+            Next <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Print-only view */}
       <div ref={printRef} className="hidden print:block print-form-document">
+        {/* Print content same as before */}
         <div className="print-form-header">
           <div className="print-form-header-left flex items-center gap-4 flex-1 min-w-0">
             <div className="print-form-logo-wrap">
@@ -911,386 +1691,6 @@ export default function ApplicationFormPage() {
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* Editable form (hidden when printing) */}
-      <div className="space-y-6 print:hidden">
-        {/* Section A: Details of the Student */}
-        <Card>
-          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
-            <div>
-              <CardTitle>Details of the Student</CardTitle>
-              <CardDescription>To be filled in by the parent (block letters)</CardDescription>
-            </div>
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <Label className="text-sm font-medium">Passport Size Photo</Label>
-              {form.passportPhotoUrl ? (
-                <div className="w-28 h-32 rounded border bg-muted overflow-hidden flex-shrink-0">
-                  <img src={form.passportPhotoUrl} alt="Passport" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                </div>
-              ) : (
-                <div className="w-28 h-32 rounded border border-dashed bg-muted flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs text-muted-foreground text-center px-1">No photo</span>
-                </div>
-              )}
-              <label className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:bg-accent/50">
-                {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                <span>{uploadingPhoto ? "Uploading…" : "Upload image"}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  disabled={uploadingPhoto}
-                  onChange={handlePassportPhotoUpload}
-                />
-              </label>
-            </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Academic Year *</Label>
-              <Select
-                value={form.academicYear || undefined}
-                onValueChange={(v) => update("academicYear", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select academic year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map((y) => (
-                    <SelectItem key={y.id} value={y.name}>
-                      {y.name}
-                    </SelectItem>
-                  ))}
-                  {form.academicYear && !academicYears.some((y) => y.name === form.academicYear) && (
-                    <SelectItem value={form.academicYear}>{form.academicYear}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Name of the Student (as in Emirates ID) *</Label>
-              <Input value={form.studentName} onChange={(e) => update("studentName", e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender *</Label>
-              <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Place of Birth (as per passport) *</Label>
-              <Input value={form.placeOfBirth} onChange={(e) => update("placeOfBirth", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Birth *</Label>
-              <Input type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Nationality *</Label>
-              <Input value={form.nationality} onChange={(e) => update("nationality", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Religion *</Label>
-              <Input value={form.religion} onChange={(e) => update("religion", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Name of Previous School</Label>
-              <Input value={form.previousSchool} onChange={(e) => update("previousSchool", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Previous Class</Label>
-              <Input value={form.previousClass} onChange={(e) => update("previousClass", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Emirate (if inside UAE)</Label>
-              <Input value={form.emirateIfInsideUae} onChange={(e) => update("emirateIfInsideUae", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Class Applied for</Label>
-              <Select value={form.classAppliedClassId || "_none"} onValueChange={(v) => setForm((f) => ({ ...f, classAppliedClassId: v === "_none" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">— Select class —</SelectItem>
-                  {classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Country (if outside UAE)</Label>
-              <Input value={form.countryIfOutsideUae} onChange={(e) => update("countryIfOutsideUae", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Syllabus–Previous School *</Label>
-              <Input value={form.syllabusPreviousSchool} onChange={(e) => update("syllabusPreviousSchool", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>2nd Lang in Previous School</Label>
-              <Input value={form.secondLangPreviousSchool} onChange={(e) => update("secondLangPreviousSchool", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Last Attendance</Label>
-              <Input type="date" value={form.dateOfLastAttendance} onChange={(e) => update("dateOfLastAttendance", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Passport No *</Label>
-              <Input value={form.passportNo} onChange={(e) => update("passportNo", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Place of Issue (Passport) *</Label>
-              <Input value={form.passportPlaceOfIssue} onChange={(e) => update("passportPlaceOfIssue", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Issue (Passport) *</Label>
-              <Input type="date" value={form.passportDateOfIssue} onChange={(e) => update("passportDateOfIssue", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Expiry (Passport) *</Label>
-              <Input type="date" value={form.passportDateOfExpiry} onChange={(e) => update("passportDateOfExpiry", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Residence Visa No *</Label>
-              <Input value={form.residenceVisaNo} onChange={(e) => update("residenceVisaNo", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Place of Issue (Residence Visa) *</Label>
-              <Input value={form.residenceVisaPlaceOfIssue} onChange={(e) => update("residenceVisaPlaceOfIssue", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Issue (Residence Visa) *</Label>
-              <Input type="date" value={form.residenceVisaDateOfIssue} onChange={(e) => update("residenceVisaDateOfIssue", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Expiry (Residence Visa) *</Label>
-              <Input type="date" value={form.residenceVisaDateOfExpiry} onChange={(e) => update("residenceVisaDateOfExpiry", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Emirates ID No *</Label>
-              <Input value={form.emiratesIdNo} onChange={(e) => update("emiratesIdNo", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Expiry (Emirates ID) *</Label>
-              <Input type="date" value={form.emiratesIdDateOfExpiry} onChange={(e) => update("emiratesIdDateOfExpiry", e.target.value)} />
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox id="specialNeeds" checked={form.anySpecialNeeds} onCheckedChange={(c) => update("anySpecialNeeds", !!c)} />
-              <Label htmlFor="specialNeeds">Any Special Needs (Yes/No)</Label>
-            </div>
-            {form.anySpecialNeeds && (
-              <div className="space-y-2 md:col-span-2">
-                <Label>If Yes, Please mention</Label>
-                <Input value={form.specialNeedsDetails} onChange={(e) => update("specialNeedsDetails", e.target.value)} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Extra-curricular */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Extra-curricular activities</CardTitle>
-            <CardDescription>Put a tick in the areas of interest</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="text-orange-600 font-semibold">Sports/Games</Label>
-              <div className="flex flex-wrap gap-4 mt-2">
-                {SPORTS.map((s) => (
-                  <div key={s} className="flex items-center gap-2">
-                    <Checkbox id={`sport-${s}`} checked={form.extraCurricularSports.includes(s)} onCheckedChange={() => toggleSport(s)} />
-                    <Label htmlFor={`sport-${s}`} className="font-normal">{s}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-orange-600 font-semibold">Extra-curricular activities</Label>
-              <div className="flex flex-wrap gap-4 mt-2">
-                {ACTIVITIES.map((a) => (
-                  <div key={a} className="flex items-center gap-2">
-                    <Checkbox id={`act-${a}`} checked={form.extraCurricularActivities.includes(a)} onCheckedChange={() => toggleActivity(a)} />
-                    <Label htmlFor={`act-${a}`} className="font-normal">{a}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Father/Guardian */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information – Father/Guardian</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(["fatherNameAsInPassport", "fatherReligion", "fatherNationality", "fatherQualification", "fatherMobileNumber", "fatherEmailAddress", "fatherOccupation", "fatherCompanyName", "fatherDesignation", "fatherPoBoxEmirate", "fatherOfficeTelephone", "fatherEmiratesIdNumber"] as const).map((key) => (
-              <div key={key} className="space-y-2">
-                <Label>
-                  {key === "fatherNameAsInPassport" && "Name as in Passport *"}
-                  {key === "fatherReligion" && "Religion"}
-                  {key === "fatherNationality" && "Nationality"}
-                  {key === "fatherQualification" && "Qualification"}
-                  {key === "fatherMobileNumber" && "Mobile Number *"}
-                  {key === "fatherEmailAddress" && "Email Address *"}
-                  {key === "fatherOccupation" && "Occupation"}
-                  {key === "fatherCompanyName" && "Company Name"}
-                  {key === "fatherDesignation" && "Designation"}
-                  {key === "fatherPoBoxEmirate" && "P.O.Box/Emirate"}
-                  {key === "fatherOfficeTelephone" && "Office Telephone"}
-                  {key === "fatherEmiratesIdNumber" && "Emirates ID Number"}
-                </Label>
-                <Input value={form[key]} onChange={(e) => update(key, e.target.value)} type={key.includes("Email") ? "email" : "text"} />
-              </div>
-            ))}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address of Residence</Label>
-              <Input value={form.fatherAddressOfResidence} onChange={(e) => update("fatherAddressOfResidence", e.target.value)} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address in Home Country</Label>
-              <Input value={form.fatherAddressInHomeCountry} onChange={(e) => update("fatherAddressInHomeCountry", e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Mother/Guardian */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information – Mother/Guardian</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(["motherNameAsInPassport", "motherReligion", "motherNationality", "motherQualification", "motherMobileNumber", "motherEmailAddress", "motherOccupation", "motherCompanyName", "motherDesignation", "motherPoBoxEmirate", "motherOfficeTelephone", "motherEmiratesIdNumber"] as const).map((key) => (
-              <div key={key} className="space-y-2">
-                <Label>
-                  {key === "motherNameAsInPassport" && "Name as in Passport *"}
-                  {key === "motherReligion" && "Religion"}
-                  {key === "motherNationality" && "Nationality"}
-                  {key === "motherQualification" && "Qualification"}
-                  {key === "motherMobileNumber" && "Mobile Number *"}
-                  {key === "motherEmailAddress" && "Email Address *"}
-                  {key === "motherOccupation" && "Occupation"}
-                  {key === "motherCompanyName" && "Company Name"}
-                  {key === "motherDesignation" && "Designation"}
-                  {key === "motherPoBoxEmirate" && "P.O.Box/Emirate"}
-                  {key === "motherOfficeTelephone" && "Office Telephone"}
-                  {key === "motherEmiratesIdNumber" && "Emirates ID Number"}
-                </Label>
-                <Input value={form[key]} onChange={(e) => update(key, e.target.value)} type={key.includes("Email") ? "email" : "text"} />
-              </div>
-            ))}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address of Residence</Label>
-              <Input value={form.motherAddressOfResidence} onChange={(e) => update("motherAddressOfResidence", e.target.value)} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Address in Home Country</Label>
-              <Input value={form.motherAddressInHomeCountry} onChange={(e) => update("motherAddressInHomeCountry", e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Other children in school */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Other Children Studying in City School</CardTitle>
-            <CardDescription>Fill if you have any other child studying in the school</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Class</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {form.otherChildrenInSchool.map((row, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Input value={row.name} onChange={(e) => {
-                        const next = [...form.otherChildrenInSchool];
-                        next[i] = { ...next[i], name: e.target.value };
-                        update("otherChildrenInSchool", next);
-                      }} placeholder="Name" />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={row.class} onChange={(e) => {
-                        const next = [...form.otherChildrenInSchool];
-                        next[i] = { ...next[i], class: e.target.value };
-                        update("otherChildrenInSchool", next);
-                      }} placeholder="Class" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Declaration */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Declaration by the Parent/Guardian</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              I hereby declare that the information given above is true and correct to the best of my knowledge and I will abide by the rules and regulations of the School.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Name and Signature of the Parent</Label>
-                <Input value={form.declarationParentNameAndSignature} onChange={(e) => update("declarationParentNameAndSignature", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Date</Label>
-                <Input type="date" value={form.declarationDate} onChange={(e) => update("declarationDate", e.target.value)} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* For Office Use Only */}
-        <Card>
-          <CardHeader>
-            <CardTitle>For Office Use Only</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Allotted Class *</Label>
-              <Select value={form.classId} onValueChange={(v) => update("classId", v)}>
-                <SelectTrigger><SelectValue placeholder="Select class (required to create student)" /></SelectTrigger>
-                <SelectContent>
-                  {classes.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Batch</Label>
-              <Select value={form.batchId} onValueChange={(v) => update("batchId", v)} disabled={!form.classId}>
-                <SelectTrigger><SelectValue placeholder="Select batch" /></SelectTrigger>
-                <SelectContent>
-                  {batchesForClass.map((b) => (<SelectItem key={b.id} value={b.id}>{b.name}{b.section ? ` (${b.section})` : ""}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>SIS No</Label>
-              <Input value={form.sisNo} onChange={(e) => update("sisNo", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Reg No</Label>
-              <Input value={form.regNo} onChange={(e) => update("regNo", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Checked by</Label>
-              <Input value={form.checkedBy} onChange={(e) => update("checkedBy", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Signature</Label>
-              <Input value={form.officeSignature} onChange={(e) => update("officeSignature", e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Principal</Label>
-              <Input value={form.principal} onChange={(e) => update("principal", e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <style>{`

@@ -9,13 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle } from "lucide-react";
 import { ClassDto, MONTHS_2026 } from "@/types/fees";
@@ -78,41 +72,21 @@ export function GenerateOutstandingModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Class</Label>
-              <Select
+              <SearchableSelect
                 value={formData.classId}
                 onValueChange={(v) => setFormData((f) => ({ ...f, classId: v }))}
-                required
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id} className="text-sm">
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select class"
+                options={classes.map((c) => ({ value: c.id, label: c.name }))}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-sm">Month</Label>
-              <Select
+              <SearchableSelect
                 value={formData.month}
                 onValueChange={(v) => setFormData((f) => ({ ...f, month: v }))}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS_2026.map((m) => (
-                    <SelectItem key={m} value={m} className="text-sm">
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={MONTHS_2026.map((m) => ({ value: m, label: m }))}
+              />
             </div>
           </div>
 

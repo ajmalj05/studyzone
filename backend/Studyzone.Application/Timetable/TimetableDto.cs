@@ -4,6 +4,19 @@ public class TimetableSettingsDto
 {
     public int WorkingDayCount { get; set; } = 5;
     public int PeriodsPerDay { get; set; } = 6;
+    /// <summary>HH:mm (24h), e.g. 08:00.</summary>
+    public string SchoolStartTime { get; set; } = "08:00";
+    public int PeriodDurationMinutes { get; set; } = 45;
+    public List<TimetableBreakDto> Breaks { get; set; } = new();
+}
+
+public class TimetableBreakDto
+{
+    public string Id { get; set; } = string.Empty;
+    public int AfterPeriod { get; set; }
+    public int DurationMinutes { get; set; }
+    /// <summary>e.g. "all"</summary>
+    public string AppliesTo { get; set; } = "all";
 }
 
 public class PeriodConfigDto

@@ -3,21 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +28,14 @@ import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { StudentFeeOfferDto, StudentDto, ClassDto, BatchDto } from "@/types/fees";
 import { Pencil, Trash2, Percent, Banknote, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Popover,
   PopoverContent,
@@ -323,7 +318,7 @@ export default function FeeOffers() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label>Filter by class</Label>
-                        <Select
+                        <SearchableSelect
                           value={studentClassFilter || "__all__"}
                           onValueChange={(v) => {
                             const value = v === "__all__" ? "" : v;
@@ -332,19 +327,16 @@ export default function FeeOffers() {
                             const stillInList = !form.studentId || students.some((s) => s.id === form.studentId && (!value || s.classId === value));
                             if (!stillInList) setForm((f) => ({ ...f, studentId: "" }));
                           }}
-                        >
-                          <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">All classes</SelectItem>
-                            {classes.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="All classes"
+                          options={[
+                            { value: "__all__", label: "All classes" },
+                            ...classes.map((c) => ({ value: c.id, label: c.name })),
+                          ]}
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label>Filter by batch</Label>
-                        <Select
+                        <SearchableSelect
                           value={studentBatchFilter || "__all__"}
                           onValueChange={(v) => {
                             const value = v === "__all__" ? "" : v;
@@ -352,15 +344,12 @@ export default function FeeOffers() {
                             const stillInList = !form.studentId || students.some((s) => s.id === form.studentId && (!value || s.batchId === value));
                             if (!stillInList) setForm((f) => ({ ...f, studentId: "" }));
                           }}
-                        >
-                          <SelectTrigger><SelectValue placeholder="All batches" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">All batches</SelectItem>
-                            {(studentClassFilter ? batches.filter((b) => b.classId === studentClassFilter) : batches).map((b) => (
-                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="All batches"
+                          options={[
+                            { value: "__all__", label: "All batches" },
+                            ...(studentClassFilter ? batches.filter((b) => b.classId === studentClassFilter) : batches).map((b) => ({ value: b.id, label: b.name })),
+                          ]}
+                        />
                       </div>
                     </div>
                   </>
@@ -429,16 +418,14 @@ export default function FeeOffers() {
                 </div>
                 <div className="space-y-1">
                   <Label>Offer type</Label>
-                  <Select
+                  <SearchableSelect
                     value={form.offerType}
                     onValueChange={(v) => setForm((f) => ({ ...f, offerType: v }))}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PercentageDiscount">Percentage discount</SelectItem>
-                      <SelectItem value="FixedDiscount">Fixed discount per charge</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "PercentageDiscount", label: "Percentage discount" },
+                      { value: "FixedDiscount", label: "Fixed discount per charge" },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>{form.offerType === "PercentageDiscount" ? "Percentage (e.g. 20 for 20% off)" : "Amount (AED) off per charge"}</Label>

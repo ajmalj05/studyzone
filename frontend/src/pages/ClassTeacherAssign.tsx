@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { CurrentAcademicYearBadge } from "@/components/CurrentAcademicYearBadge";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -54,11 +51,7 @@ export default function ClassTeacherAssign() {
         setClasses(Array.isArray(classList) ? classList : []);
         setTeachers(Array.isArray(teacherList) ? teacherList : []);
       } catch (e: unknown) {
-        toast({
-          title: "Error",
-          description: (e as Error).message || "Failed to load classes or teachers",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: (e as Error).message || "Failed to load classes or teachers", variant: "destructive" });
       }
     })();
   }, []);
@@ -70,12 +63,10 @@ export default function ClassTeacherAssign() {
       setLoading(false);
       return;
     }
-
     (async () => {
       setLoading(true);
       try {
-        const url = `/Batches?academicYearId=${encodeURIComponent(academicYearId)}`;
-        const list = (await fetchApi(url)) as BatchDto[];
+        const list = (await fetchApi(`/Batches?academicYearId=${encodeURIComponent(academicYearId)}`)) as BatchDto[];
         const safeList = Array.isArray(list) ? list : [];
         setBatches(safeList);
         setPendingAssignments(
@@ -85,11 +76,7 @@ export default function ClassTeacherAssign() {
           }, {}),
         );
       } catch (e: unknown) {
-        toast({
-          title: "Error",
-          description: (e as Error).message || "Failed to load batches",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: (e as Error).message || "Failed to load batches", variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -99,49 +86,29 @@ export default function ClassTeacherAssign() {
   const updateBatchTeacher = async (batch: BatchDto, teacherUserId: string | null) => {
     setUpdatingBatchId(batch.id);
     try {
-      const payload = {
-        classId: batch.classId,
-        academicYearId: batch.academicYearId || currentYear?.id,
-        name: batch.name,
-        section: batch.section || undefined,
-        seatLimit: batch.seatLimit,
-        classTeacherUserId: teacherUserId || undefined,
-      };
-
       await fetchApi(`/Batches/${batch.id}`, {
         method: "PUT",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          classId: batch.classId,
+          academicYearId: batch.academicYearId || currentYear?.id,
+          name: batch.name,
+          section: batch.section || undefined,
+          seatLimit: batch.seatLimit,
+          classTeacherUserId: teacherUserId || undefined,
+        }),
       });
-
       const teacher = teacherUserId ? teachers.find((t) => t.id === teacherUserId) : undefined;
-
       setBatches((prev) =>
         prev.map((b) =>
           b.id === batch.id
-            ? {
-                ...b,
-                classTeacherUserId: teacherUserId || undefined,
-                classTeacherName: teacher ? teacher.name : undefined,
-              }
+            ? { ...b, classTeacherUserId: teacherUserId || undefined, classTeacherName: teacher?.name }
             : b,
         ),
       );
-
-      setPendingAssignments((prev) => ({
-        ...prev,
-        [batch.id]: teacherUserId || "_none",
-      }));
-
-      toast({
-        title: "Saved",
-        description: "Class teacher updated for this batch.",
-      });
+      setPendingAssignments((prev) => ({ ...prev, [batch.id]: teacherUserId || "_none" }));
+      toast({ title: "Saved", description: "Class teacher updated for this batch." });
     } catch (e: unknown) {
-      toast({
-        title: "Error",
-        description: (e as Error).message || "Failed to update class teacher",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: (e as Error).message || "Failed to update class teacher", variant: "destructive" });
     } finally {
       setUpdatingBatchId(null);
     }
@@ -149,116 +116,82 @@ export default function ClassTeacherAssign() {
 
   const classesById = new Map(classes.map((c) => [c.id, c]));
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardHeader
-          title="Class Teacher Mapping"
-          description="Assign class teachers to batches for the current academic year."
-        />
-        <CurrentAcademicYearBadge />
-      </div>
+  const columns: DataTableColumn<BatchDto>[] = [
+    {
+      key: "class",
+      header: "Class",
+      cell: (b) => <span className="font-medium capitalize">{b.className || classesById.get(b.classId)?.name || "—"}</span>,
+    },
+    {
+      key: "batch",
+      header: "Batch",
+      cell: (b) => <span className="capitalize">{b.name}</span>,
+    },
+    {
+      key: "section",
+      header: "Section",
+      cell: (b) => <span className="text-muted-foreground">{b.section ?? "—"}</span>,
+    },
+    {
+      key: "academicYear",
+      header: "Academic Year",
+      cell: (b) => (
+        <span className="text-muted-foreground">
+          {b.academicYearName ?? academicYears.find((y) => y.id === b.academicYearId)?.name ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "classTeacher",
+      header: "Class Teacher",
+      className: "w-[320px]",
+      cell: (b) => {
+        const currentValue = b.classTeacherUserId || "_none";
+        const selectedValue = pendingAssignments[b.id] ?? currentValue;
+        const hasChanges = selectedValue !== currentValue;
+        if (teachers.length === 0) {
+          return <span className="text-sm text-muted-foreground">No teacher users found.</span>;
+        }
+        return (
+          <div className="flex items-center gap-2 w-full max-w-sm">
+            <SearchableSelect
+              value={selectedValue}
+              onValueChange={(v) => setPendingAssignments((prev) => ({ ...prev, [b.id]: v }))}
+              disabled={updatingBatchId === b.id}
+              placeholder="Select class teacher"
+              className="flex-1 min-w-[160px]"
+              options={[
+                { value: "_none", label: "None" },
+                ...teachers.map((t) => ({ value: t.id, label: `${t.name} (${t.userId})` })),
+              ]}
+            />
+            <Button
+              size="sm"
+              onClick={() => updateBatchTeacher(b, selectedValue === "_none" ? null : selectedValue)}
+              disabled={updatingBatchId === b.id || !hasChanges}
+            >
+              {updatingBatchId === b.id ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
-      {yearLoading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">Loading academic year…</div>
-      ) : !currentYear ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No current academic year</CardTitle>
-            <CardDescription>
-              Set a current academic year in the Academic Year settings to manage class teacher mappings.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : loading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">Loading batches…</div>
-      ) : batches.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No batches</CardTitle>
-            <CardDescription>No batches found for the selected academic year.</CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Batches and class teachers</CardTitle>
-            <CardDescription>Set a class teacher for each batch. Changes are saved per batch.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Section</TableHead>
-                  <TableHead>Academic year</TableHead>
-                  <TableHead>Class teacher</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {batches.map((b) => {
-                  const cls = classesById.get(b.classId);
-                  const currentValue = b.classTeacherUserId || "_none";
-                  const selectedValue = pendingAssignments[b.id] ?? currentValue;
-                  const hasChanges = selectedValue !== currentValue;
-                  return (
-                    <TableRow key={b.id}>
-                      <TableCell>{b.className || cls?.name || "—"}</TableCell>
-                      <TableCell>{b.name}</TableCell>
-                      <TableCell>{b.section ?? "—"}</TableCell>
-                      <TableCell>{b.academicYearName ?? academicYears.find((y) => y.id === b.academicYearId)?.name ?? "—"}</TableCell>
-                      <TableCell>
-                        {teachers.length === 0 ? (
-                          <span className="text-sm text-muted-foreground">No teacher users found.</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={selectedValue}
-                              onValueChange={(v) =>
-                                setPendingAssignments((prev) => ({
-                                  ...prev,
-                                  [b.id]: v,
-                                }))
-                              }
-                              disabled={updatingBatchId === b.id}
-                            >
-                              <SelectTrigger className="w-[220px]">
-                                <SelectValue placeholder="Select class teacher" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="_none">None</SelectItem>
-                                {teachers.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>
-                                    {t.name} ({t.userId})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                updateBatchTeacher(
-                                  b,
-                                  selectedValue === "_none" ? null : selectedValue,
-                                )
-                              }
-                              disabled={updatingBatchId === b.id || !hasChanges}
-                            >
-                              {updatingBatchId === b.id ? "Saving…" : "Save"}
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+  const isLoading = yearLoading || loading;
+  const emptyMessage = !currentYear ? "No current academic year" : "No batches found";
+  const emptyDescription = !currentYear
+    ? "Set a current academic year in settings to manage class teacher mappings."
+    : "No batches found for the selected academic year.";
+
+  return (
+    <DataTable
+      data={batches}
+      columns={columns}
+      keyExtractor={(b) => b.id}
+      loading={isLoading}
+      emptyMessage={emptyMessage}
+      emptyDescription={emptyDescription}
+    />
   );
 }
-

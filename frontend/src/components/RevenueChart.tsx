@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
+import { Wallet, Users } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 
 interface FinancialReportDto {
@@ -26,49 +28,117 @@ export function RevenueChart({ academicYearId }: RevenueChartProps) {
       .finally(() => setLoading(false));
   }, [academicYearId]);
 
-  const chartData = (data?.outstandingByClass ?? []).slice(0, 12).map((c) => ({
+  const chartData = (data?.outstandingByClass ?? []).slice(0, 10).map((c) => ({
     name: c.className || "—",
     outstanding: Math.round(c.outstanding),
+    studentCount: c.studentCount,
   }));
 
+  const formatCurrency = (value: number) => `AED ${Math.abs(value).toLocaleString("en-AE")}`;
+
+  const totalCollected = Math.round(data?.totalCollection ?? 0);
+  const totalOutstanding = Math.round(data?.totalOutstanding ?? 0);
+
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground">Financial Overview</h3>
-      <p className="text-xs text-muted-foreground">Collection and outstanding by class</p>
-      {loading ? (
-        <div className="mt-3 h-56 flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
-      ) : (
-        <>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="text-muted-foreground">Collected:</span>
-            <span className="font-medium">AED {Math.round(data?.totalCollection ?? 0).toLocaleString("en-AE")}</span>
-            <span className="text-muted-foreground">Outstanding:</span>
-            <span className="font-medium text-warning">AED {Math.round(data?.totalOutstanding ?? 0).toLocaleString("en-AE")}</span>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="border border-border/80 shadow-sm bg-card rounded-lg h-full flex flex-col"
+    >
+      {/* Header */}
+      <div className="p-5 border-b border-border/50">
+        <div className="flex items-center gap-3 mb-4">
+          <div>
+            <h3 className="text-base font-semibold">Financial Overview</h3>
+            <p className="text-xs text-muted-foreground">Collection and outstanding by class</p>
           </div>
-          <div className="mt-3 h-56">
-            {chartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No class data</div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="flex items-center gap-6 text-sm">
+          <div>
+            <span className="text-muted-foreground">Collected:</span>{' '}
+            {loading ? (
+              <span className="inline-block w-16 h-4 bg-muted rounded animate-pulse" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "12px",
-                    }}
-                    formatter={(value: number) => [`AED ${value.toLocaleString("en-AE")}`, "Outstanding"]}
-                  />
-                  <Bar dataKey="outstanding" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <span className="font-semibold">{formatCurrency(totalCollected)}</span>
             )}
           </div>
-        </>
-      )}
-    </div>
+          <div>
+            <span className="text-muted-foreground">Outstanding:</span>{' '}
+            {loading ? (
+              <span className="inline-block w-16 h-4 bg-muted rounded animate-pulse" />
+            ) : (
+              <span className="font-semibold text-primary">{formatCurrency(totalOutstanding)}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="flex-1 p-5">
+        {loading ? (
+          <div className="h-56 flex items-center justify-center">
+            <div className="space-y-4 w-full">
+              <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+              <div className="h-40 bg-muted rounded-lg animate-pulse" />
+            </div>
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-56 flex flex-col items-center justify-center text-muted-foreground">
+            <Users className="h-12 w-12 mb-3 opacity-20" />
+            <p className="text-sm">No financial data available</p>
+          </div>
+        ) : (
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke="#e5e7eb" 
+                  vertical={false}
+                />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#9ca3af" 
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  angle={chartData.length > 6 ? -45 : 0}
+                  textAnchor={chartData.length > 6 ? "end" : "middle"}
+                  height={chartData.length > 6 ? 60 : 30}
+                />
+                <YAxis 
+                  stroke="#9ca3af" 
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                  contentStyle={{
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  formatter={(value: number) => [formatCurrency(value), "Outstanding"]}
+                  labelStyle={{ color: '#111827', fontWeight: 600 }}
+                />
+                <Bar 
+                  dataKey="outstanding" 
+                  fill="hsl(189 95% 43%)" 
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={50}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }

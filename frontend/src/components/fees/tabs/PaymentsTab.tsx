@@ -1,21 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,14 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Download, Search, CreditCard, Printer } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { PaymentRecord, ClassDto, StudentDto, BatchDto, FeeReceiptDto, formatCurrency, MONTHS_2026 } from "@/types/fees";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
 import { buildReceiptHtml, buildReportHtml, SchoolProfileForReceipt } from "@/lib/receiptHtml";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { FeeTablePaginationBar } from "../FeeTablePaginationBar";
-import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
 interface PaymentsTabProps {
   classes: ClassDto[];
@@ -45,7 +30,6 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
   const [printingId, setPrintingId] = useState<string | null>(null);
 
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [paymentsPage, setPaymentsPage] = useState(1);
 
   // Load payments on mount
   useEffect(() => {
@@ -68,19 +52,6 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
     if (monthFilter && !payment.paidAt.includes(monthFilter.split(" ")[0])) return false;
     return true;
   });
-
-  useEffect(() => {
-    setPaymentsPage(1);
-  }, [searchTerm, monthFilter]);
-
-  useEffect(() => {
-    setPaymentsPage((p) => feeClampPage(p, filteredPayments.length, FEE_UI_PAGE_SIZE));
-  }, [filteredPayments.length]);
-
-  const pagedPayments = useMemo(
-    () => feeSlicePage(filteredPayments, paymentsPage, FEE_UI_PAGE_SIZE),
-    [filteredPayments, paymentsPage]
-  );
 
   const activeFilters = [
     monthFilter,
@@ -110,7 +81,6 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
         description: "Payment recorded successfully",
       });
       setRecordPaymentOpen(false);
-      // Refresh the payments data immediately
       await loadPayments();
     } catch (e: unknown) {
       toast({
@@ -125,7 +95,6 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
     const title = type.includes("filtered") ? "Filtered Payments Report" : "All Payments Report";
     const paymentsToShow = type.includes("filtered") ? filteredPayments : payments;
     
-    // Fetch school profile for header
     let school = null;
     try {
       school = await fetchApi("/SchoolProfile").catch(() => null) as SchoolProfileForReceipt | null;
@@ -197,11 +166,9 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
           fetchApi("/SchoolProfile").catch(() => null) as Promise<SchoolProfileForReceipt | null>,
         ]);
       } catch (apiErr) {
-        // API failed - will use demo data below
         console.log("API failed, using demo receipt");
       }
 
-      // If no receipt from API, create a demo one
       if (!receipt) {
         const payment = payments.find(p => p.id === paymentId);
         if (payment) {
@@ -240,6 +207,57 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
     }
   };
 
+  const paymentColumns: DataTableColumn<PaymentRecord>[] = [
+    {
+      key: "paidAt",
+      header: "Date",
+      cell: (p) => <span className="text-slate-600 text-sm">{new Date(p.paidAt).toLocaleDateString()}</span>,
+    },
+    {
+      key: "studentName",
+      header: "Student",
+      cell: (p) => <span className="font-medium text-slate-700 text-sm">{p.studentName}</span>,
+    },
+    {
+      key: "feeType",
+      header: "Fee type",
+      cell: (p) => <span className="text-slate-600 text-sm">{(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</span>,
+    },
+    {
+      key: "amount",
+      header: "Amount (AED)",
+      cell: (p) => <span className="font-medium text-slate-700 text-sm">{formatCurrency(p.amount)}</span>,
+      align: "right",
+    },
+    {
+      key: "mode",
+      header: "Mode",
+      cell: (p) => <span className="text-slate-600 text-sm">{p.mode}</span>,
+    },
+    {
+      key: "reference",
+      header: "Reference",
+      cell: (p) => <span className="text-slate-600 text-sm">{p.reference || "—"}</span>,
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (p) => (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 text-xs"
+          disabled={!!printingId}
+          onClick={() => handleViewReceipt(p.id)}
+        >
+          <Printer className="h-3.5 w-3.5 mr-1" />
+          {printingId === p.id ? "Opening..." : "View"}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -256,17 +274,16 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
           </div>
         </div>
         
-        <Select value={monthFilter || "all"} onValueChange={(v) => setMonthFilter(v === "all" ? "" : v)}>
-          <SelectTrigger className="w-[140px] h-9 text-sm">
-            <SelectValue placeholder="All months" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-sm">All months</SelectItem>
-            {MONTHS_2026.map((m) => (
-              <SelectItem key={m} value={m} className="text-sm">{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={monthFilter || "all"}
+          onValueChange={(v) => setMonthFilter(v === "all" ? "" : v)}
+          placeholder="All months"
+          className="w-[140px]"
+          options={[
+            { value: "all", label: "All months" },
+            ...MONTHS_2026.map((m) => ({ value: m, label: m })),
+          ]}
+        />
 
         <Button 
           size="sm" 
@@ -306,56 +323,13 @@ export function PaymentsTab({ classes, batches, students }: PaymentsTabProps) {
       )}
 
       {/* Main Table */}
-      <Card className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50 hover:bg-slate-50">
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Student</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Fee type</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount (AED)</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Mode</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPayments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-sm text-slate-400">
-                  No payments recorded. Use Record payment to add entries.
-                </TableCell>
-              </TableRow>
-            ) : (
-              pagedPayments.map((payment) => (
-                <TableRow key={payment.id} className="border-b border-slate-100">
-                  <TableCell className="text-slate-600">{new Date(payment.paidAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="font-medium text-slate-700">{payment.studentName}</TableCell>
-                  <TableCell className="text-slate-600">{(payment.feeType && String(payment.feeType).trim()) ? String(payment.feeType).trim() : "General"}</TableCell>
-                  <TableCell className="font-medium text-slate-700">{formatCurrency(payment.amount)}</TableCell>
-                  <TableCell className="text-slate-600">{payment.mode}</TableCell>
-                  <TableCell className="text-slate-600">{payment.reference || "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 text-xs"
-                      disabled={!!printingId}
-                      onClick={() => handleViewReceipt(payment.id)}
-                    >
-                      <Printer className="h-3.5 w-3.5 mr-1" />
-                      {printingId === payment.id ? "Opening..." : "View"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <FeeTablePaginationBar
-          page={paymentsPage}
-          total={filteredPayments.length}
-          onPageChange={setPaymentsPage}
+      <Card>
+        <DataTable
+          data={filteredPayments}
+          columns={paymentColumns}
+          keyExtractor={(p) => p.id}
+          emptyMessage="No payments recorded"
+          emptyDescription="Use Record payment to add entries"
         />
       </Card>
 
