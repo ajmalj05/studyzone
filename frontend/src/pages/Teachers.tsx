@@ -1,14 +1,24 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Pencil, Trash2, Download, X } from "lucide-react";
+import { Search, Plus, Pencil, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -40,10 +50,7 @@ interface SchoolProfileDto {
   address?: string;
 }
 
-const getStatusBadge = (status: string) => {
-  if (status === "Active") return { label: "Active", variant: "success" as const };
-  return { label: status || "Inactive", variant: "secondary" as const };
-};
+const isTeacherActive = (teacher: TeacherDto) => teacher.status ? teacher.status === "Active" : teacher.isActive !== false;
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState<TeacherDto[]>([]);
@@ -54,6 +61,8 @@ export default function Teachers() {
   const [form, setForm] = useState({ name: "", subject: "", phone: "", registerNumber: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("All");
+  const [statusChange, setStatusChange] = useState<{ teacher: TeacherDto; isActive: boolean } | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => { 
     fetchTeachers(); 
@@ -255,20 +264,31 @@ export default function Teachers() {
     {
       key: "status",
       header: "Status",
-      badge: (t) => getStatusBadge(t.status),
+      cell: (t) => {
+        const isActive = isTeacherActive(t);
+        return (
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isActive}
+              onCheckedChange={(checked) => setStatusChange({ teacher: t, isActive: checked })}
+              aria-label={`Mark ${t.name} as ${isActive ? "inactive" : "active"}`}
+            />
+            <span className={isActive ? "text-xs font-medium text-green-700" : "text-xs font-medium text-slate-500"}>
+              {isActive ? "Active" : "Inactive"}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: "actions",
       header: "",
       align: "right",
-      className: "w-[100px]",
+      className: "w-[50px]",
       cell: (t) => (
         <div className="flex items-center justify-end gap-2">
           <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEdit(t)}>
             <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => handleDelete(t)}>
-            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),
@@ -287,13 +307,33 @@ export default function Teachers() {
     setShowModal(true);
   };
 
-  const handleDelete = async (t: TeacherDto) => {
+  const handleConfirmStatusChange = async () => {
+    if (!statusChange) return;
+
+    const { teacher, isActive } = statusChange;
+    setStatusUpdating(true);
+
     try {
-      await fetchApi(`/Users/${t.id}`, { method: "PUT", body: JSON.stringify({ name: t.name, role: "teacher", isActive: false }) });
-      toast({ title: "Teacher deactivated", description: "Teacher has been deactivated." });
-      fetchTeachers();
+      await fetchApi(`/Users/${teacher.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: teacher.name,
+          role: "teacher",
+          isActive,
+          phone: teacher.phone || undefined,
+          subject: teacher.subject || undefined,
+        }),
+      });
+      toast({
+        title: "Status updated",
+        description: `${teacher.name} is now ${isActive ? "active" : "inactive"}.`,
+      });
+      setStatusChange(null);
+      await fetchTeachers();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to deactivate teacher", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to update teacher status", variant: "destructive" });
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -431,6 +471,32 @@ export default function Teachers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!statusChange}
+        onOpenChange={(open) => {
+          if (!open && !statusUpdating) setStatusChange(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {statusChange?.isActive ? "Activate teacher?" : "Deactivate teacher?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChange
+                ? `Are you sure you want to mark ${statusChange.teacher.name} as ${statusChange.isActive ? "Active" : "Inactive"}?`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusUpdating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmStatusChange} disabled={statusUpdating}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

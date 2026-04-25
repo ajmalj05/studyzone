@@ -68,7 +68,6 @@ import TeacherBatchOverview from "./pages/teacher/batch/TeacherBatchOverview";
 import TeacherBatchRoster from "./pages/teacher/batch/TeacherBatchRoster";
 import TeacherBatchAttendance from "./pages/teacher/batch/TeacherBatchAttendance";
 import AdminSalary from "./pages/AdminSalary";
-import AdminSalaryAndExpenses from "./pages/AdminSalaryAndExpenses";
 import Expenses from "./pages/Expenses";
 import AdminParentManagement from "./pages/AdminParentManagement";
 
@@ -159,7 +158,7 @@ const App = () => (
                 <Route path="year/:yearId" element={<AcademicYearDetailPage />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="class-teacher" element={<Navigate to="/admin/teachers/assign" replace />} />
-                <Route path="salary-expenses" element={<AdminSalaryAndExpenses />} />
+                <Route path="salary-expenses" element={<Navigate to="/admin/payroll" replace />} />
                 <Route path="expenses" element={<Expenses />} />
               </Route>
             </Route>

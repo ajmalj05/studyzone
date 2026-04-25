@@ -46,11 +46,32 @@ public class TeacherSalaryService : ITeacherSalaryService
     {
         if (!Guid.TryParse(request.TeacherUserId, out var teacherId))
             throw new ArgumentException("Invalid teacher user id.");
+        var effectiveFrom = request.EffectiveFrom.Date;
+        var effectiveTo = request.EffectiveTo?.Date;
+        if (effectiveTo.HasValue && effectiveTo.Value < effectiveFrom)
+            throw new ArgumentException("Effective to date must be on or after effective from date.");
+        if (request.Amount <= 0)
+            throw new ArgumentException("Salary amount must be greater than zero.");
+
+        var existingRows = await _repo.GetByTeacherAsync(teacherId, ct);
+        var openPrevious = existingRows.FirstOrDefault(x =>
+            x.EffectiveFrom < effectiveFrom &&
+            (x.EffectiveTo == null || x.EffectiveTo.Value >= effectiveFrom));
+        if (openPrevious != null)
+        {
+            openPrevious.EffectiveTo = effectiveFrom.AddDays(-1);
+            await _repo.UpdateAsync(openPrevious, ct);
+            existingRows = await _repo.GetByTeacherAsync(teacherId, ct);
+        }
+
+        if (HasOverlap(existingRows, effectiveFrom, effectiveTo))
+            throw new ArgumentException("Salary effective date range overlaps with an existing salary record.");
+
         var entity = new Domain.Entities.TeacherSalary
         {
             TeacherUserId = teacherId,
-            EffectiveFrom = request.EffectiveFrom.Date,
-            EffectiveTo = request.EffectiveTo?.Date,
+            EffectiveFrom = effectiveFrom,
+            EffectiveTo = effectiveTo,
             Amount = request.Amount,
             PayFrequency = request.PayFrequency ?? "Monthly",
             Currency = NormalizeCurrency(request.Currency),
@@ -65,8 +86,19 @@ public class TeacherSalaryService : ITeacherSalaryService
         if (!Guid.TryParse(id, out var guid))
             throw new ArgumentException("Invalid id.");
         var existing = await _repo.GetByIdAsync(guid, ct) ?? throw new ArgumentException("Salary record not found.");
-        existing.EffectiveFrom = request.EffectiveFrom.Date;
-        existing.EffectiveTo = request.EffectiveTo?.Date;
+        var effectiveFrom = request.EffectiveFrom.Date;
+        var effectiveTo = request.EffectiveTo?.Date;
+        if (effectiveTo.HasValue && effectiveTo.Value < effectiveFrom)
+            throw new ArgumentException("Effective to date must be on or after effective from date.");
+        if (request.Amount <= 0)
+            throw new ArgumentException("Salary amount must be greater than zero.");
+
+        var rows = await _repo.GetByTeacherAsync(existing.TeacherUserId, ct);
+        if (HasOverlap(rows.Where(x => x.Id != existing.Id), effectiveFrom, effectiveTo))
+            throw new ArgumentException("Salary effective date range overlaps with an existing salary record.");
+
+        existing.EffectiveFrom = effectiveFrom;
+        existing.EffectiveTo = effectiveTo;
         existing.Amount = request.Amount;
         existing.PayFrequency = request.PayFrequency ?? "Monthly";
         existing.Currency = NormalizeCurrency(request.Currency);
@@ -100,5 +132,18 @@ public class TeacherSalaryService : ITeacherSalaryService
             Notes = e.Notes,
             CreatedAt = e.CreatedAt
         };
+    }
+
+    private static bool HasOverlap(IEnumerable<Domain.Entities.TeacherSalary> rows, DateTime effectiveFrom, DateTime? effectiveTo)
+    {
+        var newEnd = effectiveTo ?? DateTime.MaxValue.Date;
+        foreach (var row in rows)
+        {
+            var rowStart = row.EffectiveFrom.Date;
+            var rowEnd = row.EffectiveTo?.Date ?? DateTime.MaxValue.Date;
+            if (effectiveFrom <= rowEnd && rowStart <= newEnd)
+                return true;
+        }
+        return false;
     }
 }

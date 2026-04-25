@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, GraduationCap, DollarSign, FileText,
   UserCheck, MessageSquare, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  ClipboardList, Wallet, Receipt, School, Megaphone, UserCircle,
+  ClipboardList, Receipt, School, Megaphone, UserCircle,
 } from "lucide-react";
 import { LogoutModal } from "@/components/LogoutModal";
 import logoImg from "@/assets/logo.png";
@@ -50,7 +50,6 @@ const sidebarSections: SidebarSection[] = [
     items: [
       { title: "Fee Management", icon: DollarSign, path: "/admin/fees" },
       { title: "Payroll", icon: DollarSign, path: "/admin/payroll" },
-      { title: "Salary & Expenses", icon: Wallet, path: "/admin/salary-expenses" },
       { title: "Expenses", icon: Receipt, path: "/admin/expenses" },
     ],
   },
