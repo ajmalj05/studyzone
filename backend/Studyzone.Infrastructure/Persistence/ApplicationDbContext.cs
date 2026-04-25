@@ -229,7 +229,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ExamClass>(e =>
         {
             e.HasIndex(x => x.ExamId);
-            e.HasIndex(x => new { x.ExamId, x.ClassId }).IsUnique();
+            e.HasIndex(x => new { x.ExamId, x.ClassId, x.BatchId }).IsUnique();
+            e.HasIndex(x => x.BatchId);
         });
     }
 }

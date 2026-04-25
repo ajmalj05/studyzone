@@ -1,17 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Pencil,
   Trash2,
   Plus,
-  BookOpen,
-  GraduationCap,
-  Bus,
   Loader2,
-  Settings,
-  Layers,
 } from "lucide-react";
 import { ClassDto, StudentDto, BatchDto, formatCurrency, getInitials } from "@/types/fees";
 import { AddFeeModal, type AddFeeModalSavePayload, type AddFeeModalCreateDefaults } from "../modals/AddFeeModal";
@@ -24,12 +18,9 @@ import {
   parseBusFeeDisplay,
   busFeeStudentIdFromName,
   type FeeStructureRow,
-  type FeeSetupTab as FeeSetupTabType,
 } from "@/lib/feeSetupGrouping";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { cn } from "@/lib/utils";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { PillTabs, type PillTab } from "@/components/ui/pill-tabs";
 import { FeeTablePaginationBar } from "../FeeTablePaginationBar";
 import { feeSlicePage, feeClampPage, FEE_UI_PAGE_SIZE } from "@/lib/feeListPagination";
 
@@ -39,25 +30,20 @@ interface FeeSetupTabProps {
   classes: ClassDto[];
   students: StudentDto[];
   batches: BatchDto[];
+  mode?: "setup" | "bus";
 }
 
-function tabEquals(a: FeeSetupTabType, b: FeeSetupTabType): boolean {
-  if (a.kind !== b.kind) return false;
-  if (a.kind === "other" && b.kind === "other") return a.baseLabel === b.baseLabel;
-  return true;
-}
-
-export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
+export function FeeSetupTab({ classes, students, batches, mode = "setup" }: FeeSetupTabProps) {
   const { selectedYearId } = useAcademicYear();
   const [allStructures, setAllStructures] = useState<FeeStructureRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<string>("tuition");
-  const [otherTabLabel, setOtherTabLabel] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>(mode === "bus" ? "bus" : "tuition");
   const [search, setSearch] = useState("");
   const [frequencyFilter, setFrequencyFilter] = useState<string>(ALL);
   const [classFilter, setClassFilter] = useState<string>(ALL);
+  const [batchFilter, setBatchFilter] = useState<string>(ALL);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<AddFeeModalCreateDefaults | null>(null);
@@ -87,6 +73,14 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     loadFees();
   }, [selectedYearId]);
 
+  useEffect(() => {
+    if (mode === "bus") {
+      setActiveTab("bus");
+    } else if (activeTab === "bus") {
+      setActiveTab("tuition");
+    }
+  }, [mode, activeTab]);
+
   const { tuition, admission, bus, otherTabs } = useMemo(
     () => partitionFeeStructures(allStructures),
     [allStructures]
@@ -100,12 +94,21 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
         return admission;
       case "bus":
         return bus;
-      default:
+      default: {
         // For other tabs, find by baseLabel
         const otherTab = otherTabs.find((t) => t.baseLabel === activeTab);
         return otherTab?.items ?? [];
+      }
     }
   }, [activeTab, tuition, admission, bus, otherTabs]);
+
+  const visibleStructures = useMemo(
+    () =>
+      mode === "bus"
+        ? bus
+        : [...tuition, ...admission, ...otherTabs.flatMap((t) => t.items)],
+    [mode, bus, tuition, admission, otherTabs]
+  );
 
   const filteredRows = useMemo(() => {
     let rows = currentBucket;
@@ -114,6 +117,13 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     }
     if (classFilter !== ALL) {
       rows = rows.filter((r) => r.classId === classFilter);
+    }
+    if (activeTab === "bus" && batchFilter !== ALL) {
+      rows = rows.filter((r) => {
+        const studentId = busFeeStudentIdFromName(r, students);
+        const student = studentId ? students.find((s) => s.id === studentId) : undefined;
+        return student?.batchId === batchFilter;
+      });
     }
     const q = search.trim().toLowerCase();
     if (!q) return rows;
@@ -128,11 +138,11 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
       });
     }
     return rows.filter((r) => (r.className || "").toLowerCase().includes(q));
-  }, [currentBucket, frequencyFilter, classFilter, search, activeTab]);
+  }, [currentBucket, frequencyFilter, classFilter, batchFilter, students, search, activeTab]);
 
   useEffect(() => {
     setSetupTablePage(1);
-  }, [activeTab, search, frequencyFilter, classFilter]);
+  }, [activeTab, search, frequencyFilter, classFilter, batchFilter]);
 
   useEffect(() => {
     setSetupTablePage((p) => feeClampPage(p, filteredRows.length, FEE_UI_PAGE_SIZE));
@@ -143,25 +153,38 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
     [filteredRows, setupTablePage]
   );
 
-  const handleAdd = async (payload: AddFeeModalSavePayload) => {
+  const handleAdd = async (payload: AddFeeModalSavePayload, editingId?: string) => {
     try {
       setSaving(true);
       
       // Transform payload to match backend CreateFeeStructureRequest
       const { feeKind, name, classId, studentId, amount, frequency, routeNote } = payload;
+      const student = studentId ? students.find((s) => s.id === studentId) : undefined;
+      const resolvedClassId = feeKind === "bus" ? student?.classId : classId;
       
       // Determine the fee name based on type
       let feeName = name || "";
       if (feeKind === "tuition") feeName = "Tuition Fee";
       else if (feeKind === "admission") feeName = "Admission Fee";
-      else if (feeKind === "bus" && studentId) {
-        const student = students.find((s) => s.id === studentId);
-        feeName = `Bus Fee${routeNote ? ` - ${routeNote}` : ""}`;
+      else if (feeKind === "bus" && student) {
+        feeName = `Bus Fee - ${student.name}${routeNote ? ` - ${routeNote}` : ""}`;
       }
       // For custom ("other") fees, use the name field directly
+      if (!resolvedClassId) {
+        throw new Error("Class is required to save this fee.");
+      }
       
-      const body: any = {
-        classId,
+      const body: {
+        classId: string;
+        academicYearId?: string;
+        amount: number;
+        frequency: string;
+        name: string;
+        studentId?: string;
+        routeNote?: string;
+      } = {
+        classId: resolvedClassId,
+        academicYearId: selectedYearId || undefined,
         amount,
         frequency,
         name: feeName,
@@ -174,11 +197,10 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
         body.routeNote = routeNote;
       }
       
-      const { id } = payload as { id?: string };
-      if (id) {
-        await fetchApi("/Fees/structures", {
+      if (editingId) {
+        await fetchApi(`/Fees/structures/${encodeURIComponent(editingId)}`, {
           method: "PUT",
-          body: JSON.stringify({ id, ...body }),
+          body: JSON.stringify(body),
         });
       } else {
         await fetchApi("/Fees/structures", {
@@ -228,10 +250,10 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
 
   const openAddModal = (defaults?: AddFeeModalCreateDefaults) => {
     setEditStructure(null);
-    const isOther = !["tuition", "admission", "bus"].includes(activeTab);
+    const isOther = mode !== "bus" && !["tuition", "admission"].includes(activeTab);
     setCreateDefaults(
       defaults ?? ({
-        feeKind: isOther ? "other" : (activeTab as "tuition" | "admission" | "bus"),
+        feeKind: mode === "bus" ? "bus" : isOther ? "other" : (activeTab as "tuition" | "admission"),
         otherStructureName: isOther ? activeTab : undefined,
       } satisfies AddFeeModalCreateDefaults)
     );
@@ -251,18 +273,16 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
 
   const frequencyOptions = useMemo(() => {
     const allFreqs = new Set<string>();
-    allStructures.forEach((s) => {
+    visibleStructures.forEach((s) => {
       if (s.frequency) allFreqs.add(s.frequency);
     });
     return Array.from(allFreqs).sort();
-  }, [allStructures]);
+  }, [visibleStructures]);
 
-  const tabs: PillTab[] = [
-    { value: "tuition", label: "Tuition", icon: BookOpen },
-    { value: "admission", label: "Admission", icon: GraduationCap },
-    { value: "bus", label: "Bus", icon: Bus },
-    ...otherTabs.map((t) => ({ value: t.baseLabel, label: t.baseLabel, icon: Layers })),
-  ];
+  const batchOptions = useMemo(() => {
+    const scopedBatches = classFilter === ALL ? batches : batches.filter((b) => b.classId === classFilter);
+    return [...scopedBatches].sort((a, b) => a.name.localeCompare(b.name));
+  }, [batches, classFilter]);
 
   const getColumns = (): DataTableColumn<FeeStructureRow>[] => {
     if (activeTab === "bus") {
@@ -407,24 +427,29 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
         {/* Row 1: Title/Desc, Filters, Add Button */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Fee setup</h3>
-            <p className="text-sm text-slate-500">Manage tuition, admission, bus and other fee structures.</p>
+            <h3 className="text-lg font-semibold">{mode === "bus" ? "Bus fees" : "Fee setup"}</h3>
+            <p className="text-sm text-slate-500">
+              {mode === "bus"
+                ? "Manage student-wise bus fee amounts and routes."
+                : "Manage tuition, admission and other fee structures."}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <SearchableSelect
-              value={activeTab}
-              onValueChange={setActiveTab}
-              placeholder="Select fee type"
-              className="w-[160px]"
-              options={[
-                { value: "tuition", label: "Tuition" },
-                { value: "admission", label: "Admission" },
-                { value: "bus", label: "Bus" },
-                ...otherTabs
-                  .filter((t) => t.baseLabel && t.baseLabel.trim() !== "")
-                  .map((t) => ({ value: t.baseLabel, label: t.baseLabel })),
-              ]}
-            />
+            {mode === "setup" && (
+              <SearchableSelect
+                value={activeTab}
+                onValueChange={setActiveTab}
+                placeholder="Select fee type"
+                className="w-[160px]"
+                options={[
+                  { value: "tuition", label: "Tuition" },
+                  { value: "admission", label: "Admission" },
+                  ...otherTabs
+                    .filter((t) => t.baseLabel && t.baseLabel.trim() !== "")
+                    .map((t) => ({ value: t.baseLabel, label: t.baseLabel })),
+                ]}
+              />
+            )}
             <SearchableSelect
               value={frequencyFilter}
               onValueChange={setFrequencyFilter}
@@ -437,7 +462,10 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
             />
             <SearchableSelect
               value={classFilter}
-              onValueChange={setClassFilter}
+              onValueChange={(value) => {
+                setClassFilter(value);
+                if (mode === "bus") setBatchFilter(ALL);
+              }}
               placeholder="Class"
               className="w-[140px]"
               options={[
@@ -445,6 +473,18 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
                 ...classes.map((c) => ({ value: c.id, label: c.name })),
               ]}
             />
+            {mode === "bus" && (
+              <SearchableSelect
+                value={batchFilter}
+                onValueChange={setBatchFilter}
+                placeholder="Batch"
+                className="w-[140px]"
+                options={[
+                  { value: ALL, label: "All batches" },
+                  ...batchOptions.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
+            )}
             <Button
               onClick={() => openAddModal()}
               className="gap-2"
@@ -468,7 +508,7 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
           keyExtractor={(row) => row.id}
           loading={loading}
           emptyMessage={activeTab === "bus" ? "No bus fees to show" : activeTab === "admission" ? "No admission fees to show" : activeTab === "tuition" ? "No tuition fees to show" : "No fees to show"}
-          emptyDescription="Add fee structures to get started"
+          emptyDescription={activeTab === "bus" ? "Add bus fees to get started" : "Add fee structures to get started"}
         />
 
             <FeeTablePaginationBar
@@ -513,4 +553,8 @@ export function FeeSetupTab({ classes, students, batches }: FeeSetupTabProps) {
       />
     </Card>
   );
+}
+
+export function BusFeesTab(props: Omit<FeeSetupTabProps, "mode">) {
+  return <FeeSetupTab {...props} mode="bus" />;
 }

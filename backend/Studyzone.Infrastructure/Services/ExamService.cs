@@ -10,38 +10,51 @@ public class ExamService : IExamService
     private readonly IMarksEntryRepository _marksRepo;
     private readonly IClassRepository _classRepo;
     private readonly IStudentRepository _studentRepo;
+    private readonly IStudentEnrollmentRepository _enrollmentRepo;
     private readonly IExamScheduleRepository _scheduleRepo;
     private readonly ITimetableSlotRepository _slotRepo;
     private readonly IBatchRepository _batchRepo;
 
-    public ExamService(IExamRepository examRepo, IMarksEntryRepository marksRepo, IClassRepository classRepo, IStudentRepository studentRepo, IExamScheduleRepository scheduleRepo, ITimetableSlotRepository slotRepo, IBatchRepository batchRepo)
+    public ExamService(IExamRepository examRepo, IMarksEntryRepository marksRepo, IClassRepository classRepo, IStudentRepository studentRepo, IStudentEnrollmentRepository enrollmentRepo, IExamScheduleRepository scheduleRepo, ITimetableSlotRepository slotRepo, IBatchRepository batchRepo)
     {
         _examRepo = examRepo;
         _marksRepo = marksRepo;
         _classRepo = classRepo;
         _studentRepo = studentRepo;
+        _enrollmentRepo = enrollmentRepo;
         _scheduleRepo = scheduleRepo;
         _slotRepo = slotRepo;
         _batchRepo = batchRepo;
     }
 
-    private async Task<(List<string> classIds, List<string> classNames, string? firstClassId, string? firstClassName)> ResolveClassesAsync(Guid examId, Guid? legacyClassId, CancellationToken ct)
+    private async Task<(List<string> classIds, List<string> classNames, List<string> classWideClassIds, List<string> batchIds, List<string> batchNames, string? firstClassId, string? firstClassName)> ResolveClassesAsync(Guid examId, Guid? legacyClassId, CancellationToken ct)
     {
         var links = await _examRepo.GetExamClassesByExamIdAsync(examId, ct);
         var ids = new List<string>();
         var names = new List<string>();
+        var classWideClassIds = new List<string>();
+        var batchIds = new List<string>();
+        var batchNames = new List<string>();
         foreach (var link in links)
         {
             var c = await _classRepo.GetByIdAsync(link.ClassId, ct);
-            if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+            if (c != null && !ids.Contains(c.Id.ToString())) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+            if (!link.BatchId.HasValue && !classWideClassIds.Contains(link.ClassId.ToString()))
+                classWideClassIds.Add(link.ClassId.ToString());
+            if (link.BatchId.HasValue)
+            {
+                var b = await _batchRepo.GetByIdAsync(link.BatchId.Value, ct);
+                if (b != null) { batchIds.Add(b.Id.ToString()); batchNames.Add(b.Name); }
+            }
         }
         // Fall back to legacy ClassId if no junction rows
         if (ids.Count == 0 && legacyClassId.HasValue)
         {
             var c = await _classRepo.GetByIdAsync(legacyClassId.Value, ct);
             if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+            classWideClassIds.Add(legacyClassId.Value.ToString());
         }
-        return (ids, names, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
+        return (ids, names, classWideClassIds, batchIds, batchNames, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
     }
 
     public async Task<ExamDto?> GetByIdAsync(string id, CancellationToken ct = default)
@@ -49,7 +62,7 @@ public class ExamService : IExamService
         if (!Guid.TryParse(id, out var guid)) return null;
         var e = await _examRepo.GetByIdAsync(guid, ct);
         if (e == null) return null;
-        var (classIds, classNames, firstClassId, firstName) = await ResolveClassesAsync(e.Id, e.ClassId, ct);
+        var (classIds, classNames, classWideClassIds, batchIds, batchNames, firstClassId, firstName) = await ResolveClassesAsync(e.Id, e.ClassId, ct);
         return new ExamDto
         {
             Id = e.Id.ToString(),
@@ -59,6 +72,9 @@ public class ExamService : IExamService
             ClassName = firstName,
             ClassIds = classIds,
             ClassNames = classNames,
+            ClassWideClassIds = classWideClassIds,
+            BatchIds = batchIds,
+            BatchNames = batchNames,
             MaxMarks = e.MaxMarks,
             ExamDate = e.ExamDate,
             CreatedAt = e.CreatedAt
@@ -75,7 +91,7 @@ public class ExamService : IExamService
         var dtos = new List<ExamDto>();
         foreach (var e in list)
         {
-            var (classIds, classNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
+            var (classIds, classNames, classWideClassIds, batchIds, batchNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
             dtos.Add(new ExamDto
             {
                 Id = e.Id.ToString(),
@@ -85,6 +101,9 @@ public class ExamService : IExamService
                 ClassName = firstName,
                 ClassIds = classIds,
                 ClassNames = classNames,
+                ClassWideClassIds = classWideClassIds,
+                BatchIds = batchIds,
+                BatchNames = batchNames,
                 MaxMarks = e.MaxMarks,
                 ExamDate = e.ExamDate,
                 CreatedAt = e.CreatedAt
@@ -93,24 +112,35 @@ public class ExamService : IExamService
         return dtos;
     }
 
-    private async Task<(List<string> classIds, List<string> classNames, string? firstClassId, string? firstName)> ResolveClassesFromLinks(Exam e, List<ExamClass>? links, CancellationToken ct)
+    private async Task<(List<string> classIds, List<string> classNames, List<string> classWideClassIds, List<string> batchIds, List<string> batchNames, string? firstClassId, string? firstName)> ResolveClassesFromLinks(Exam e, List<ExamClass>? links, CancellationToken ct)
     {
         var ids = new List<string>();
         var names = new List<string>();
+        var classWideClassIds = new List<string>();
+        var batchIds = new List<string>();
+        var batchNames = new List<string>();
         if (links != null)
         {
             foreach (var link in links)
             {
                 var c = await _classRepo.GetByIdAsync(link.ClassId, ct);
-                if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+                if (c != null && !ids.Contains(c.Id.ToString())) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+                if (!link.BatchId.HasValue && !classWideClassIds.Contains(link.ClassId.ToString()))
+                    classWideClassIds.Add(link.ClassId.ToString());
+                if (link.BatchId.HasValue)
+                {
+                    var b = await _batchRepo.GetByIdAsync(link.BatchId.Value, ct);
+                    if (b != null) { batchIds.Add(b.Id.ToString()); batchNames.Add(b.Name); }
+                }
             }
         }
         if (ids.Count == 0 && e.ClassId.HasValue)
         {
             var c = await _classRepo.GetByIdAsync(e.ClassId.Value, ct);
             if (c != null) { ids.Add(c.Id.ToString()); names.Add(c.Name); }
+            classWideClassIds.Add(e.ClassId.Value.ToString());
         }
-        return (ids, names, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
+        return (ids, names, classWideClassIds, batchIds, batchNames, ids.Count > 0 ? ids[0] : null, names.Count > 0 ? names[0] : null);
     }
 
     public async Task<IReadOnlyList<ExamDto>> GetAllForClassIdsAsync(IReadOnlyList<string> classIds, CancellationToken ct = default)
@@ -126,7 +156,7 @@ public class ExamService : IExamService
         var dtos = new List<ExamDto>();
         foreach (var e in list)
         {
-            var (cIds, cNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
+            var (cIds, cNames, classWideClassIds, batchIds, batchNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
             dtos.Add(new ExamDto
             {
                 Id = e.Id.ToString(),
@@ -136,6 +166,54 @@ public class ExamService : IExamService
                 ClassName = firstName,
                 ClassIds = cIds,
                 ClassNames = cNames,
+                ClassWideClassIds = classWideClassIds,
+                BatchIds = batchIds,
+                BatchNames = batchNames,
+                MaxMarks = e.MaxMarks,
+                ExamDate = e.ExamDate,
+                CreatedAt = e.CreatedAt
+            });
+        }
+        return dtos;
+    }
+
+    public async Task<IReadOnlyList<ExamDto>> GetAllForClassAndBatchIdsAsync(IReadOnlyList<string> classIds, IReadOnlyList<string> batchIds, CancellationToken ct = default)
+    {
+        var classGuids = (classIds ?? Array.Empty<string>())
+            .Select(s => Guid.TryParse(s, out var g) ? (Guid?)g : null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList()
+            .AsReadOnly();
+        var batchGuids = (batchIds ?? Array.Empty<string>())
+            .Select(s => Guid.TryParse(s, out var g) ? (Guid?)g : null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList()
+            .AsReadOnly();
+        if (classGuids.Count == 0 && batchGuids.Count == 0)
+            return Array.Empty<ExamDto>();
+
+        var list = await _examRepo.GetAllForClassAndBatchIdsAsync(classGuids, batchGuids, ct);
+        var examIds = list.Select(e => e.Id).ToList().AsReadOnly();
+        var allLinks = await _examRepo.GetExamClassesByExamIdsAsync(examIds, ct);
+        var linksByExam = allLinks.GroupBy(l => l.ExamId).ToDictionary(gr => gr.Key, gr => gr.ToList());
+        var dtos = new List<ExamDto>();
+        foreach (var e in list)
+        {
+            var (cIds, cNames, classWideClassIds, bIds, bNames, firstClassId, firstName) = await ResolveClassesFromLinks(e, linksByExam.TryGetValue(e.Id, out var links) ? links : null, ct);
+            dtos.Add(new ExamDto
+            {
+                Id = e.Id.ToString(),
+                Name = e.Name,
+                Type = e.Type,
+                ClassId = firstClassId,
+                ClassName = firstName,
+                ClassIds = cIds,
+                ClassNames = cNames,
+                ClassWideClassIds = classWideClassIds,
+                BatchIds = bIds,
+                BatchNames = bNames,
                 MaxMarks = e.MaxMarks,
                 ExamDate = e.ExamDate,
                 CreatedAt = e.CreatedAt
@@ -148,6 +226,19 @@ public class ExamService : IExamService
     {
         // Collect class IDs from both ClassIds list and legacy ClassId
         var classGuids = new List<Guid>();
+        var batchGuids = new List<Guid>();
+        var batchClassIds = new HashSet<Guid>();
+        if (request.BatchIds != null)
+        {
+            foreach (var s in request.BatchIds)
+            {
+                if (!Guid.TryParse(s, out var batchId)) continue;
+                var batch = await _batchRepo.GetByIdAsync(batchId, ct);
+                if (batch == null) continue;
+                batchGuids.Add(batchId);
+                batchClassIds.Add(batch.ClassId);
+            }
+        }
         if (request.ClassIds != null)
         {
             foreach (var s in request.ClassIds)
@@ -157,7 +248,8 @@ public class ExamService : IExamService
         {
             classGuids.Add(single);
         }
-        classGuids = classGuids.Distinct().ToList();
+        classGuids = classGuids.Concat(batchClassIds).Distinct().ToList();
+        batchGuids = batchGuids.Distinct().ToList();
 
         var entity = new Exam
         {
@@ -173,11 +265,30 @@ public class ExamService : IExamService
 
         if (classGuids.Count > 0)
         {
-            var links = classGuids.Select(cg => new ExamClass { Id = Guid.NewGuid(), ExamId = added.Id, ClassId = cg }).ToList();
+            var links = new List<ExamClass>();
+            foreach (var classId in classGuids)
+            {
+                var classBatchIds = new List<Guid>();
+                foreach (var batchId in batchGuids)
+                {
+                    var batch = await _batchRepo.GetByIdAsync(batchId, ct);
+                    if (batch?.ClassId == classId)
+                        classBatchIds.Add(batchId);
+                }
+
+                if (classBatchIds.Count > 0)
+                {
+                    links.AddRange(classBatchIds.Select(batchId => new ExamClass { Id = Guid.NewGuid(), ExamId = added.Id, ClassId = classId, BatchId = batchId }));
+                }
+                else
+                {
+                    links.Add(new ExamClass { Id = Guid.NewGuid(), ExamId = added.Id, ClassId = classId });
+                }
+            }
             await _examRepo.AddExamClassesAsync(links, ct);
         }
 
-        var (classIds, classNames, firstClassId, firstName) = await ResolveClassesAsync(added.Id, added.ClassId, ct);
+        var (classIds, classNames, classWideClassIds, batchIds, batchNames, firstClassId, firstName) = await ResolveClassesAsync(added.Id, added.ClassId, ct);
         return new ExamDto
         {
             Id = added.Id.ToString(),
@@ -187,6 +298,9 @@ public class ExamService : IExamService
             ClassName = firstName,
             ClassIds = classIds,
             ClassNames = classNames,
+            ClassWideClassIds = classWideClassIds,
+            BatchIds = batchIds,
+            BatchNames = batchNames,
             MaxMarks = added.MaxMarks,
             ExamDate = added.ExamDate,
             CreatedAt = added.CreatedAt
@@ -225,6 +339,17 @@ public class ExamService : IExamService
             throw new ArgumentException("Invalid exam id.", nameof(request));
         if (!Guid.TryParse(request.StudentId, out var studentId))
             throw new ArgumentException("Invalid student id.", nameof(request));
+        var links = await _examRepo.GetExamClassesByExamIdAsync(examId, ct);
+        if (links.Count > 0)
+        {
+            var enrollment = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct)
+                ?? throw new InvalidOperationException("Student is not enrolled in the exam scope.");
+            var allowed = links.Any(link =>
+                (link.BatchId.HasValue && enrollment.BatchId == link.BatchId.Value) ||
+                (!link.BatchId.HasValue && enrollment.ClassId == link.ClassId));
+            if (!allowed)
+                throw new InvalidOperationException("Student is not in a class or batch assigned to this exam.");
+        }
         var entry = new MarksEntry
         {
             ExamId = examId,

@@ -719,11 +719,16 @@ namespace Studyzone.Infrastructure.Migrations
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ExamId");
 
-                    b.HasIndex("ExamId", "ClassId")
+                    b.HasIndex("ExamId", "ClassId", "BatchId")
                         .IsUnique();
 
                     b.ToTable("ExamClasses");

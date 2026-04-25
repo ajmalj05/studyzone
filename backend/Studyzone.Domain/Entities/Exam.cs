@@ -16,4 +16,5 @@ public class ExamClass
     public Guid Id { get; set; }
     public Guid ExamId { get; set; }
     public Guid ClassId { get; set; }
+    public Guid? BatchId { get; set; }
 }

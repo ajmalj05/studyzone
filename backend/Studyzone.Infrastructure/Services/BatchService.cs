@@ -64,6 +64,7 @@ public class BatchService : IBatchService
         var classTeacherId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
             ? (Guid?)null
             : ctGuid;
+        await EnsureClassTeacherIsAvailableAsync(classTeacherId, academicYearId, null, ct);
         var entity = new Batch
         {
             Id = Guid.NewGuid(),
@@ -85,11 +86,35 @@ public class BatchService : IBatchService
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Batch not found.");
         entity.Name = request.Name;
         entity.SeatLimit = request.SeatLimit;
-        entity.ClassTeacherUserId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
-            ? null
+        var classTeacherId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
+            ? (Guid?)null
             : ctGuid;
+        await EnsureClassTeacherIsAvailableAsync(classTeacherId, entity.AcademicYearId, entity.Id, ct);
+        entity.ClassTeacherUserId = classTeacherId;
         await _repo.UpdateAsync(entity, ct);
         return await MapAsync(entity, ct);
+    }
+
+    private async Task EnsureClassTeacherIsAvailableAsync(Guid? teacherUserId, Guid academicYearId, Guid? currentBatchId, CancellationToken ct)
+    {
+        if (!teacherUserId.HasValue)
+            return;
+
+        var assignedBatches = await _repo.GetByAcademicYearAsync(academicYearId, ct);
+        var existing = assignedBatches.FirstOrDefault(b =>
+            b.ClassTeacherUserId == teacherUserId.Value &&
+            (!currentBatchId.HasValue || b.Id != currentBatchId.Value));
+
+        if (existing == null)
+            return;
+
+        var teacher = await _userRepo.GetByIdAsync(teacherUserId.Value, ct);
+        var teacherName = teacher?.Name ?? "This teacher";
+        var className = string.IsNullOrWhiteSpace(existing.Class?.Name) ? "this class" : existing.Class.Name;
+        var batchName = string.IsNullOrWhiteSpace(existing.Name) ? null : existing.Name;
+        var location = batchName == null ? className : $"{className} - {batchName}";
+
+        throw new InvalidOperationException($"{teacherName} is already assigned to {location}.");
     }
 
     private async Task<Guid?> ResolveAcademicYearIdAsync(string? academicYearId, CancellationToken ct)

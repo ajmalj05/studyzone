@@ -54,6 +54,47 @@ public class ExamRepository : IExamRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Exam>> GetAllForClassAndBatchIdsAsync(IReadOnlyList<Guid> classIds, IReadOnlyList<Guid> batchIds, CancellationToken ct = default)
+    {
+        var safeClassIds = classIds ?? Array.Empty<Guid>();
+        var safeBatchIds = batchIds ?? Array.Empty<Guid>();
+        if (safeClassIds.Count == 0 && safeBatchIds.Count == 0)
+            return Array.Empty<Exam>();
+
+        var query = _db.ExamClasses.AsNoTracking().AsQueryable();
+        if (safeClassIds.Count > 0 && safeBatchIds.Count > 0)
+        {
+            query = query.Where(ec =>
+                (ec.BatchId.HasValue && safeBatchIds.Contains(ec.BatchId.Value)) ||
+                (!ec.BatchId.HasValue && safeClassIds.Contains(ec.ClassId)));
+        }
+        else if (safeBatchIds.Count > 0)
+        {
+            query = query.Where(ec => ec.BatchId.HasValue && safeBatchIds.Contains(ec.BatchId.Value));
+        }
+        else
+        {
+            query = query.Where(ec => !ec.BatchId.HasValue && safeClassIds.Contains(ec.ClassId));
+        }
+
+        var viaJunction = await query.Select(ec => ec.ExamId).Distinct().ToListAsync(ct);
+
+        var viaLegacy = safeClassIds.Count == 0
+            ? new List<Guid>()
+            : await _db.Exams.AsNoTracking()
+                .Where(x => x.ClassId.HasValue && safeClassIds.Contains(x.ClassId.Value))
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+        var allIds = viaJunction.Union(viaLegacy).Distinct().ToList();
+        if (allIds.Count == 0) return Array.Empty<Exam>();
+
+        return await _db.Exams.AsNoTracking()
+            .Where(x => allIds.Contains(x.Id))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(ct);
+    }
+
     public async Task<Exam> AddAsync(Exam entity, CancellationToken ct = default)
     {
         _db.Exams.Add(entity);

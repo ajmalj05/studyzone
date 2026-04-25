@@ -7,6 +7,7 @@ public interface IExamRepository
     Task<Exam?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Exam>> GetAllAsync(Guid? classId, CancellationToken ct = default);
     Task<IReadOnlyList<Exam>> GetAllForClassIdsAsync(IReadOnlyList<Guid> classIds, CancellationToken ct = default);
+    Task<IReadOnlyList<Exam>> GetAllForClassAndBatchIdsAsync(IReadOnlyList<Guid> classIds, IReadOnlyList<Guid> batchIds, CancellationToken ct = default);
     Task<Exam> AddAsync(Exam entity, CancellationToken ct = default);
     Task<IReadOnlyList<ExamClass>> GetExamClassesByExamIdAsync(Guid examId, CancellationToken ct = default);
     Task<IReadOnlyList<ExamClass>> GetExamClassesByExamIdsAsync(IReadOnlyList<Guid> examIds, CancellationToken ct = default);

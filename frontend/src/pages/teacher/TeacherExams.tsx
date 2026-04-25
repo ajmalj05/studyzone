@@ -19,6 +19,8 @@ interface ExamDto {
   id: string; name: string; type: string;
   classId?: string; className?: string;
   classIds?: string[]; classNames?: string[];
+  classWideClassIds?: string[];
+  batchIds?: string[]; batchNames?: string[];
   maxMarks?: number;
   examDate?: string; createdAt: string;
 }
@@ -27,7 +29,7 @@ interface MarksEntryDto {
   subject: string; marksObtained: number; maxMarks: number;
   status?: string; rejectionReason?: string | null;
 }
-interface StudentDto { id: string; name: string; admissionNumber?: string; }
+interface StudentDto { id: string; name: string; admissionNumber?: string; batchId?: string; }
 interface SubjectDto { id: string; name: string; code?: string; }
 interface TeacherAssignedBatchDto {
   id: string; name: string; classId: string; className: string;
@@ -114,23 +116,36 @@ const TeacherExams = () => {
   }, []);
 
   const selectedExam = exams.find((e) => e.id === selectedExamId);
+  const selectedExamClassId = useMemo(() => {
+    if (!selectedExam) return "";
+    const assignedClassIds = new Set(assignedBatches.map((b) => b.classId));
+    const classWideMatch = selectedExam.classWideClassIds?.find((classId) => assignedClassIds.has(classId));
+    if (classWideMatch) return classWideMatch;
+    const batchMatch = assignedBatches.find((b) => selectedExam.batchIds?.includes(b.id));
+    return batchMatch?.classId ?? selectedExam.classId ?? "";
+  }, [assignedBatches, selectedExam]);
+  const selectedExamBatchIdsForClass = useMemo(() => {
+    if (!selectedExam || !selectedExamClassId || selectedExam.classWideClassIds?.includes(selectedExamClassId)) return [];
+    return (selectedExam.batchIds ?? []).filter((batchId) => assignedBatches.find((b) => b.id === batchId)?.classId === selectedExamClassId);
+  }, [assignedBatches, selectedExam, selectedExamClassId]);
 
   useEffect(() => {
-    if (!selectedExamId || !selectedExam?.classId) {
+    if (!selectedExamId || !selectedExamClassId) {
       setStudents([]); setClassSubjects([]); setMarks([]); setScheduleEntries([]);
       setMarksByStudentSubject({}); setMarksScope(null);
       return;
     }
     setLoadingExamData(true);
     Promise.all([
-      fetchApi(`/Students?classId=${encodeURIComponent(selectedExam.classId)}&status=Active&take=500`) as Promise<{ items: StudentDto[] }>,
-      fetchApi(`/Subjects/for-class/${selectedExam.classId}`) as Promise<SubjectDto[]>,
+      fetchApi(`/Students?classId=${encodeURIComponent(selectedExamClassId)}&status=Active&take=500`) as Promise<{ items: StudentDto[] }>,
+      fetchApi(`/Subjects/for-class/${selectedExamClassId}`) as Promise<SubjectDto[]>,
       fetchApi(`/Exams/${selectedExamId}/marks`) as Promise<MarksEntryDto[]>,
       fetchApi(`/Exams/${selectedExamId}/schedule`).catch(() => []) as Promise<ExamScheduleEntryDto[]>,
-      fetchApi(`/TeacherPortal/marks-scope?classId=${encodeURIComponent(selectedExam.classId)}`).catch(() => null) as Promise<TeacherMarksScopeDto | null>,
+      fetchApi(`/TeacherPortal/marks-scope?classId=${encodeURIComponent(selectedExamClassId)}`).catch(() => null) as Promise<TeacherMarksScopeDto | null>,
     ])
       .then(([studRes, subjList, marksList, schedList, scope]) => {
-        setStudents(studRes?.items ?? []);
+        const loadedStudents = studRes?.items ?? [];
+        setStudents(selectedExamBatchIdsForClass.length > 0 ? loadedStudents.filter((s) => s.batchId && selectedExamBatchIdsForClass.includes(s.batchId)) : loadedStudents);
         setClassSubjects(Array.isArray(subjList) ? subjList : []);
         setMarks(Array.isArray(marksList) ? marksList : []);
         setScheduleEntries(Array.isArray(schedList) ? schedList : []);
@@ -141,13 +156,13 @@ const TeacherExams = () => {
       })
       .catch((e: Error) => toast({ title: "Error", description: e.message || "Failed to load exam data", variant: "destructive" }))
       .finally(() => setLoadingExamData(false));
-  }, [selectedExamId, selectedExam?.classId]);
+  }, [selectedExamId, selectedExamClassId, selectedExamBatchIdsForClass]);
 
   const effectiveMarksScope = useMemo(() => {
     if (marksScope) return marksScope;
-    if (!selectedExam?.classId) return null;
-    return scopeFromBatches(assignedBatches, selectedExam.classId);
-  }, [marksScope, assignedBatches, selectedExam?.classId]);
+    if (!selectedExamClassId) return null;
+    return scopeFromBatches(assignedBatches, selectedExamClassId);
+  }, [marksScope, assignedBatches, selectedExamClassId]);
 
   const entrySubjects = useMemo(
     () => buildEntrySubjects(classSubjects, effectiveMarksScope),
@@ -284,7 +299,8 @@ const TeacherExams = () => {
 
       const metaHtml = `
         <div class="meta-info">
-          <p><strong>Class:</strong> ${selectedExam.className ?? "—"}</p>
+          <p><strong>Class:</strong> ${selectedExam.classNames?.length ? selectedExam.classNames.join(", ") : (selectedExam.className ?? "—")}</p>
+          ${selectedExam.batchNames?.length ? `<p><strong>Batch:</strong> ${selectedExam.batchNames.join(", ")}</p>` : ""}
           <p><strong>Exam Type:</strong> ${TYPE_LABEL[selectedExam.type] ?? selectedExam.type}</p>
           <p><strong>Date:</strong> ${examDate}</p>
           ${selectedSubject ? `<p><strong>Subject:</strong> ${selectedSubject}</p>` : ""}
@@ -353,6 +369,7 @@ const TeacherExams = () => {
               {((exam.classNames && exam.classNames.length > 0) || exam.className) && (
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
                   {exam.classNames && exam.classNames.length > 0 ? exam.classNames.join(", ") : exam.className}
+                {exam.batchNames?.length ? ` · ${exam.batchNames.join(", ")}` : ""}
                 </p>
               )}
             </div>
@@ -466,6 +483,7 @@ const TeacherExams = () => {
                         {selectedExam.classNames && selectedExam.classNames.length > 0
                           ? selectedExam.classNames.join(", ")
                           : selectedExam.className}
+                        {selectedExam.batchNames?.length ? ` · ${selectedExam.batchNames.join(", ")}` : ""}
                       </span>
                     )}
                     {selectedExam.maxMarks != null && (

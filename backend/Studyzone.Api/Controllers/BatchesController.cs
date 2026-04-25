@@ -60,7 +60,7 @@ public class BatchesController : ControllerBase
             return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
         catch (ArgumentException) { return BadRequest(); }
-        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
@@ -72,6 +72,12 @@ public class BatchesController : ControllerBase
             var dto = await _service.UpdateAsync(id, request, ct);
             return Ok(dto);
         }
-        catch (InvalidOperationException) { return NotFound(); }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("Batch not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { message = ex.Message });
+
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

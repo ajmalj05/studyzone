@@ -13,15 +13,6 @@ import {
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -308,10 +299,6 @@ export default function StudentLedger() {
   const [batchFilter, setBatchFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [printing, setPrinting] = useState(false);
-  const [admissionFeeOpen, setAdmissionFeeOpen] = useState(false);
-  const [admissionFeeAmount, setAdmissionFeeAmount] = useState("");
-  const [admissionFeeRecordPayment, setAdmissionFeeRecordPayment] = useState(true);
-  const [admissionFeeSubmitting, setAdmissionFeeSubmitting] = useState(false);
   const [studentFeeOffer, setStudentFeeOffer] = useState<StudentFeeOfferDto | null>(null);
 
   usePageHeaderConfigEffect(
@@ -329,14 +316,18 @@ export default function StudentLedger() {
       params.set("take", "500");
       const res = (await fetchApi(`/Students?${params.toString()}`)) as { items: StudentDto[] };
       setStudents(res.items ?? []);
-    } catch (_) {}
+    } catch {
+      setStudents([]);
+    }
   };
 
   const loadClasses = async () => {
     try {
       const list = (await fetchApi("/Classes")) as ClassDto[];
       setClasses(list);
-    } catch (_) {}
+    } catch {
+      setClasses([]);
+    }
   };
 
   const loadBatches = async () => {
@@ -408,44 +399,6 @@ export default function StudentLedger() {
       setLedger(null);
     }
   }, [classFilter, batchFilter, searchTerm, filteredStudents, selectedStudentId]);
-
-  const handleAddAdmissionFee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStudentId) return;
-    const amount = Number(admissionFeeAmount);
-    if (!admissionFeeAmount.trim() || isNaN(amount) || amount <= 0) {
-      toast({ title: "Validation", description: "Enter a valid amount.", variant: "destructive" });
-      return;
-    }
-    try {
-      setAdmissionFeeSubmitting(true);
-      const result = (await fetchApi("/Fees/admission-fee", {
-        method: "POST",
-        body: JSON.stringify({
-          studentId: selectedStudentId,
-          amount,
-          recordPayment: admissionFeeRecordPayment,
-          paymentMode: "Cash",
-        }),
-      })) as { chargeId: string; paymentId?: string; receiptNumber?: string };
-      toast({
-        title: "Admission fee added",
-        description: admissionFeeRecordPayment && result.receiptNumber
-          ? `Charge and payment recorded. Receipt: ${result.receiptNumber}`
-          : "Charge added. Record a payment from the ledger to print a receipt.",
-      });
-      setAdmissionFeeOpen(false);
-      setAdmissionFeeAmount("");
-      await loadLedger(selectedStudentId);
-      if (admissionFeeRecordPayment && result.paymentId) {
-        await handlePrintReceipt(result.paymentId);
-      }
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed to add admission fee", variant: "destructive" });
-    } finally {
-      setAdmissionFeeSubmitting(false);
-    }
-  };
 
   const handlePrintLedger = async () => {
     if (!ledger || printing) return;
@@ -581,58 +534,9 @@ export default function StudentLedger() {
               >
                 {generateChargesLoading ? "Generating…" : "Generate outstanding"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAdmissionFeeOpen(true)}
-              >
-                Add admission fee
-              </Button>
             </div>
           )}
 
-          <Dialog open={admissionFeeOpen} onOpenChange={setAdmissionFeeOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add admission fee</DialogTitle>
-                <DialogDescription>
-                  Enter the admission fee amount for this student. You can record payment now and print the receipt.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddAdmissionFee} className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Amount (AED)</Label>
-                  <Input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={admissionFeeAmount}
-                    onChange={(e) => setAdmissionFeeAmount(e.target.value)}
-                    placeholder="e.g. 500"
-                    required
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="admission-record-payment"
-                    checked={admissionFeeRecordPayment}
-                    onChange={(e) => setAdmissionFeeRecordPayment(e.target.checked)}
-                    className="rounded border-input"
-                  />
-                  <Label htmlFor="admission-record-payment">Record payment now and print receipt</Label>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setAdmissionFeeOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={admissionFeeSubmitting}>
-                    {admissionFeeSubmitting ? "Adding…" : "Add admission fee"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
           <div className="mt-2">
             <DataTable
               data={filteredStudents}

@@ -28,7 +28,9 @@ public class ExamsController : ControllerBase
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
-            var assigned = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
+            var assignedBatches = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
+            var assigned = assignedBatches.Select(b => b.ClassId).Distinct().ToList();
+            var assignedBatchIds = assignedBatches.Select(b => b.Id).Distinct().ToList();
             if (assigned.Count == 0)
                 return Ok(Array.Empty<ExamDto>());
             if (!string.IsNullOrWhiteSpace(classId))
@@ -38,7 +40,7 @@ public class ExamsController : ControllerBase
                 var filtered = await _service.GetAllAsync(classId, ct);
                 return Ok(filtered);
             }
-            var forClasses = await _service.GetAllForClassIdsAsync(assigned, ct);
+            var forClasses = await _service.GetAllForClassAndBatchIdsAsync(assigned, assignedBatchIds, ct);
             return Ok(forClasses);
         }
 
@@ -56,10 +58,12 @@ public class ExamsController : ControllerBase
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
-            if (string.IsNullOrEmpty(dto.ClassId))
+            if (dto.ClassIds.Count == 0)
                 return Forbid();
-            var assigned = await _portal.GetTeacherAssignedClassIdsAsync(userId, ct);
-            if (!assigned.Contains(dto.ClassId))
+            var assignedBatches = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
+            var assignedClasses = assignedBatches.Select(b => b.ClassId).Distinct().ToHashSet();
+            var assignedBatchIds = assignedBatches.Select(b => b.Id).Distinct().ToHashSet();
+            if (!TeacherCanAccessExam(dto, assignedClasses, assignedBatchIds))
                 return Forbid();
         }
         return Ok(dto);
@@ -88,9 +92,17 @@ public class ExamsController : ControllerBase
             var exam = await _service.GetByIdAsync(examId, ct);
             if (exam == null)
                 return NotFound();
-            if (string.IsNullOrEmpty(exam.ClassId))
+            if (exam.ClassIds.Count == 0)
                 return Forbid();
-            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, exam.ClassId, ct);
+            var assignedBatches = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
+            var assignedClasses = assignedBatches.Select(b => b.ClassId).Distinct().ToHashSet();
+            var assignedBatchIds = assignedBatches.Select(b => b.Id).Distinct().ToHashSet();
+            if (!TeacherCanAccessExam(exam, assignedClasses, assignedBatchIds))
+                return Forbid();
+            var classIdForScope = GetTeacherExamClassScope(exam, assignedBatches, assignedClasses);
+            if (string.IsNullOrEmpty(classIdForScope))
+                return Forbid();
+            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, classIdForScope, ct);
             if (scope == null)
                 return Forbid();
             if (scope.IsClassTeacher)
@@ -156,9 +168,17 @@ public class ExamsController : ControllerBase
             var exam = await _service.GetByIdAsync(request.ExamId, ct);
             if (exam == null)
                 return NotFound();
-            if (string.IsNullOrEmpty(exam.ClassId))
+            if (exam.ClassIds.Count == 0)
                 return BadRequest(new { message = "Exam is not linked to a class." });
-            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, exam.ClassId, ct);
+            var assignedBatches = await _portal.GetTeacherAssignedBatchesAsync(userId, ct);
+            var assignedClasses = assignedBatches.Select(b => b.ClassId).Distinct().ToHashSet();
+            var assignedBatchIds = assignedBatches.Select(b => b.Id).Distinct().ToHashSet();
+            if (!TeacherCanAccessExam(exam, assignedClasses, assignedBatchIds))
+                return Forbid();
+            var classIdForScope = GetTeacherExamClassScope(exam, assignedBatches, assignedClasses);
+            if (string.IsNullOrEmpty(classIdForScope))
+                return BadRequest(new { message = "Exam is not linked to a class." });
+            var scope = await _portal.GetTeacherMarksScopeForClassAsync(userId, classIdForScope, ct);
             if (scope == null)
                 return Forbid();
             if (!scope.IsClassTeacher)
@@ -175,6 +195,7 @@ public class ExamsController : ControllerBase
             return NoContent();
         }
         catch (ArgumentException) { return BadRequest(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpGet("{examId}/schedule")]
@@ -233,6 +254,21 @@ public class ExamsController : ControllerBase
     }
 
     private bool IsTeacher() => User.IsInRole("Teacher") || User.IsInRole("teacher");
+
+    private static bool TeacherCanAccessExam(ExamDto exam, IReadOnlySet<string> assignedClassIds, IReadOnlySet<string> assignedBatchIds)
+    {
+        return exam.BatchIds.Any(assignedBatchIds.Contains)
+            || exam.ClassWideClassIds.Any(assignedClassIds.Contains);
+    }
+
+    private static string? GetTeacherExamClassScope(ExamDto exam, IReadOnlyList<TeacherAssignedBatchDto> assignedBatches, IReadOnlySet<string> assignedClassIds)
+    {
+        var classWideScope = exam.ClassWideClassIds.FirstOrDefault(assignedClassIds.Contains);
+        if (!string.IsNullOrEmpty(classWideScope))
+            return classWideScope;
+
+        return assignedBatches.FirstOrDefault(b => exam.BatchIds.Contains(b.Id))?.ClassId;
+    }
 
     private static bool SubjectInScope(string subject, IReadOnlyList<string> scope)
     {

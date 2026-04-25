@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Plus, FileText, ClipboardList, CheckCircle2, XCircle, CalendarDays, Pencil, Trash2, ChevronDown, PencilLine, X } from "lucide-react";
+import { Plus, FileText, CheckCircle2, XCircle, CalendarDays, Pencil, Trash2, ChevronDown, PencilLine, X } from "lucide-react";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AcademicsCardIconLead } from "@/components/AcademicsCardIconLead";
@@ -35,6 +35,9 @@ interface ExamDto {
   className?: string;
   classIds?: string[];
   classNames?: string[];
+  classWideClassIds?: string[];
+  batchIds?: string[];
+  batchNames?: string[];
   maxMarks?: number;
   examDate?: string;
   createdAt: string;
@@ -107,12 +110,14 @@ export default function Exams() {
   const [selectedExamId, setSelectedExamId] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", type: "UnitTest", classIds: [] as string[], maxMarks: "", examDate: "" });
+  const [form, setForm] = useState({ name: "", type: "Unit Test", classIds: [] as string[], batchIds: [] as string[], maxMarks: "", examDate: "" });
   const [classPickerOpen, setClassPickerOpen] = useState(false);
+  const [batchPickerOpen, setBatchPickerOpen] = useState(false);
   const [showMarksPanel, setShowMarksPanel] = useState(false);
   const [showSchedulePanel, setShowSchedulePanel] = useState(false);
-  const [marksForm, setMarksForm] = useState({ studentId: "", subject: "", marksObtained: "", maxMarks: "100" });
-  const [showMarksModal, setShowMarksModal] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [marksByStudentSubject, setMarksByStudentSubject] = useState<Record<string, { obtained: string; max: string }>>({});
+  const [savingMarks, setSavingMarks] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectEntryId, setRejectEntryId] = useState("");
@@ -131,22 +136,35 @@ export default function Exams() {
     try {
       const list = (await fetchApi("/Exams")) as ExamDto[];
       setExams(list);
-    } catch (_) {}
+    } catch {
+      setExams([]);
+    }
   };
 
   const loadClasses = async () => {
     try {
       const list = (await fetchApi("/Classes")) as ClassDto[];
       setClasses(list);
-    } catch (_) {}
+    } catch {
+      setClasses([]);
+    }
   };
 
   const loadMarks = async () => {
     if (!selectedExamId) return;
     try {
       const list = (await fetchApi(`/Exams/${selectedExamId}/marks`)) as MarksEntryDto[];
-      setMarks(list);
-    } catch (_) {}
+      const safeList = Array.isArray(list) ? list : [];
+      setMarks(safeList);
+      const map: Record<string, { obtained: string; max: string }> = {};
+      safeList.forEach((m) => {
+        map[`${m.studentId}:${m.subject}`] = { obtained: String(m.marksObtained), max: String(m.maxMarks) };
+      });
+      setMarksByStudentSubject(map);
+    } catch {
+      setMarks([]);
+      setMarksByStudentSubject({});
+    }
   };
 
   const loadSchedule = async (examId: string) => {
@@ -185,23 +203,79 @@ export default function Exams() {
   }, [marksClassFilter]);
 
   const selectedExam = exams.find((e) => e.id === selectedExamId);
-  const selectedExamClassId = selectedExam?.classId;
-  const marksBatchesForClass = batches.filter((b) => b.classId === marksClassFilter);
-  const marksFilteredStudents = students.filter((s) => !marksBatchFilter || s.batchId === marksBatchFilter);
+  const createBatchOptions = batches.filter((b) => form.classIds.includes(b.classId));
+  const marksClassOptions = selectedExam?.classIds?.length
+    ? classes.filter((c) => selectedExam.classIds?.includes(c.id))
+    : classes;
+  const selectedClassIsClassWide = !selectedExam?.classIds?.length || selectedExam.classWideClassIds?.includes(marksClassFilter);
+  const selectedExamBatchIdsForClass = selectedClassIsClassWide
+    ? []
+    : (selectedExam?.batchIds ?? []).filter((batchId) => batches.find((b) => b.id === batchId)?.classId === marksClassFilter);
+  const marksBatchesForClass = batches.filter((b) =>
+    b.classId === marksClassFilter &&
+    (selectedClassIsClassWide || selectedExamBatchIdsForClass.includes(b.id))
+  );
+  const marksFilteredStudents = students.filter((s) => {
+    if (!selectedClassIsClassWide && (!s.batchId || !selectedExamBatchIdsForClass.includes(s.batchId))) return false;
+    return !marksBatchFilter || s.batchId === marksBatchFilter;
+  });
+  const adminMaxMarks = selectedExam?.maxMarks != null ? String(selectedExam.maxMarks) : "100";
+  const filledMarksCount = selectedSubject
+    ? marksFilteredStudents.filter((s) => {
+        const v = marksByStudentSubject[`${s.id}:${selectedSubject}`];
+        return v?.obtained && v.obtained !== "";
+      }).length
+    : 0;
+  const selectedClassName = classes.find((c) => c.id === marksClassFilter)?.name;
 
   useEffect(() => {
-    if (!selectedExamClassId) {
+    if (!marksClassFilter) {
       setSubjectsForExamClass([]);
+      setSelectedSubject("");
       return;
     }
-    fetchApi(`/Subjects/for-class/${selectedExamClassId}`)
-      .then((list: SubjectDto[]) => setSubjectsForExamClass(Array.isArray(list) ? list : []))
-      .catch(() => setSubjectsForExamClass([]));
-  }, [selectedExamClassId]);
+    fetchApi(`/Subjects/for-class/${marksClassFilter}`)
+      .then((list: SubjectDto[]) => {
+        const safeList = Array.isArray(list) ? list : [];
+        setSubjectsForExamClass(safeList);
+        setSelectedSubject((prev) => safeList.some((s) => s.name === prev) ? prev : (safeList[0]?.name ?? ""));
+      })
+      .catch(() => {
+        setSubjectsForExamClass([]);
+        setSelectedSubject("");
+      });
+  }, [marksClassFilter]);
 
-  useEffect(() => {
-    setMarksForm((f) => ({ ...f, subject: "" }));
-  }, [selectedExamId]);
+  const getGrade = (marksValue: number) => {
+    if (marksValue >= 90) return "A+";
+    if (marksValue >= 80) return "A";
+    if (marksValue >= 70) return "B+";
+    if (marksValue >= 60) return "B";
+    if (marksValue >= 50) return "C";
+    return "F";
+  };
+
+  const setMark = (studentId: string, obtained: string) => {
+    setMarksByStudentSubject((prev) => ({
+      ...prev,
+      [`${studentId}:${selectedSubject}`]: { obtained, max: adminMaxMarks },
+    }));
+  };
+
+  const getCellDisplay = (studentId: string, subjectName: string) => {
+    const val = marksByStudentSubject[`${studentId}:${subjectName}`];
+    if (val?.obtained) return `${val.obtained}/${val.max || adminMaxMarks} (${getGrade(parseFloat(val.obtained) || 0)})`;
+    const row = marks.find((m) => m.studentId === studentId && m.subject === subjectName);
+    if (row) return `${row.marksObtained}/${row.maxMarks}`;
+    return "—";
+  };
+
+  const overviewSubjects = useMemo(() => {
+    const names = new Set<string>();
+    subjectsForExamClass.forEach((s) => names.add(s.name));
+    marks.forEach((m) => names.add(m.subject));
+    return Array.from(names).sort();
+  }, [subjectsForExamClass, marks]);
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,20 +283,25 @@ export default function Exams() {
       toast({ title: "Validation", description: "Exam name required.", variant: "destructive" });
       return;
     }
+    if (!form.type.trim()) {
+      toast({ title: "Validation", description: "Exam type required.", variant: "destructive" });
+      return;
+    }
     try {
       await fetchApi("/Exams", {
         method: "POST",
         body: JSON.stringify({
-          name: form.name,
-          type: form.type,
+          name: form.name.trim(),
+          type: form.type.trim(),
           classIds: form.classIds.length > 0 ? form.classIds : undefined,
+          batchIds: form.batchIds.length > 0 ? form.batchIds : undefined,
           maxMarks: form.maxMarks ? parseFloat(form.maxMarks) : undefined,
           examDate: form.examDate ? new Date(form.examDate).toISOString() : undefined,
         }),
       });
       toast({ title: "Success", description: "Exam created." });
       setShowCreate(false);
-      setForm({ name: "", type: "UnitTest", classIds: [], maxMarks: "", examDate: "" });
+      setForm({ name: "", type: "Unit Test", classIds: [], batchIds: [], maxMarks: "", examDate: "" });
       await loadExams();
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
@@ -336,34 +415,52 @@ export default function Exams() {
     }
   };
 
-  const handleSaveMarks = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedExamId || !marksForm.studentId || !marksForm.subject.trim()) {
-      toast({ title: "Validation", description: "Exam, student and subject required.", variant: "destructive" });
+  const handleSaveMarks = async () => {
+    if (!selectedExamId || !selectedSubject.trim()) {
+      toast({ title: "Validation", description: "Select an exam and subject.", variant: "destructive" });
       return;
     }
-    try {
-      await fetchApi("/Exams/marks", {
-        method: "POST",
-        body: JSON.stringify({
-          examId: selectedExamId,
-          studentId: marksForm.studentId,
-          subject: marksForm.subject,
-          marksObtained: parseFloat(marksForm.marksObtained) || 0,
-          maxMarks: parseFloat(marksForm.maxMarks) || 100,
-        }),
-      });
-      toast({ title: "Success", description: "Marks saved." });
-      setMarksForm({ studentId: "", subject: "", marksObtained: "", maxMarks: "100" });
-      setShowMarksModal(false);
+    setSavingMarks(true);
+    let saved = 0;
+    let failed = 0;
+    for (const student of marksFilteredStudents) {
+      const val = marksByStudentSubject[`${student.id}:${selectedSubject}`];
+      if (!val || val.obtained === "") continue;
+      try {
+        await fetchApi("/Exams/marks", {
+          method: "POST",
+          body: JSON.stringify({
+            examId: selectedExamId,
+            studentId: student.id,
+            subject: selectedSubject,
+            marksObtained: parseFloat(val.obtained) || 0,
+            maxMarks: parseFloat(val.max) || parseFloat(adminMaxMarks) || 100,
+          }),
+        });
+        saved++;
+      } catch {
+        failed++;
+      }
+    }
+    setSavingMarks(false);
+    if (saved > 0) {
+      toast({ title: "Success", description: `Marks saved for ${saved} student(s).` });
       await loadMarks();
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    }
+    if (failed > 0) {
+      toast({ title: "Error", description: `${failed} save(s) failed.`, variant: "destructive" });
     }
   };
 
   const handleOpenMarks = (examId: string) => {
+    const exam = exams.find((e) => e.id === examId);
+    const defaultClassId = exam?.classIds?.[0] || exam?.classId || "";
+    const defaultClassIsWide = !exam?.classIds?.length || exam.classWideClassIds?.includes(defaultClassId);
+    const defaultBatchId = defaultClassIsWide ? "" : (exam?.batchIds?.find((batchId) => batches.find((b) => b.id === batchId)?.classId === defaultClassId) || "");
     setSelectedExamId(examId);
+    setMarksClassFilter(defaultClassId);
+    setMarksBatchFilter(defaultBatchId);
+    setSelectedSubject("");
     setShowMarksPanel(true);
   };
 
@@ -372,10 +469,12 @@ export default function Exams() {
     setShowSchedulePanel(true);
   };
 
-  const TYPE_LABEL: Record<string, string> = { UnitTest: "Unit Test", MidTerm: "Mid Term", Final: "Final" };
+  const TYPE_LABEL: Record<string, string> = { UnitTest: "Unit Test", "Unit Test": "Unit Test", MidTerm: "Mid Term", "Mid Term": "Mid Term", Final: "Final" };
   const TYPE_COLOR: Record<string, string> = {
     UnitTest: "bg-blue-50 text-blue-700 border-blue-200",
+    "Unit Test": "bg-blue-50 text-blue-700 border-blue-200",
     MidTerm: "bg-violet-50 text-violet-700 border-violet-200",
+    "Mid Term": "bg-violet-50 text-violet-700 border-violet-200",
     Final: "bg-rose-50 text-rose-700 border-rose-200",
   };
 
@@ -396,13 +495,18 @@ export default function Exams() {
     },
     {
       key: "classes",
-      header: "Classes",
+      header: "Scope",
       cell: (exam) => (
-        <span className="capitalize">
-          {exam.classNames && exam.classNames.length > 0
-            ? exam.classNames.join(", ")
-            : (exam.className ?? <span className="italic opacity-60">All Classes</span>)}
-        </span>
+        <div className="space-y-0.5">
+          <div className="capitalize">
+            {exam.classNames && exam.classNames.length > 0
+              ? exam.classNames.join(", ")
+              : (exam.className ?? <span className="italic opacity-60">All Classes</span>)}
+          </div>
+          {exam.batchNames?.length ? (
+            <div className="text-xs text-muted-foreground">Batches: {exam.batchNames.join(", ")}</div>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -470,7 +574,7 @@ export default function Exams() {
               />
             </CardContent>
           </Card>
-          <Dialog open={showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) setClassPickerOpen(false); }}>
+          <Dialog open={showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) { setClassPickerOpen(false); setBatchPickerOpen(false); } }}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create Exam</DialogTitle>
@@ -483,16 +587,19 @@ export default function Exams() {
                     <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Mid Term 2025" required />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Exam Type</Label>
-                    <SearchableSelect
+                    <Label>Exam Type <span className="text-destructive">*</span></Label>
+                    <Input
                       value={form.type}
-                      onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}
-                      options={[
-                        { value: "UnitTest", label: "Unit Test" },
-                        { value: "MidTerm", label: "Mid Term" },
-                        { value: "Final", label: "Final" },
-                      ]}
+                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+                      placeholder="e.g. Unit Test, Mid Term, Practical"
+                      list="exam-type-suggestions"
+                      required
                     />
+                    <datalist id="exam-type-suggestions">
+                      <option value="Unit Test" />
+                      <option value="Mid Term" />
+                      <option value="Final" />
+                    </datalist>
                   </div>
                 </div>
 
@@ -529,12 +636,17 @@ export default function Exams() {
                               <Checkbox
                                 checked={form.classIds.includes(c.id)}
                                 onCheckedChange={(checked) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    classIds: checked
+                                  setForm((f) => {
+                                    const classIds = checked
                                       ? [...f.classIds, c.id]
-                                      : f.classIds.filter((id) => id !== c.id),
-                                  }))
+                                      : f.classIds.filter((id) => id !== c.id);
+                                    const allowedBatchIds = new Set(batches.filter((b) => classIds.includes(b.classId)).map((b) => b.id));
+                                    return {
+                                      ...f,
+                                      classIds,
+                                      batchIds: f.batchIds.filter((id) => allowedBatchIds.has(id)),
+                                    };
+                                  })
                                 }
                               />
                               {c.name}
@@ -551,7 +663,7 @@ export default function Exams() {
                               variant="ghost"
                               size="sm"
                               className="w-full text-xs h-7"
-                              onClick={() => setForm((f) => ({ ...f, classIds: [] }))}
+                              onClick={() => setForm((f) => ({ ...f, classIds: [], batchIds: [] }))}
                             >
                               Clear Selection
                             </Button>
@@ -574,7 +686,76 @@ export default function Exams() {
                   </div>
                 </div>
 
-                {/* Row 3: Date (half width) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Batches <span className="text-xs text-muted-foreground font-normal">(Optional — Class Wide If Empty)</span></Label>
+                    <Popover open={batchPickerOpen} onOpenChange={setBatchPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          disabled={form.classIds.length === 0}
+                          className={cn(
+                            "w-full justify-between font-normal h-9 text-sm",
+                            form.batchIds.length === 0 && "text-muted-foreground"
+                          )}
+                        >
+                          <span className="truncate">
+                            {form.classIds.length === 0
+                              ? "Select classes first"
+                              : form.batchIds.length === 0
+                                ? "All batches in selected classes"
+                                : createBatchOptions.filter((b) => form.batchIds.includes(b.id)).map((b) => b.name).join(", ")}
+                          </span>
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                        <div className="space-y-1 max-h-52 overflow-y-auto">
+                          {createBatchOptions.map((b) => (
+                            <label
+                              key={b.id}
+                              className="flex items-center gap-2.5 cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-muted/60 transition-colors"
+                            >
+                              <Checkbox
+                                checked={form.batchIds.includes(b.id)}
+                                onCheckedChange={(checked) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    batchIds: checked
+                                      ? [...f.batchIds, b.id]
+                                      : f.batchIds.filter((id) => id !== b.id),
+                                  }))
+                                }
+                              />
+                              <span>{classes.find((c) => c.id === b.classId)?.name} - {b.name}</span>
+                            </label>
+                          ))}
+                          {createBatchOptions.length === 0 && (
+                            <p className="text-xs text-muted-foreground px-2 py-1">No batches available for selected classes.</p>
+                          )}
+                        </div>
+                        {form.batchIds.length > 0 && (
+                          <div className="border-t mt-2 pt-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs h-7"
+                              onClick={() => setForm((f) => ({ ...f, batchIds: [] }))}
+                            >
+                              Clear Batch Selection
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-muted-foreground">Pick batches only when this exam is not for the whole class.</p>
+                  </div>
+                </div>
+
+                {/* Row 4: Date (half width) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Exam Date <span className="text-xs text-muted-foreground font-normal">(Optional)</span></Label>
@@ -593,8 +774,12 @@ export default function Exams() {
 
       {/* ── Marks modal ─────────────────────────────────────────────────── */}
       {selectedExam && (
-        <Dialog open={showMarksPanel} onOpenChange={(o) => { setShowMarksPanel(o); if (!o) setShowMarksModal(false); }}>
+        <Dialog open={showMarksPanel} onOpenChange={setShowMarksPanel}>
           <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
+            <DialogTitle className="sr-only">{selectedExam.name} marks</DialogTitle>
+            <DialogDescription className="sr-only">
+              View existing marks, select a class, batch, and subject, then enter marks for students.
+            </DialogDescription>
             {/* Header */}
             <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0">
               <div>
@@ -603,6 +788,7 @@ export default function Exams() {
                   {selectedExam.classNames && selectedExam.classNames.length > 0
                     ? selectedExam.classNames.join(", ")
                     : (selectedExam.className ?? "All Classes")}
+                  {selectedExam.batchNames?.length ? ` · Batches: ${selectedExam.batchNames.join(", ")}` : ""}
                   {selectedExam.maxMarks != null && ` · Max Marks: ${selectedExam.maxMarks}`}
                 </p>
               </div>
@@ -612,63 +798,155 @@ export default function Exams() {
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {marks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-                  <ClipboardList className="h-9 w-9 mb-2 opacity-30" />
-                  <p className="text-sm font-medium">No Marks Recorded Yet.</p>
-                  <p className="text-xs opacity-60 mt-1">Click "Add Marks" To Enter The First Entry.</p>
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-5">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class</Label>
+                  <SearchableSelect
+                    value={marksClassFilter}
+                    onValueChange={(v) => {
+                      setMarksClassFilter(v);
+                      setMarksBatchFilter("");
+                    }}
+                    placeholder="Select class"
+                    options={marksClassOptions.map((c) => ({ value: c.id, label: c.name }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</Label>
+                  <SearchableSelect
+                    value={marksBatchFilter || "_all"}
+                    onValueChange={(v) => setMarksBatchFilter(v === "_all" ? "" : v)}
+                    placeholder="All batches"
+                    options={[
+                      { value: "_all", label: "All batches" },
+                      ...marksBatchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                    ]}
+                    disabled={!marksClassFilter || marksBatchesForClass.length === 0}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</Label>
+                  <SearchableSelect
+                    value={selectedSubject}
+                    onValueChange={setSelectedSubject}
+                    placeholder="Select subject"
+                    options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
+                    disabled={!marksClassFilter || subjectsForExamClass.length === 0}
+                  />
+                </div>
+              </div>
+
+              {marksClassFilter && overviewSubjects.length > 0 && marksFilteredStudents.length > 0 && (
+                <div className="overflow-x-auto rounded-xl border border-border/60">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="sticky left-0 z-[1] bg-muted/40 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th>
+                        {overviewSubjects.map((subject) => (
+                          <th key={subject} className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                            {subject}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {marksFilteredStudents.map((student, index) => (
+                        <tr key={student.id} className={cn("border-b border-border/40 transition-colors hover:bg-muted/20", index % 2 !== 0 && "bg-muted/10")}>
+                          <td className="sticky left-0 z-[1] bg-background px-4 py-3 font-medium">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full gradient-primary text-[10px] font-bold text-primary-foreground">
+                                {student.name.charAt(0)}
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium">{student.name}</span>
+                                {student.admissionNumber && <span className="block text-[10px] text-muted-foreground">{student.admissionNumber}</span>}
+                              </div>
+                            </div>
+                          </td>
+                          {overviewSubjects.map((subject) => (
+                            <td key={subject} className="px-3 py-3 text-center text-xs font-medium tabular-nums">
+                              {getCellDisplay(student.id, subject)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!marksClassFilter ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">Select a class to enter marks.</p>
+              ) : subjectsForExamClass.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">No subjects mapped to this class.</p>
+              ) : marksFilteredStudents.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">No active students found for this selection.</p>
+              ) : selectedSubject ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      {filledMarksCount} / {marksFilteredStudents.length} filled for {selectedSubject}
+                    </p>
+                    {selectedClassName && <p className="text-xs text-muted-foreground">{selectedClassName}</p>}
+                  </div>
+                  {marksFilteredStudents.map((student, index) => {
+                    const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: adminMaxMarks };
+                    const num = parseFloat(val.obtained || "0");
+                    const maxNum = parseFloat(adminMaxMarks || "100");
+                    const pct = val.obtained && maxNum > 0 ? Math.round((num / maxNum) * 100) : null;
+                    const grade = val.obtained ? getGrade(num) : "—";
+                    const rowMark = marks.find((m) => m.studentId === student.id && m.subject === selectedSubject);
+                    const approvalStatus = rowMark?.status;
+                    return (
+                      <div
+                        key={student.id}
+                        className={cn(
+                          "flex flex-wrap items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3 transition-colors hover:bg-muted/20",
+                          index % 2 !== 0 && "bg-muted/10",
+                        )}
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full gradient-primary text-sm font-bold text-primary-foreground">
+                          {student.admissionNumber?.slice(-2) ?? student.name.charAt(0)}
+                        </div>
+                        <div className="min-w-[140px] flex-1">
+                          <p className="text-sm font-semibold text-foreground">{student.name}</p>
+                          {student.admissionNumber && <p className="text-[10px] text-muted-foreground">{student.admissionNumber}</p>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Marks"
+                            value={val.obtained}
+                            onChange={(e) => setMark(student.id, e.target.value)}
+                            className="h-9 w-24 rounded-xl text-center"
+                            min={0}
+                            max={parseFloat(adminMaxMarks) || 999}
+                          />
+                          <span className="text-sm text-muted-foreground">/ {adminMaxMarks}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("w-8 text-center text-sm font-bold", grade === "F" ? "text-destructive" : grade === "A+" ? "text-emerald-600" : "text-primary")}>
+                            {grade}
+                          </span>
+                          {pct !== null && <span className="w-10 text-right text-xs text-muted-foreground">{pct}%</span>}
+                        </div>
+                        {approvalStatus && (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <Badge variant={approvalStatus === "Approved" ? "default" : approvalStatus === "Rejected" ? "destructive" : "secondary"} className="px-1.5 py-0 text-[10px]">
+                              {approvalStatus}
+                            </Badge>
+                            {approvalStatus === "Rejected" && rowMark?.rejectionReason && (
+                              <span className="max-w-[120px] truncate text-[10px] text-muted-foreground" title={rowMark.rejectionReason}>{rowMark.rejectionReason}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead className="text-right">Marks</TableHead>
-                      <TableHead className="text-right">Max</TableHead>
-                      <TableHead>Status</TableHead>
-                      {isAdmin && <TableHead className="text-right">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {marks.map((m) => {
-                      const st = m.status ?? "Approved";
-                      return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium capitalize">{m.studentName}</TableCell>
-                          <TableCell className="capitalize">{m.subject}</TableCell>
-                          <TableCell className="text-right tabular-nums font-semibold">{m.marksObtained}</TableCell>
-                          <TableCell className="text-right tabular-nums">{m.maxMarks}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <Badge variant={st === "Approved" ? "default" : st === "Rejected" ? "destructive" : "secondary"} className="w-fit text-[10px]">
-                                {st}
-                              </Badge>
-                              {st === "Rejected" && m.rejectionReason && (
-                                <span className="text-[10px] text-muted-foreground max-w-[180px] truncate">{m.rejectionReason}</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          {isAdmin && (
-                            <TableCell className="text-right">
-                              {st === "Pending" && (
-                                <div className="flex justify-end gap-1">
-                                  <Button type="button" size="sm" variant="outline" className="h-7 gap-1 rounded-[var(--radius)]" onClick={() => void handleApproveRow(m.id)}>
-                                    <CheckCircle2 className="h-3 w-3" /> Approve
-                                  </Button>
-                                  <Button type="button" size="sm" variant="outline" className="h-7 gap-1 rounded-[var(--radius)]" onClick={() => openReject(m.id)}>
-                                    <XCircle className="h-3 w-3" /> Reject
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <p className="py-10 text-center text-sm text-muted-foreground">Select a subject to enter marks.</p>
               )}
             </div>
 
@@ -680,8 +958,13 @@ export default function Exams() {
                   {approvingAll ? "Approving…" : "Approve All Pending"}
                 </Button>
               )}
-              <Button size="sm" className="rounded-lg gap-1.5" onClick={() => setShowMarksModal(true)}>
-                <Plus className="h-3.5 w-3.5" /> Add Marks
+              <Button
+                size="sm"
+                className="rounded-lg gap-1.5"
+                onClick={handleSaveMarks}
+                disabled={savingMarks || !selectedSubject || marksFilteredStudents.length === 0}
+              >
+                {savingMarks ? "Saving…" : "Save Marks"}
               </Button>
             </div>
           </DialogContent>
@@ -692,6 +975,10 @@ export default function Exams() {
       {selectedExam && isAdmin && (
         <Dialog open={showSchedulePanel} onOpenChange={(o) => { setShowSchedulePanel(o); if (!o) setShowScheduleForm(false); }}>
           <DialogContent className="max-w-3xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
+            <DialogTitle className="sr-only">{selectedExam.name} schedule</DialogTitle>
+            <DialogDescription className="sr-only">
+              View and manage subject dates, times, and venues for this exam.
+            </DialogDescription>
             {/* Header */}
             <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0">
               <div>
@@ -755,74 +1042,6 @@ export default function Exams() {
                 <Plus className="h-3.5 w-3.5" /> Add Entry
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* ── Add marks sub-dialog ─────────────────────────────────────────── */}
-      {selectedExam && (
-        <Dialog open={showMarksModal} onOpenChange={(o) => { setShowMarksModal(o); if (!o) { setMarksClassFilter(""); setMarksBatchFilter(""); setStudents([]); } }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Marks</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSaveMarks} className="space-y-3">
-              {/* Class + Batch — side by side */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Class</Label>
-                  <SearchableSelect
-                    value={marksClassFilter}
-                    onValueChange={(v) => { setMarksClassFilter(v); setMarksBatchFilter(""); setMarksForm((f) => ({ ...f, studentId: "" })); }}
-                    placeholder="Select Class…"
-                    options={classes.map((c) => ({ value: c.id, label: c.name }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Batch <span className="text-xs text-muted-foreground font-normal">(Optional)</span></Label>
-                  <SearchableSelect
-                    value={marksBatchFilter}
-                    onValueChange={(v) => { setMarksBatchFilter(v); setMarksForm((f) => ({ ...f, studentId: "" })); }}
-                    placeholder={
-                      !marksClassFilter
-                        ? "Select A Class First…"
-                        : marksBatchesForClass.length === 0
-                          ? "No Batches For This Class"
-                          : "All Batches"
-                    }
-                    options={marksBatchesForClass.map((b) => ({ value: b.id, label: b.name }))}
-                    disabled={!marksClassFilter || marksBatchesForClass.length === 0}
-                  />
-                </div>
-              </div>
-              {/* Student */}
-              <div className="space-y-1">
-                <Label>Student</Label>
-                <SearchableSelect
-                  value={marksForm.studentId}
-                  onValueChange={(v) => setMarksForm((f) => ({ ...f, studentId: v }))}
-                  placeholder={marksClassFilter ? "Select Student…" : "Select A Class First…"}
-                  options={marksFilteredStudents.map((s) => ({ value: s.id, label: s.name + (s.admissionNumber ? ` (${s.admissionNumber})` : "") }))}
-                  disabled={!marksClassFilter}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Subject</Label>
-                {subjectsForExamClass.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No Subjects Mapped To This Exam's Class.</p>
-                ) : (
-                  <SearchableSelect value={marksForm.subject || ""} onValueChange={(v) => setMarksForm((f) => ({ ...f, subject: v }))} placeholder="Select subject" options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))} />
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Marks</Label><Input type="number" min="0" step="0.01" value={marksForm.marksObtained} onChange={(e) => setMarksForm((f) => ({ ...f, marksObtained: e.target.value }))} placeholder="Obtained" /></div>
-                <div className="space-y-1"><Label>Max</Label><Input type="number" min="1" value={marksForm.maxMarks} onChange={(e) => setMarksForm((f) => ({ ...f, maxMarks: e.target.value }))} /></div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShowMarksModal(false)}>Cancel</Button>
-                <Button type="submit" disabled={subjectsForExamClass.length === 0 || !marksForm.subject.trim()}>Save</Button>
-              </DialogFooter>
-            </form>
           </DialogContent>
         </Dialog>
       )}

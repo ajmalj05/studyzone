@@ -83,6 +83,22 @@ export default function ClassTeacherAssign() {
   }, [currentYear?.id]);
 
   const updateBatchTeacher = async (batch: BatchDto, teacherUserId: string | null) => {
+    if (teacherUserId) {
+      const existing = batches.find((b) => b.id !== batch.id && b.classTeacherUserId === teacherUserId);
+      if (existing) {
+        const teacher = teachers.find((t) => t.id === teacherUserId);
+        const teacherName = teacher?.name ?? "This teacher";
+        const location = `${existing.className || classesById.get(existing.classId)?.name || "this class"} - ${existing.name}`;
+        toast({
+          title: "Teacher already assigned",
+          description: `${teacherName} is already assigned to ${location}.`,
+          variant: "destructive",
+        });
+        setPendingAssignments((prev) => ({ ...prev, [batch.id]: batch.classTeacherUserId || "_none" }));
+        return;
+      }
+    }
+
     setUpdatingBatchId(batch.id);
     try {
       await fetchApi(`/Batches/${batch.id}`, {

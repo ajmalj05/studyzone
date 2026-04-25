@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FeeSetupTab } from "@/components/fees/tabs/FeeSetupTab";
+import { BusFeesTab, FeeSetupTab } from "@/components/fees/tabs/FeeSetupTab";
 import { StudentBillingTab } from "@/components/fees/tabs/StudentBillingTab";
 import { PaymentsTab } from "@/components/fees/tabs/PaymentsTab";
 import FeeOffers from "./FeeOffers";
@@ -10,9 +10,9 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "@/hooks/use-toast";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { PillTabs } from "@/components/ui/pill-tabs";
-import { Settings, CreditCard, Banknote, Tag, BookOpen } from "lucide-react";
+import { Settings, CreditCard, Banknote, Tag, BookOpen, Bus } from "lucide-react";
 
-type TabType = "setup" | "billing" | "payments" | "offers" | "ledger";
+type TabType = "setup" | "bus" | "billing" | "payments" | "offers" | "ledger";
 
 export default function Fees() {
   const { selectedYearId } = useAcademicYear();
@@ -94,6 +94,7 @@ export default function Fees() {
         <PillTabs
           tabs={[
             { value: "setup", label: "Fee Setup", icon: Settings },
+            { value: "bus", label: "Bus Fees", icon: Bus },
             { value: "billing", label: "Student Billing", icon: CreditCard },
             { value: "payments", label: "Payments", icon: Banknote },
             { value: "offers", label: "Fee Offers", icon: Tag },
@@ -107,6 +108,7 @@ export default function Fees() {
       {/* Tab Content */}
       <div className="px-1">
         {activeTab === "setup" && <FeeSetupTab classes={classes} students={students} batches={batches} />}
+        {activeTab === "bus" && <BusFeesTab classes={classes} students={students} batches={batches} />}
         {activeTab === "billing" && <StudentBillingTab classes={classes} students={students} batches={batches} />}
         {activeTab === "payments" && <PaymentsTab classes={classes} students={students} batches={batches} />}
         {activeTab === "offers" && <FeeOffers />}

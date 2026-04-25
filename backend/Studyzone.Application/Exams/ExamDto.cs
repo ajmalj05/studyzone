@@ -9,6 +9,9 @@ public class ExamDto
     public string? ClassName { get; set; }
     public List<string> ClassIds { get; set; } = new();
     public List<string> ClassNames { get; set; } = new();
+    public List<string> ClassWideClassIds { get; set; } = new();
+    public List<string> BatchIds { get; set; } = new();
+    public List<string> BatchNames { get; set; } = new();
     public decimal? MaxMarks { get; set; }
     public DateTime? ExamDate { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -20,6 +23,7 @@ public class CreateExamRequest
     public string Type { get; set; } = "UnitTest";
     public string? ClassId { get; set; }
     public List<string>? ClassIds { get; set; }
+    public List<string>? BatchIds { get; set; }
     public decimal? MaxMarks { get; set; }
     public DateTime? ExamDate { get; set; }
 }
