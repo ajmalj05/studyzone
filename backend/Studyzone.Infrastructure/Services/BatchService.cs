@@ -39,7 +39,7 @@ public class BatchService : IBatchService
         var yearId = await ResolveAcademicYearIdAsync(academicYearId, ct);
         if (yearId == null) return Array.Empty<BatchDto>();
         var list = await _repo.GetByClassIdAndAcademicYearAsync(guid, yearId.Value, ct);
-        return list.Select(Map).ToList();
+        return await MapAllAsync(list, ct);
     }
 
     public async Task<IReadOnlyList<BatchDto>> GetAllAsync(string? academicYearId, CancellationToken ct = default)
@@ -48,10 +48,10 @@ public class BatchService : IBatchService
         if (yearId == null)
         {
             var list = await _repo.GetAllAsync(ct);
-            return list.Select(Map).ToList();
+            return await MapAllAsync(list, ct);
         }
         var listByYear = await _repo.GetByAcademicYearAsync(yearId.Value, ct);
-        return listByYear.Select(Map).ToList();
+        return await MapAllAsync(listByYear, ct);
     }
 
     public async Task<BatchDto> CreateAsync(CreateBatchRequest request, CancellationToken ct = default)
@@ -123,5 +123,13 @@ public class BatchService : IBatchService
                 dto.ClassTeacherName = user.Name;
         }
         return dto;
+    }
+
+    private async Task<IReadOnlyList<BatchDto>> MapAllAsync(IReadOnlyList<Batch> batches, CancellationToken ct)
+    {
+        var result = new List<BatchDto>(batches.Count);
+        foreach (var batch in batches)
+            result.Add(await MapAsync(batch, ct));
+        return result;
     }
 }

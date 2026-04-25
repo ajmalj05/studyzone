@@ -49,6 +49,7 @@ import AdminParentRequests from "./pages/AdminParentRequests";
 import StudentAttendanceHistory from "./pages/history/StudentAttendanceHistory";
 import StudentAttendanceDetail from "./pages/history/StudentAttendanceDetail";
 import TeacherAttendanceHistory from "./pages/history/TeacherAttendanceHistory";
+import TeacherAttendanceDetail from "./pages/history/TeacherAttendanceDetail";
 
 // Teacher Portal
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -141,6 +142,7 @@ const App = () => (
                 <Route path="history/student-attendance" element={<StudentAttendanceHistory />} />
                 <Route path="history/student-attendance/:studentId" element={<StudentAttendanceDetail />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
+                <Route path="history/teacher-attendance/:teacherUserId" element={<TeacherAttendanceDetail />} />
                 <Route path="enquiry" element={<Enquiry />} />
                 <Route path="admission" element={<Admission />} />
                 <Route path="admission/application/new" element={<ApplicationFormPage />} />

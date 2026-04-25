@@ -119,6 +119,11 @@ export default function Batches() {
     ? batches.filter((b) => b.classId === selectedClassId)
     : batches;
 
+  const getClassTeacherName = (batch: BatchDto) =>
+    batch.classTeacherName ||
+    teachers.find((teacher) => teacher.id === batch.classTeacherUserId)?.name ||
+    "";
+
   const openAddBatch = () => {
     setEditingBatchId(null);
     setBatchForm({
@@ -186,7 +191,10 @@ export default function Batches() {
     {
       key: "teacher",
       header: "Class Teacher",
-      badge: (b) => b.classTeacherName ? { label: b.classTeacherName, variant: "emerald" } : null,
+      badge: (b) => {
+        const teacherName = getClassTeacherName(b);
+        return teacherName ? { label: teacherName, variant: "emerald" } : null;
+      },
     },
     {
       key: "actions",

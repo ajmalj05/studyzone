@@ -227,10 +227,52 @@ export default function Students() {
       toast({ title: "Validation", description: "Name is required.", variant: "destructive" });
       return;
     }
-    // ... rest of save logic
-    toast({ title: "Saved", description: "Student saved successfully" });
-    setShowForm(false);
-    loadStudents();
+    if (!form.classId) {
+      toast({ title: "Validation", description: "Class is required.", variant: "destructive" });
+      return;
+    }
+
+    const selectedBatch = form.batchId ? batches.find((b) => b.id === form.batchId) : null;
+    if (selectedBatch && selectedBatch.classId !== form.classId) {
+      toast({ title: "Validation", description: "Selected batch does not belong to the selected class.", variant: "destructive" });
+      return;
+    }
+
+    const payload = {
+      academicYearId: form.academicYearId || selectedYearId || currentYear?.id,
+      admissionNumber: form.admissionNumber.trim(),
+      name: form.name.trim(),
+      dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth + "T12:00:00").toISOString() : null,
+      gender: form.gender || null,
+      classId: form.classId || null,
+      batchId: form.batchId || null,
+      guardianName: form.guardianName.trim() || null,
+      guardianPhone: form.guardianPhone.trim() || null,
+      guardianEmail: form.guardianEmail.trim() || null,
+      address: form.address.trim() || null,
+      feePaymentStartMonth: form.feePaymentStartMonth ? parseInt(form.feePaymentStartMonth, 10) : null,
+      feePaymentStartYear: form.feePaymentStartYear ? parseInt(form.feePaymentStartYear, 10) : null,
+      busFeeAmount: form.busFeeAmount ? Number(form.busFeeAmount) : null,
+    };
+
+    try {
+      if (editingId) {
+        await fetchApi(`/Students/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetchApi("/Students", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      toast({ title: "Saved", description: "Student saved successfully" });
+      setShowForm(false);
+      await loadStudents();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to save student", variant: "destructive" });
+    }
   };
 
   usePageHeaderConfigEffect(

@@ -1,0 +1,190 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Download, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { DownloadModal } from "@/components/DownloadModal";
+import { useOptionalPageHeaderDispatch } from "@/context/PageHeaderContext";
+import { fetchApi } from "@/lib/api";
+
+interface AttendanceRecordDto {
+  id: string;
+  date: string;
+  status: string;
+}
+
+const TeacherAttendanceDetail = () => {
+  const { teacherUserId } = useParams<{ teacherUserId: string }>();
+  const [searchParams] = useSearchParams();
+  const setPageHeader = useOptionalPageHeaderDispatch();
+
+  const teacherName = searchParams.get("name") || "Staff attendance";
+  const [fromDate, setFromDate] = useState(() => {
+    const queryFrom = searchParams.get("from");
+    if (queryFrom) return queryFrom;
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [toDate, setToDate] = useState(() => searchParams.get("to") || new Date().toISOString().slice(0, 10));
+  const [records, setRecords] = useState<AttendanceRecordDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showDownload, setShowDownload] = useState(false);
+
+  useEffect(() => {
+    if (!teacherUserId) return;
+    setLoading(true);
+    setError(null);
+
+    const from = new Date(fromDate + "T00:00:00").toISOString();
+    const to = new Date(toDate + "T23:59:59").toISOString();
+
+    fetchApi(`/Attendance/teacher/${teacherUserId}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+      .then((list: AttendanceRecordDto[]) => setRecords(Array.isArray(list) ? list : []))
+      .catch((e: Error) => {
+        setError(e.message || "Failed to load staff attendance");
+        setRecords([]);
+      })
+      .finally(() => setLoading(false));
+  }, [teacherUserId, fromDate, toDate]);
+
+  useEffect(() => {
+    if (!setPageHeader) return;
+    setPageHeader({
+      title: teacherName,
+      description: `Staff attendance from ${fromDate} to ${toDate}`,
+    });
+    return () => setPageHeader({});
+  }, [teacherName, fromDate, toDate, setPageHeader]);
+
+  const summary = useMemo(() => {
+    const present = records.filter((r) => r.status === "Present").length;
+    const absent = records.filter((r) => r.status === "Absent").length;
+    const late = records.filter((r) => r.status === "Late").length;
+    const total = records.length;
+    const percentage = total > 0 ? ((present + late) / total) * 100 : 0;
+    return { present, absent, late, total, percentage };
+  }, [records]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="rounded-[20px] border-border bg-card/50 shadow-sm">
+          <CardContent className="flex flex-wrap items-end gap-4 p-5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">From</label>
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-xl" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">To</label>
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-xl" />
+            </div>
+          </CardContent>
+        </Card>
+        <Button
+          variant="outline"
+          className="gap-2 rounded-xl shadow-sm"
+          onClick={() => setShowDownload(true)}
+          disabled={records.length === 0}
+        >
+          <Download className="h-4 w-4" /> Export staff report
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="rounded-[20px] border-destructive/50 bg-destructive/5">
+          <CardContent className="p-4 text-destructive">{error}</CardContent>
+        </Card>
+      )}
+
+      {loading ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">Loading...</CardContent>
+        </Card>
+      ) : records.length === 0 ? (
+        <Card className="rounded-[20px] border-dashed shadow-sm">
+          <CardContent className="flex h-64 flex-col items-center justify-center p-12 text-center">
+            <History className="mb-4 h-12 w-12 text-muted-foreground/30" />
+            <p className="text-lg font-medium text-foreground">No attendance records found</p>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">Adjust the date range and try again.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="overflow-hidden rounded-[20px] border-border shadow-card">
+            <div className="flex flex-wrap gap-4 border-b border-border/60 bg-muted/20 px-6 py-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Present</span>
+                <div className="font-semibold text-foreground">{summary.present}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Late</span>
+                <div className="font-semibold text-foreground">{summary.late}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Absent</span>
+                <div className="font-semibold text-foreground">{summary.absent}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Total</span>
+                <div className="font-semibold text-foreground">{summary.total}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Percentage</span>
+                <div className={summary.percentage >= 75 ? "font-semibold text-success" : "font-semibold text-destructive"}>
+                  {summary.percentage.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-6 py-4 text-left font-semibold text-muted-foreground">Date</th>
+                    <th className="px-6 py-4 text-left font-semibold text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => (
+                    <tr key={record.id} className="border-b border-border/50 last:border-0">
+                      <td className="px-6 py-3">{new Date(record.date).toLocaleDateString()}</td>
+                      <td className="px-6 py-3">
+                        <span
+                          className={
+                            record.status === "Present" || record.status === "Late"
+                              ? "font-medium text-success"
+                              : record.status === "Absent"
+                              ? "font-medium text-destructive"
+                              : "text-foreground"
+                          }
+                        >
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      <DownloadModal
+        open={showDownload}
+        onClose={() => setShowDownload(false)}
+        title="Staff Attendance Detail"
+        previewData={{
+          headers: ["Date", "Status"],
+          rows: records.map((record) => [new Date(record.date).toLocaleDateString(), record.status]),
+        }}
+      />
+    </div>
+  );
+};
+
+export default TeacherAttendanceDetail;

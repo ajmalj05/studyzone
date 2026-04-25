@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Check, XCircle, Clock, Download, Calendar, Plus, Pencil, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Check, XCircle, Clock, Download, Plus, Pencil, Search, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { DownloadModal } from "@/components/DownloadModal";
@@ -24,7 +25,10 @@ interface TeacherDto {
   subject?: string;
 }
 
+const STAFF_ATTENDANCE_STATUSES = ["Present", "Absent", "Late"];
+
 export default function StaffAttendance() {
+  const navigate = useNavigate();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   
   const handleDateChange = (val: string) => {
@@ -94,6 +98,45 @@ export default function StaffAttendance() {
     setEditingTeacher(teacher);
     setEditStatus(teacher.status || "Present");
     setEditModalOpen(true);
+  };
+
+  const openDetailPage = (teacher: TeacherAttendanceItemDto) => {
+    const to = date;
+    const fromDateObj = new Date(date + "T12:00:00");
+    fromDateObj.setMonth(fromDateObj.getMonth() - 1);
+    const from = fromDateObj.toISOString().slice(0, 10);
+    navigate(
+      `/admin/history/teacher-attendance/${teacher.teacherUserId}?name=${encodeURIComponent(
+        teacher.teacherName,
+      )}&from=${from}&to=${to}`,
+    );
+  };
+
+  const handleInlineStatusChange = async (teacher: TeacherAttendanceItemDto, status: string) => {
+    const previousStatus = teacher.status;
+    setTeachers((items) =>
+      items.map((item) =>
+        item.teacherUserId === teacher.teacherUserId ? { ...item, status } : item,
+      ),
+    );
+
+    try {
+      await fetchApi("/Attendance/bulk-teacher", {
+        method: "POST",
+        body: JSON.stringify({
+          date: new Date(date + "T12:00:00").toISOString(),
+          items: [{ teacherUserId: teacher.teacherUserId, status }],
+        }),
+      });
+      toast({ title: "Success", description: `${teacher.teacherName}'s attendance updated.` });
+    } catch (err: any) {
+      setTeachers((items) =>
+        items.map((item) =>
+          item.teacherUserId === teacher.teacherUserId ? { ...item, status: previousStatus } : item,
+        ),
+      );
+      toast({ title: "Error", description: err.message || "Failed to update attendance", variant: "destructive" });
+    }
   };
 
   const handleEditSave = async () => {
@@ -167,25 +210,39 @@ export default function StaffAttendance() {
       header: "Status",
       align: "center",
       cell: (t) => (
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-          t.status === "Present" ? "bg-green-100 text-green-700" :
-          t.status === "Absent" ? "bg-red-100 text-red-700" :
-          t.status === "Late" ? "bg-amber-100 text-amber-700" :
-          "bg-gray-100 text-gray-600"
-        }`}>
-          {t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1).toLowerCase() : '-'}
-        </span>
+        <select
+          value={t.status || "Present"}
+          onChange={(e) => handleInlineStatusChange(t, e.target.value)}
+          disabled={saving}
+          className={`h-8 rounded-full border px-3 text-xs font-medium outline-none transition-colors ${
+            t.status === "Present" ? "border-green-200 bg-green-100 text-green-700" :
+            t.status === "Absent" ? "border-red-200 bg-red-100 text-red-700" :
+            t.status === "Late" ? "border-amber-200 bg-amber-100 text-amber-700" :
+            "border-gray-200 bg-gray-100 text-gray-600"
+          }`}
+        >
+          {STAFF_ATTENDANCE_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
       ),
     },
     {
       key: "actions",
       header: "",
       align: "right",
-      className: "w-[60px]",
+      className: "w-[100px]",
       cell: (t) => (
-        <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditModal(t)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openDetailPage(t)} title="View detail">
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditModal(t)} title="Edit attendance">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
