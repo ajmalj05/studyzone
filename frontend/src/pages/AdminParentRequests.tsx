@@ -31,6 +31,7 @@ export default function AdminParentRequests() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [activeRequest, setActiveRequest] = useState<RequestDto | null>(null);
   const [adminReply, setAdminReply] = useState("");
+  const isActiveRequestPending = activeRequest?.status === "Pending";
 
   useEffect(() => {
     loadRequests();
@@ -147,7 +148,7 @@ export default function AdminParentRequests() {
             setAdminReply(req.adminComment || "");
           }}
         >
-          View & Reply
+          {req.status === "Pending" ? "View & Reply" : "View"}
         </Button>
       ),
     },
@@ -242,17 +243,23 @@ export default function AdminParentRequests() {
                   value={adminReply}
                   onChange={(e) => setAdminReply(e.target.value)}
                   rows={4}
-                  placeholder="Type your response to the parent here..."
-                  className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm resize-none focus-visible:ring-2 focus-visible:ring-ring outline-none"
+                  placeholder={isActiveRequestPending ? "Type your response to the parent here..." : "No reply added."}
+                  disabled={!isActiveRequestPending}
+                  className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm resize-none focus-visible:ring-2 focus-visible:ring-ring outline-none disabled:cursor-not-allowed disabled:bg-muted/50"
                 />
+                {!isActiveRequestPending && (
+                  <p className="text-xs text-muted-foreground">
+                    This request is already {activeRequest.status.toLowerCase()} and cannot be edited.
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="p-6 border-t border-border bg-muted/20 flex flex-wrap gap-3 justify-end items-center">
               <Button variant="outline" className="rounded-xl" onClick={() => setActiveRequest(null)}>
-                Cancel
+                {isActiveRequestPending ? "Cancel" : "Close"}
               </Button>
-              {activeRequest.status !== "Rejected" && (
+              {isActiveRequestPending && (
                 <Button
                   variant="outline"
                   className="rounded-xl text-destructive hover:bg-destructive/10 border-destructive/20"
@@ -261,20 +268,12 @@ export default function AdminParentRequests() {
                   <XCircle className="h-4 w-4 mr-2" /> Reject
                 </Button>
               )}
-              {activeRequest.status !== "Approved" && (
+              {isActiveRequestPending && (
                 <Button
                   className="rounded-xl bg-success text-white hover:bg-success/90"
                   onClick={() => handleUpdateStatus(activeRequest._id, "Approved")}
                 >
                   <Check className="h-4 w-4 mr-2" /> Approve
-                </Button>
-              )}
-              {activeRequest.status !== "Pending" && (
-                <Button
-                  className="rounded-xl gradient-primary text-white"
-                  onClick={() => handleUpdateStatus(activeRequest._id, activeRequest.status)}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" /> Update Reply
                 </Button>
               )}
             </div>

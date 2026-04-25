@@ -55,5 +55,6 @@ public class RequestsController : ControllerBase
             return Ok(dto);
         }
         catch (ArgumentException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 }

@@ -69,6 +69,9 @@ public class RequestsService : IRequestsService
         if (!Guid.TryParse(id, out var guid))
             throw new ArgumentException("Invalid id.");
         var existing = await _repo.GetByIdAsync(guid, ct) ?? throw new ArgumentException("Request not found.");
+        if (!string.Equals(existing.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("This request has already been replied to and cannot be changed.");
+
         existing.Status = request.Status ?? existing.Status;
         existing.AdminComment = request.AdminComment;
         var updated = await _repo.UpdateAsync(existing, ct);
