@@ -8,7 +8,7 @@ namespace Studyzone.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20260425154100_AddExamBatchScope")]
-    partial class AddExamBatchScope
+    public partial class AddExamBatchScope
     {
     }
 }
