@@ -16,6 +16,12 @@ export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
         if (allowedRoles.includes('admin') && allowedRoles.length === 1) {
             return <Navigate to="/admin-login" replace />;
         }
+        if (allowedRoles.includes('teacher') && allowedRoles.length === 1) {
+            return <Navigate to="/teacher-login" replace />;
+        }
+        if (allowedRoles.includes('parent') && allowedRoles.length === 1) {
+            return <Navigate to="/" replace />;
+        }
         return <Navigate to="/login" replace />;
     }
 

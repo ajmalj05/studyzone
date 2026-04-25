@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,22 @@ import { toast } from "sonner";
 import mascotImg from '@/assets/mascot.png';
 import logoImg from '@/assets/logo.png';
 
+const teacherModelImageUrl = "https://upload.wikimedia.org/wikipedia/commons/a/a2/English_Class_in_School.jpg";
+
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
-  const [role, setRole] = useState<"teacher" | "parent">("teacher");
+  const fixedRole = useMemo<"teacher" | "parent" | null>(() => {
+    if (location.pathname === "/teacher" || location.pathname === "/teacher-login") return "teacher";
+    if (location.pathname === "/" || location.pathname === "/login") return "parent";
+    return null;
+  }, [location.pathname]);
+  const [role, setRole] = useState<"teacher" | "parent">(fixedRole ?? "parent");
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const isTeacherView = (fixedRole ?? role) === "teacher";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,13 +35,14 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const activeRole = await login(userId, password, role);
+      const selectedRole = fixedRole ?? role;
+      await login(userId, password, selectedRole);
       toast.success("Login successful!");
 
-      if (role === "teacher") navigate("/teacher/dashboard");
+      if (selectedRole === "teacher") navigate("/teacher/dashboard");
       else navigate("/parent/dashboard");
-    } catch (error: any) {
-      toast.error(error.message || "Login failed");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -44,10 +54,10 @@ const Login = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-4xl md:max-w-3xl bg-card rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row"
+        className={`w-full max-w-4xl md:max-w-3xl rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row ${isTeacherView ? "bg-slate-900" : "bg-card"}`}
       >
         {/* Left Side: Login Form - scales within outer box, no scroll */}
-        <div className="w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center">
+        <div className={`w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center ${isTeacherView ? "bg-white" : ""}`}>
           {/* Logo & Title - scale with container, no overflow */}
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8 flex-shrink-0">
             <img src={logoImg} alt="Studyzone" className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 object-contain flex-shrink-0" />
@@ -55,31 +65,38 @@ const Login = () => {
           </div>
 
           <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-4 sm:mb-6 md:mb-8 flex-shrink-0">
-            {role === "teacher" ? "Teacher Login" : "Parent Login"}
+            {isTeacherView ? "Teacher Portal Login" : "Parent Login"}
           </h2>
+          {isTeacherView && (
+            <p className="text-xs sm:text-sm text-muted-foreground -mt-3 mb-5 sm:mb-6">
+              Sign in to manage attendance, marks, and classroom activities.
+            </p>
+          )}
 
           {/* Form - spacing scales */}
           <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 md:space-y-5 flex-shrink-0">
             {/* Role Switcher */}
-            <div className="flex p-1 bg-background rounded-xl mb-4 sm:mb-6">
-              {(["teacher", "parent"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    setRole(r);
-                    setUserId("");
-                    setPassword("");
-                  }}
-                  className={`flex-1 flex justify-center py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all min-w-0 ${role === r
-                    ? "bg-card shadow-sm text-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
-                >
-                  {r.charAt(0).toUpperCase() + r.slice(1)}
-                </button>
-              ))}
-            </div>
+            {!fixedRole && (
+              <div className="flex p-1 bg-background rounded-xl mb-4 sm:mb-6">
+                {(["teacher", "parent"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => {
+                      setRole(r);
+                      setUserId("");
+                      setPassword("");
+                    }}
+                    className={`flex-1 flex justify-center py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all min-w-0 ${role === r
+                      ? "bg-card shadow-sm text-primary font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
+                  >
+                    {r.charAt(0).toUpperCase() + r.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <motion.div
               initial={{ x: -20, opacity: 0 }}
@@ -124,15 +141,6 @@ const Login = () => {
               transition={{ delay: 0.3 }}
               className="pt-1 sm:pt-2"
             >
-              <div className="flex justify-end mb-4 sm:mb-6">
-                <button
-                  type="button"
-                  onClick={() => navigate('/forgot-password')}
-                  className="text-xs sm:text-sm font-medium text-primary hover:text-primary/80 hover:underline transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -151,53 +159,34 @@ const Login = () => {
             </motion.div>
           </form>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-center pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-border flex-shrink-0"
-          >
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Don't have an account yet?
-              <button
-                onClick={() => navigate('/verify-profile')}
-                className="ml-1 text-primary font-semibold hover:text-primary/80 hover:underline transition-colors"
-              >
-                Register
-              </button>
-            </p>
-          </motion.div>
+          {isTeacherView && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-center pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-border flex-shrink-0"
+            >
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Don't have an account yet?
+                <button
+                  onClick={() => navigate('/verify-profile')}
+                  className="ml-1 text-primary font-semibold hover:text-primary/80 hover:underline transition-colors"
+                >
+                  Register
+                </button>
+              </p>
+            </motion.div>
+          )}
 
         </div>
 
-        {/* Right Side: Illustration - scales within outer box */}
-        <div className="hidden md:flex md:w-1/2 min-w-0 bg-background p-4 lg:p-8 items-center justify-center relative overflow-hidden border-l border-border">
-          {/* Subtle radial glow behind the bird - made it blend more */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle,var(--tw-gradient-stops))] from-border/80 via-border/40 to-transparent rounded-full opacity-100 blur-2xl" />
-
-          {/* Decorative Background Elements */}
-          <div className="absolute top-10 right-10 w-24 h-24 bg-accent rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute bottom-10 left-10 w-32 h-32 bg-primary/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="relative z-10 w-full max-w-[min(100%,450px)] max-h-full aspect-square flex items-center justify-center"
-          >
-            <div className="w-full h-full min-w-0 min-h-0">
-              <img
-                src={mascotImg}
-                alt="School Mascot"
-                className="w-full h-full object-contain mix-blend-multiply"
-                style={{
-                  filter: 'drop-shadow(0 15px 25px rgba(6, 182, 212, 0.15))',
-                  maskImage: 'radial-gradient(circle at center, black 65%, transparent 100%)',
-                  WebkitMaskImage: 'radial-gradient(circle at center, black 65%, transparent 100%)'
-                }}
-              />
-            </div>
-          </motion.div>
+        {/* Right Side: Full image */}
+        <div className="hidden md:block md:w-1/2 min-w-0 relative overflow-hidden border-l border-border">
+          <img
+            src={isTeacherView ? teacherModelImageUrl : logoImg}
+            alt={isTeacherView ? "Teacher Portal" : "Parent Portal"}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         </div>
       </motion.div>
     </div>

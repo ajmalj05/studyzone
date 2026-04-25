@@ -94,8 +94,10 @@ const App = () => (
         <AuthProvider>
           <Routes>
             {/* Auth & Setup */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/teacher" element={<Login />} />
+            <Route path="/teacher-login" element={<Login />} />
             <Route path="/verify-profile" element={<VerifyProfile />} />
             <Route path="/verify-otp" element={<VerifyOtp />} />
             <Route path="/setup-account" element={<SetupAccount />} />
@@ -180,7 +182,7 @@ const App = () => (
 
             {/* Teacher Portal */}
             <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
-              <Route path="/teacher" element={<TeacherLayout />}>
+              <Route path="/teacher/*" element={<TeacherLayout />}>
                 <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 <Route path="dashboard" element={<TeacherDashboard />} />
                 <Route path="my-batch" element={<TeacherMyBatch />} />
