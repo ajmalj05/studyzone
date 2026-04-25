@@ -1,0 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Studyzone.Infrastructure.Persistence;
+
+#nullable disable
+
+namespace Studyzone.Infrastructure.Migrations
+{
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260425154100_AddExamBatchScope")]
+    partial class AddExamBatchScope
+    {
+    }
+}
