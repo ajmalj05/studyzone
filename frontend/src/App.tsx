@@ -131,12 +131,14 @@ const App = () => (
                   <Route path="subjects" element={<Subjects />} />
                   <Route path="timetable" element={<Timetable />} />
                   <Route path="exams" element={<Exams />} />
+                  <Route path="results" element={<Exams />} />
                   <Route path="years" element={<AcademicYearPage />} />
                 </Route>
                 <Route path="classes" element={<Navigate to="/admin/academics/classes" replace />} />
                 <Route path="subjects" element={<Navigate to="/admin/academics/subjects" replace />} />
                 <Route path="timetable" element={<Navigate to="/admin/academics/timetable" replace />} />
                 <Route path="exams" element={<Navigate to="/admin/academics/exams" replace />} />
+                <Route path="results" element={<Navigate to="/admin/academics/results" replace />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />
                 <Route path="requests/teacher" element={<Navigate to="/admin/communication/teacher-requests" replace />} />
                 <Route path="requests/parent" element={<Navigate to="/admin/communication/parent-requests" replace />} />

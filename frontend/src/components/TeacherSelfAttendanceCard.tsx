@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 /** Teacher marks their own attendance (not tied to a class batch). */
 export function TeacherSelfAttendanceCard() {
   const [selfDate, setSelfDate] = useState(new Date().toISOString().slice(0, 10));
-  const [selfStatus, setSelfStatus] = useState<string>("Present");
+  const [selfStatus, setSelfStatus] = useState<"" | "Present" | "Absent" | "Late">("");
   const [selfSaving, setSelfSaving] = useState(false);
   const [selfLoading, setSelfLoading] = useState(false);
   const [currentSelfStatus, setCurrentSelfStatus] = useState<string | null>(null);
@@ -40,6 +41,10 @@ export function TeacherSelfAttendanceCard() {
   }, [selfDate]);
 
   const handleSaveSelfAttendance = async () => {
+    if (!selfStatus) {
+      toast({ title: "Validation", description: "Select attendance status", variant: "destructive" });
+      return;
+    }
     setSelfSaving(true);
     try {
       await fetchApi("/Attendance/self", {
@@ -69,59 +74,72 @@ export function TeacherSelfAttendanceCard() {
           <p className="text-sm text-muted-foreground">Mark your own attendance for the day.</p>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-muted-foreground">Date</label>
-              <input
-                type="date"
-                value={selfDate}
-                onChange={(e) => setSelfDate(e.target.value)}
-                className="rounded-xl border border-input bg-background px-4 py-2 text-sm"
-              />
-            </div>
-            {selfLoading && <span className="text-sm text-muted-foreground">Loading…</span>}
-            {!selfLoading && currentSelfStatus != null && (
-              <span className="text-sm text-muted-foreground">
-                Recorded: <strong>{currentSelfStatus}</strong>
-              </span>
-            )}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={selfStatus === "Present" ? "default" : "outline"}
-                onClick={() => setSelfStatus("Present")}
-                className={
-                  selfStatus === "Present"
-                    ? "rounded-xl text-xs bg-success text-success-foreground hover:bg-success/90"
-                    : "rounded-xl text-xs"
-                }
-              >
-                Present
-              </Button>
-              <Button
-                size="sm"
-                variant={selfStatus === "Absent" ? "destructive" : "outline"}
-                onClick={() => setSelfStatus("Absent")}
-                className="rounded-xl text-xs"
-              >
-                Absent
-              </Button>
-              <Button
-                size="sm"
-                variant={selfStatus === "Late" ? "secondary" : "outline"}
-                onClick={() => setSelfStatus("Late")}
-                className="rounded-xl text-xs"
-              >
-                Late
-              </Button>
-            </div>
-            <Button
-              className="gradient-primary text-primary-foreground rounded-xl"
-              onClick={handleSaveSelfAttendance}
-              disabled={selfSaving}
-            >
-              {selfSaving ? "Saving…" : "Save my attendance"}
-            </Button>
+          <div className="overflow-x-auto rounded-xl border border-border/60">
+            <table className="w-full min-w-[680px] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorded</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Set Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/40">
+                  <td className="px-4 py-3">
+                    <input
+                      type="date"
+                      value={selfDate}
+                      onChange={(e) => setSelfDate(e.target.value)}
+                      className="rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    {selfLoading ? (
+                      <span className="text-sm text-muted-foreground">Loading...</span>
+                    ) : (
+                      <span className="text-sm font-medium text-foreground">{currentSelfStatus || "Not marked"}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5">
+                      {(["Present", "Absent", "Late"] as const).map((status) => {
+                        const selected = selfStatus === status;
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => setSelfStatus(status)}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                              !selected && "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                              selected &&
+                                (status === "Present"
+                                  ? "border-green-300 bg-green-100 text-green-700"
+                                  : status === "Absent"
+                                    ? "border-red-300 bg-red-100 text-red-700"
+                                    : "border-amber-300 bg-amber-100 text-amber-700"),
+                            )}
+                          >
+                            <span className={cn("inline-block h-3.5 w-3.5 rounded-[3px] border", selected ? "border-current bg-current/15" : "border-slate-300")} />
+                            {status}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      className="gradient-primary text-primary-foreground rounded-xl"
+                      onClick={handleSaveSelfAttendance}
+                      disabled={selfSaving || !selfStatus}
+                    >
+                      {selfSaving ? "Saving..." : "Save my attendance"}
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>

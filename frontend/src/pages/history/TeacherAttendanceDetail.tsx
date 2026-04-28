@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Download, History } from "lucide-react";
+import { Download, History, UserRound, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -94,6 +94,31 @@ const TeacherAttendanceDetail = () => {
         </Button>
       </div>
 
+      <Card className="rounded-[20px] border-border shadow-sm">
+        <CardContent className="p-5">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <UserRound className="h-3.5 w-3.5" /> Staff Name
+              </p>
+              <p className="text-sm font-semibold text-foreground">{teacherName}</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <CalendarRange className="h-3.5 w-3.5" /> Selected Range
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {new Date(fromDate).toLocaleDateString()} - {new Date(toDate).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <p className="mb-1 text-xs font-semibold text-muted-foreground">Total Entries</p>
+              <p className="text-sm font-semibold text-foreground">{summary.total}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {error && (
         <Card className="rounded-[20px] border-destructive/50 bg-destructive/5">
           <CardContent className="p-4 text-destructive">{error}</CardContent>
@@ -144,22 +169,30 @@ const TeacherAttendanceDetail = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
+                    <th className="px-6 py-4 text-left font-semibold text-muted-foreground">#</th>
+                    <th className="px-6 py-4 text-left font-semibold text-muted-foreground">Day</th>
                     <th className="px-6 py-4 text-left font-semibold text-muted-foreground">Date</th>
                     <th className="px-6 py-4 text-left font-semibold text-muted-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((record) => (
+                  {records.map((record, index) => (
                     <tr key={record.id} className="border-b border-border/50 last:border-0">
+                      <td className="px-6 py-3 text-muted-foreground">{index + 1}</td>
+                      <td className="px-6 py-3">
+                        {new Date(record.date).toLocaleDateString(undefined, { weekday: "short" })}
+                      </td>
                       <td className="px-6 py-3">{new Date(record.date).toLocaleDateString()}</td>
                       <td className="px-6 py-3">
                         <span
                           className={
-                            record.status === "Present" || record.status === "Late"
-                              ? "font-medium text-success"
+                            record.status === "Present"
+                              ? "inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
+                              : record.status === "Late"
+                              ? "inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
                               : record.status === "Absent"
-                              ? "font-medium text-destructive"
-                              : "text-foreground"
+                              ? "inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
+                              : "inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-foreground"
                           }
                         >
                           {record.status}
@@ -179,8 +212,13 @@ const TeacherAttendanceDetail = () => {
         onClose={() => setShowDownload(false)}
         title="Staff Attendance Detail"
         previewData={{
-          headers: ["Date", "Status"],
-          rows: records.map((record) => [new Date(record.date).toLocaleDateString(), record.status]),
+          headers: ["Staff Name", "Day", "Date", "Status"],
+          rows: records.map((record) => [
+            teacherName,
+            new Date(record.date).toLocaleDateString(undefined, { weekday: "short" }),
+            new Date(record.date).toLocaleDateString(),
+            record.status,
+          ]),
         }}
       />
     </div>

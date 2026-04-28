@@ -185,14 +185,18 @@ export default function Timetable() {
       const url = selectedYearId ? `/Batches?academicYearId=${encodeURIComponent(selectedYearId)}` : "/Batches";
       const list = (await fetchApi(url)) as BatchDto[];
       setBatches(list);
-    } catch (_) {}
+    } catch (_) {
+      setBatches([]);
+    }
   };
 
   const loadPeriods = async () => {
     try {
       const list = (await fetchApi("/Timetable/period-config")) as PeriodConfigDto[];
       setPeriods(list.filter((p) => !p.isBreak).sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodOrder - b.periodOrder));
-    } catch (_) {}
+    } catch (_) {
+      setPeriods([]);
+    }
   };
 
   const loadSettings = async () => {
@@ -251,6 +255,24 @@ export default function Timetable() {
       .then((list: TeacherForSubjectDto[]) => setTeachersForSubject(Array.isArray(list) ? list : []))
       .catch(() => setTeachersForSubject([]));
   }, [slotDialogOpen, slotForm.subject]);
+
+  useEffect(() => {
+    if (!slotDialogOpen || !slotForm.subject.trim()) return;
+    // Auto-select teacher if there is exactly one teacher for selected subject.
+    if (teachersForSubject.length === 1 && !slotForm.teacherUserId) {
+      const onlyTeacher = teachersForSubject[0];
+      setSlotForm((f) => ({ ...f, teacherUserId: onlyTeacher.id, teacherName: onlyTeacher.name }));
+      return;
+    }
+    // If current teacher is not in the list for the selected subject, clear stale assignment.
+    if (
+      slotForm.teacherUserId &&
+      teachersForSubject.length > 0 &&
+      !teachersForSubject.some((t) => t.id === slotForm.teacherUserId)
+    ) {
+      setSlotForm((f) => ({ ...f, teacherUserId: "", teacherName: "" }));
+    }
+  }, [teachersForSubject, slotDialogOpen, slotForm.subject, slotForm.teacherUserId]);
 
   const openSlotDialog = (dayOfWeek: number, periodOrder: number) => {
     const slot = getSlot(dayOfWeek, periodOrder);
@@ -948,6 +970,22 @@ export default function Timetable() {
                     teachersForSubject.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No teachers assigned for this subject.</p>
                     ) : (
+                      (() => {
+                        const teacherOptions = [
+                          { value: "_none", label: "None" },
+                          ...teachersForSubject.map((t) => ({ value: t.id, label: t.name })),
+                        ];
+                        if (
+                          slotForm.teacherUserId &&
+                          slotForm.teacherName &&
+                          !teachersForSubject.some((t) => t.id === slotForm.teacherUserId)
+                        ) {
+                          teacherOptions.splice(1, 0, {
+                            value: slotForm.teacherUserId,
+                            label: `${slotForm.teacherName} (current)`,
+                          });
+                        }
+                        return (
                       <SearchableSelect
                         value={slotForm.teacherUserId || "_none"}
                         onValueChange={(v) => {
@@ -959,11 +997,10 @@ export default function Timetable() {
                           }
                         }}
                         placeholder="Select teacher"
-                        options={[
-                          { value: "_none", label: "None" },
-                          ...teachersForSubject.map((t) => ({ value: t.id, label: t.name })),
-                        ]}
+                        options={teacherOptions}
                       />
+                        );
+                      })()
                     )
                   ) : (
                     <p className="text-sm text-muted-foreground">Select a subject first to choose a teacher.</p>

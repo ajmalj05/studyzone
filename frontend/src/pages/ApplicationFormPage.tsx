@@ -70,6 +70,32 @@ interface SiblingRow {
 
 const emptySibling = (): SiblingRow => ({ name: "", class: "" });
 
+const NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
+const TEXT_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DIGITS_REGEX = /^\d+$/;
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+function isValidPhone(value: string): boolean {
+  const digits = value.trim();
+  return DIGITS_REGEX.test(digits) && digits.length >= 7 && digits.length <= 15;
+}
+
+function isValidName(value: string): boolean {
+  return NAME_REGEX.test(value.trim());
+}
+
+function isValidText(value: string): boolean {
+  return TEXT_REGEX.test(value.trim());
+}
+
 function toDateStr(d: string | undefined): string {
   if (!d) return "";
   try {
@@ -268,46 +294,85 @@ function buildPrintDocumentHtml(
 }
 
 // Validation functions for each tab
-const validateStudentTab = (form: any): string[] => {
+const validateStudentTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
-  if (!form.studentName?.trim()) errors.push("Student name is required");
-  if (!form.academicYear) errors.push("Academic year is required");
-  if (!form.gender) errors.push("Gender is required");
-  if (!form.dateOfBirth) errors.push("Date of birth is required");
-  if (!form.nationality?.trim()) errors.push("Nationality is required");
-  if (!form.religion?.trim()) errors.push("Religion is required");
-  if (!form.placeOfBirth?.trim()) errors.push("Place of birth is required");
+  const studentName = isNonEmptyString(form.studentName) ? form.studentName : "";
+  const academicYear = isNonEmptyString(form.academicYear) ? form.academicYear : "";
+  const gender = isNonEmptyString(form.gender) ? form.gender : "";
+  const dateOfBirth = isNonEmptyString(form.dateOfBirth) ? form.dateOfBirth : "";
+  const nationality = isNonEmptyString(form.nationality) ? form.nationality : "";
+  const religion = isNonEmptyString(form.religion) ? form.religion : "";
+  const placeOfBirth = isNonEmptyString(form.placeOfBirth) ? form.placeOfBirth : "";
+
+  if (!studentName) errors.push("Student name is required");
+  else if (!isValidName(studentName)) errors.push("Student name must contain only valid text characters");
+  if (!academicYear) errors.push("Academic year is required");
+  if (!gender) errors.push("Gender is required");
+  if (!dateOfBirth) errors.push("Date of birth is required");
+  if (!nationality) errors.push("Nationality is required");
+  else if (!isValidText(nationality)) errors.push("Nationality must contain only text");
+  if (!religion) errors.push("Religion is required");
+  else if (!isValidText(religion)) errors.push("Religion must contain only text");
+  if (!placeOfBirth) errors.push("Place of birth is required");
+  else if (!isValidText(placeOfBirth)) errors.push("Place of birth must contain only text");
   return errors;
 };
 
-const validateDocumentsTab = (form: any): string[] => {
+const validateDocumentsTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
-  if (!form.passportNo?.trim()) errors.push("Passport number is required");
-  if (!form.passportDateOfIssue) errors.push("Passport date of issue is required");
-  if (!form.passportDateOfExpiry) errors.push("Passport date of expiry is required");
-  if (!form.passportPlaceOfIssue?.trim()) errors.push("Passport place of issue is required");
-  if (!form.emiratesIdNo?.trim()) errors.push("Emirates ID is required");
-  if (!form.emiratesIdDateOfExpiry) errors.push("Emirates ID expiry is required");
-  if (!form.residenceVisaNo?.trim()) errors.push("Residence visa number is required");
-  if (!form.residenceVisaDateOfIssue) errors.push("Residence visa date of issue is required");
-  if (!form.residenceVisaDateOfExpiry) errors.push("Residence visa date of expiry is required");
-  if (!form.residenceVisaPlaceOfIssue?.trim()) errors.push("Residence visa place of issue is required");
+  const passportNo = isNonEmptyString(form.passportNo) ? form.passportNo : "";
+  const passportDateOfIssue = isNonEmptyString(form.passportDateOfIssue) ? form.passportDateOfIssue : "";
+  const passportDateOfExpiry = isNonEmptyString(form.passportDateOfExpiry) ? form.passportDateOfExpiry : "";
+  const passportPlaceOfIssue = isNonEmptyString(form.passportPlaceOfIssue) ? form.passportPlaceOfIssue : "";
+  const emiratesIdNo = isNonEmptyString(form.emiratesIdNo) ? form.emiratesIdNo : "";
+  const emiratesIdDateOfExpiry = isNonEmptyString(form.emiratesIdDateOfExpiry) ? form.emiratesIdDateOfExpiry : "";
+  const residenceVisaNo = isNonEmptyString(form.residenceVisaNo) ? form.residenceVisaNo : "";
+  const residenceVisaDateOfIssue = isNonEmptyString(form.residenceVisaDateOfIssue) ? form.residenceVisaDateOfIssue : "";
+  const residenceVisaDateOfExpiry = isNonEmptyString(form.residenceVisaDateOfExpiry) ? form.residenceVisaDateOfExpiry : "";
+  const residenceVisaPlaceOfIssue = isNonEmptyString(form.residenceVisaPlaceOfIssue) ? form.residenceVisaPlaceOfIssue : "";
+
+  if (!passportNo) errors.push("Passport number is required");
+  if (!passportDateOfIssue) errors.push("Passport date of issue is required");
+  if (!passportDateOfExpiry) errors.push("Passport date of expiry is required");
+  if (!passportPlaceOfIssue) errors.push("Passport place of issue is required");
+  else if (!isValidText(passportPlaceOfIssue)) errors.push("Passport place of issue must contain only text");
+  if (!emiratesIdNo) errors.push("Emirates ID is required");
+  if (!emiratesIdDateOfExpiry) errors.push("Emirates ID expiry is required");
+  if (!residenceVisaNo) errors.push("Residence visa number is required");
+  if (!residenceVisaDateOfIssue) errors.push("Residence visa date of issue is required");
+  if (!residenceVisaDateOfExpiry) errors.push("Residence visa date of expiry is required");
+  if (!residenceVisaPlaceOfIssue) errors.push("Residence visa place of issue is required");
+  else if (!isValidText(residenceVisaPlaceOfIssue)) errors.push("Residence visa place of issue must contain only text");
   return errors;
 };
 
-const validateFatherTab = (form: any): string[] => {
+const validateFatherTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
-  if (!form.fatherNameAsInPassport?.trim()) errors.push("Father's name is required");
-  if (!form.fatherMobileNumber?.trim()) errors.push("Father's mobile number is required");
-  if (!form.fatherEmailAddress?.trim()) errors.push("Father's email is required");
+  const fatherName = isNonEmptyString(form.fatherNameAsInPassport) ? form.fatherNameAsInPassport : "";
+  const fatherMobile = isNonEmptyString(form.fatherMobileNumber) ? form.fatherMobileNumber : "";
+  const fatherEmail = isNonEmptyString(form.fatherEmailAddress) ? form.fatherEmailAddress : "";
+
+  if (!fatherName) errors.push("Father's name is required");
+  else if (!isValidName(fatherName)) errors.push("Father's name must contain only valid text characters");
+  if (!fatherMobile) errors.push("Father's mobile number is required");
+  else if (!isValidPhone(fatherMobile)) errors.push("Father's mobile number must be 7-15 digits");
+  if (!fatherEmail) errors.push("Father's email is required");
+  else if (!isValidEmail(fatherEmail)) errors.push("Father's email is not valid");
   return errors;
 };
 
-const validateMotherTab = (form: any): string[] => {
+const validateMotherTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
-  if (!form.motherNameAsInPassport?.trim()) errors.push("Mother's name is required");
-  if (!form.motherMobileNumber?.trim()) errors.push("Mother's mobile number is required");
-  if (!form.motherEmailAddress?.trim()) errors.push("Mother's email is required");
+  const motherName = isNonEmptyString(form.motherNameAsInPassport) ? form.motherNameAsInPassport : "";
+  const motherMobile = isNonEmptyString(form.motherMobileNumber) ? form.motherMobileNumber : "";
+  const motherEmail = isNonEmptyString(form.motherEmailAddress) ? form.motherEmailAddress : "";
+
+  if (!motherName) errors.push("Mother's name is required");
+  else if (!isValidName(motherName)) errors.push("Mother's name must contain only valid text characters");
+  if (!motherMobile) errors.push("Mother's mobile number is required");
+  else if (!isValidPhone(motherMobile)) errors.push("Mother's mobile number must be 7-15 digits");
+  if (!motherEmail) errors.push("Mother's email is required");
+  else if (!isValidEmail(motherEmail)) errors.push("Mother's email is not valid");
   return errors;
 };
 
@@ -1356,20 +1421,33 @@ export default function ApplicationFormPage() {
           <div className="space-y-2">
             <Label>Allotted Class</Label>
             <SearchableSelect
-              value={form.classId}
-              onValueChange={(v) => update("classId", v)}
+              value={form.classId || "_none"}
+              onValueChange={(v) =>
+                setForm((f) => ({
+                  ...f,
+                  classId: v === "_none" ? "" : v,
+                  // If class is cleared or changed, clear batch to avoid stale selection.
+                  batchId: v === "_none" || v !== f.classId ? "" : f.batchId,
+                }))
+              }
               placeholder="Select class"
-              options={classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+              options={[
+                { value: "_none", label: "— None —" },
+                ...classes.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+              ]}
             />
           </div>
           <div className="space-y-2">
             <Label>Batch</Label>
             <SearchableSelect
-              value={form.batchId}
-              onValueChange={(v) => update("batchId", v)}
+              value={form.batchId || "_none"}
+              onValueChange={(v) => update("batchId", v === "_none" ? "" : v)}
               disabled={!form.classId}
               placeholder="Select batch"
-              options={batchesForClass.map((b) => ({ value: b.id, label: b.name }))}
+              options={[
+                { value: "_none", label: "— None —" },
+                ...batchesForClass.map((b) => ({ value: b.id, label: b.name })),
+              ]}
             />
           </div>
           <div className="space-y-2">

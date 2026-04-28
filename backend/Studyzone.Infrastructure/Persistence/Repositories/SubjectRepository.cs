@@ -62,6 +62,12 @@ public class SubjectRepository : ISubjectRepository
         var entity = await _db.Subjects.FindAsync(new object[] { id }, ct);
         if (entity != null)
         {
+            var isMappedToClasses = await _db.ClassSubjects
+                .AsNoTracking()
+                .AnyAsync(x => x.SubjectId == id, ct);
+            if (isMappedToClasses)
+                throw new InvalidOperationException("The subject is mapped to classes, so deletion is not allowed.");
+
             _db.Subjects.Remove(entity);
             await _db.SaveChangesAsync(ct);
         }
@@ -76,5 +82,20 @@ public class SubjectRepository : ISubjectRepository
             _db.ClassSubjects.Add(new ClassSubject { ClassId = classId, SubjectId = subjectId });
         }
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default)
+    {
+        var normalized = (name ?? string.Empty).Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        return await _db.Subjects
+            .AsNoTracking()
+            .AnyAsync(
+                x =>
+                    (excludeId == null || x.Id != excludeId.Value) &&
+                    x.Name.Trim().ToLower() == normalized,
+                ct);
     }
 }

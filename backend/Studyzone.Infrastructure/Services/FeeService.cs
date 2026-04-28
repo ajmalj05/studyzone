@@ -293,12 +293,20 @@ public class FeeService : IFeeService
             throw new ArgumentException("Invalid student id.", nameof(request));
         if (!Guid.TryParse(request.FeeStructureId, out var structureId))
             throw new ArgumentException("Invalid fee structure id.", nameof(request));
+        var normalizedPeriod = (request.Period ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPeriod))
+            throw new InvalidOperationException("Fee period is required.");
+
+        var duplicateExists = await _chargeRepo.ExistsAsync(studentId, structureId, normalizedPeriod, ct);
+        if (duplicateExists)
+            throw new InvalidOperationException("Duplicate fee is not allowed: this fee type is already added for the student in the selected period.");
+
         var entity = new FeeCharge
         {
             Id = Guid.NewGuid(),
             StudentId = studentId,
             FeeStructureId = structureId,
-            Period = request.Period,
+            Period = normalizedPeriod,
             Amount = request.Amount,
             Description = request.Description,
             CreatedAt = DateTime.UtcNow
@@ -568,6 +576,34 @@ public class FeeService : IFeeService
         return chosen != null ? chosen.Frequency : null;
     }
 
+    private sealed class ChargeAllocationState
+    {
+        public Guid ChargeId { get; init; }
+        public string ParticularName { get; init; } = "Fee";
+        public string Period { get; init; } = string.Empty;
+        public string Frequency { get; init; } = string.Empty;
+        public decimal Remaining { get; set; }
+        public DateTime CreatedAt { get; init; }
+    }
+
+    private static string BuildReceiptParticularLabel(ChargeAllocationState charge)
+    {
+        if (string.IsNullOrWhiteSpace(charge.Period))
+            return charge.ParticularName;
+        return $"{charge.ParticularName} ({charge.Period})";
+    }
+
+    private static bool PaymentCanApplyToCharge(Payment payment, ChargeAllocationState charge)
+    {
+        if (string.IsNullOrWhiteSpace(payment.FeeType))
+            return true;
+        if (string.Equals(payment.FeeType.Trim(), "All outstanding", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var payKey = GetTypedPaymentAllocationKey(payment.FeeType);
+        var chargeKey = GetTypedPaymentAllocationKey(charge.ParticularName);
+        return string.Equals(payKey, chargeKey, StringComparison.OrdinalIgnoreCase);
+    }
+
     public async Task<FeeReceiptDto?> GetReceiptAsync(string paymentId, CancellationToken ct = default)
     {
         if (!Guid.TryParse(paymentId, out var pid))
@@ -596,21 +632,101 @@ public class FeeService : IFeeService
             }
         }
 
-        var particularLabel = string.IsNullOrWhiteSpace(payment.FeeType)
-            ? "General (all outstanding)"
-            : $"{payment.FeeType.Trim()} fee";
-
-        string? structureFrequency = null;
-        if (!string.IsNullOrWhiteSpace(payment.FeeType) && classId.HasValue && academicYearId.HasValue)
+        var charges = await _chargeRepo.GetByStudentIdAsync(student.Id, null, ct);
+        var structureIds = charges.Select(c => c.FeeStructureId).Distinct().ToList();
+        var structuresById = new Dictionary<Guid, FeeStructure>();
+        foreach (var structureId in structureIds)
         {
-            var structures = await _structureRepo.GetByClassIdAndAcademicYearAsync(classId.Value, academicYearId.Value, ct);
-            structureFrequency = ResolveBillingFrequencyForPayment(payment.FeeType, structures);
+            var structure = await _structureRepo.GetByIdAsync(structureId, ct);
+            if (structure != null)
+                structuresById[structureId] = structure;
         }
 
-        var particulars = new List<FeeReceiptParticularDto>
+        var chargeStates = charges
+            .OrderBy(c => c.Period)
+            .ThenBy(c => c.CreatedAt)
+            .Select(c =>
+            {
+                var structure = structuresById.GetValueOrDefault(c.FeeStructureId);
+                var baseName = CleanFeeStructureBaseName(structure?.Name) ?? structure?.Name ?? "Fee";
+                return new ChargeAllocationState
+                {
+                    ChargeId = c.Id,
+                    ParticularName = baseName,
+                    Period = c.Period,
+                    Frequency = structure?.Frequency ?? string.Empty,
+                    Remaining = c.Amount,
+                    CreatedAt = c.CreatedAt
+                };
+            })
+            .ToList();
+
+        var allPayments = (await _paymentRepo.GetByStudentIdAsync(student.Id, null, null, ct))
+            .OrderBy(p => p.PaidAt)
+            .ThenBy(p => p.CreatedAt)
+            .ThenBy(p => p.Id)
+            .ToList();
+
+        var receiptAllocations = new List<(string Name, decimal Amount, string? Frequency)>();
+        foreach (var currentPayment in allPayments)
         {
-            new FeeReceiptParticularDto { Name = particularLabel, Amount = payment.Amount, Frequency = structureFrequency }
-        };
+            var amountLeft = currentPayment.Amount;
+            if (amountLeft <= 0) continue;
+
+            var eligibleCharges = chargeStates
+                .Where(c => c.Remaining > 0 && PaymentCanApplyToCharge(currentPayment, c))
+                .OrderBy(c => c.Period)
+                .ThenBy(c => c.CreatedAt)
+                .ToList();
+
+            foreach (var charge in eligibleCharges)
+            {
+                if (amountLeft <= 0) break;
+                if (charge.Remaining <= 0) continue;
+
+                var allocated = Math.Min(charge.Remaining, amountLeft);
+                charge.Remaining -= allocated;
+                amountLeft -= allocated;
+
+                if (currentPayment.Id == payment.Id && allocated > 0)
+                {
+                    receiptAllocations.Add((
+                        Name: BuildReceiptParticularLabel(charge),
+                        Amount: allocated,
+                        Frequency: string.IsNullOrWhiteSpace(charge.Frequency) ? null : charge.Frequency
+                    ));
+                }
+            }
+        }
+
+        var particulars = receiptAllocations
+            .GroupBy(x => new { x.Name, x.Frequency })
+            .Select(g => new FeeReceiptParticularDto
+            {
+                Name = g.Key.Name,
+                Frequency = g.Key.Frequency,
+                Amount = g.Sum(x => x.Amount)
+            })
+            .ToList();
+
+        if (particulars.Count == 0)
+        {
+            var fallbackLabel = string.IsNullOrWhiteSpace(payment.FeeType)
+                ? "General payment"
+                : $"{payment.FeeType.Trim()} fee";
+            string? structureFrequency = null;
+            if (!string.IsNullOrWhiteSpace(payment.FeeType) && classId.HasValue && academicYearId.HasValue)
+            {
+                var classStructures = await _structureRepo.GetByClassIdAndAcademicYearAsync(classId.Value, academicYearId.Value, ct);
+                structureFrequency = ResolveBillingFrequencyForPayment(payment.FeeType, classStructures);
+            }
+            particulars.Add(new FeeReceiptParticularDto
+            {
+                Name = fallbackLabel,
+                Amount = payment.Amount,
+                Frequency = structureFrequency
+            });
+        }
 
         var history = new List<FeeReceiptHistoryItemDto>
         {

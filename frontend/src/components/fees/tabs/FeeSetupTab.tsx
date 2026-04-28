@@ -1,6 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Pencil,
   Trash2,
@@ -48,6 +57,14 @@ export function FeeSetupTab({ classes, students, batches, mode = "setup" }: FeeS
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [createDefaults, setCreateDefaults] = useState<AddFeeModalCreateDefaults | null>(null);
   const [editStructure, setEditStructure] = useState<FeeStructureRow | null>(null);
+  const [busAssignOpen, setBusAssignOpen] = useState(false);
+  const [busAssignClassId, setBusAssignClassId] = useState<string>(ALL);
+  const [busAssignBatchId, setBusAssignBatchId] = useState<string>(ALL);
+  const [busAssignSearch, setBusAssignSearch] = useState("");
+  const [busAssignAmount, setBusAssignAmount] = useState("");
+  const [busAssignFrequency, setBusAssignFrequency] = useState("Monthly");
+  const [busAssignRouteNote, setBusAssignRouteNote] = useState("");
+  const [busAssignSelectedStudentIds, setBusAssignSelectedStudentIds] = useState<string[]>([]);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ id: string; name: string } | null>(null);
@@ -284,6 +301,117 @@ export function FeeSetupTab({ classes, students, batches, mode = "setup" }: FeeS
     return [...scopedBatches].sort((a, b) => a.name.localeCompare(b.name));
   }, [batches, classFilter]);
 
+  const busTakenStudentIds = useMemo(
+    () =>
+      bus
+        .map((b) => busFeeStudentIdFromName(b, students))
+        .filter(Boolean) as string[],
+    [bus, students]
+  );
+
+  const busAssignBatchOptions = useMemo(() => {
+    const scoped = busAssignClassId === ALL ? batches : batches.filter((b) => b.classId === busAssignClassId);
+    return [...scoped].sort((a, b) => a.name.localeCompare(b.name));
+  }, [batches, busAssignClassId]);
+
+  const busAssignableStudents = useMemo(() => {
+    const q = busAssignSearch.trim().toLowerCase();
+    return students
+      .filter((s) => !busTakenStudentIds.includes(s.id))
+      .filter((s) => (busAssignClassId === ALL ? true : s.classId === busAssignClassId))
+      .filter((s) => (busAssignBatchId === ALL ? true : s.batchId === busAssignBatchId))
+      .filter((s) => {
+        if (!q) return true;
+        return (
+          s.name.toLowerCase().includes(q) ||
+          s.admissionNumber.toLowerCase().includes(q) ||
+          (s.className || "").toLowerCase().includes(q) ||
+          (s.batchName || "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [students, busTakenStudentIds, busAssignClassId, busAssignBatchId, busAssignSearch]);
+
+  const allBusAssignableSelected =
+    busAssignableStudents.length > 0 &&
+    busAssignableStudents.every((s) => busAssignSelectedStudentIds.includes(s.id));
+
+  const toggleBusStudent = (studentId: string) => {
+    setBusAssignSelectedStudentIds((prev) =>
+      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const toggleSelectAllBusStudents = () => {
+    if (allBusAssignableSelected) {
+      const visibleIds = new Set(busAssignableStudents.map((s) => s.id));
+      setBusAssignSelectedStudentIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+      return;
+    }
+    setBusAssignSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      busAssignableStudents.forEach((s) => next.add(s.id));
+      return Array.from(next);
+    });
+  };
+
+  const openBusAssignDialog = () => {
+    setBusAssignClassId(ALL);
+    setBusAssignBatchId(ALL);
+    setBusAssignSearch("");
+    setBusAssignAmount("");
+    setBusAssignFrequency("Monthly");
+    setBusAssignRouteNote("");
+    setBusAssignSelectedStudentIds([]);
+    setBusAssignOpen(true);
+  };
+
+  const handleBusBulkAssign = async () => {
+    const amount = Number(busAssignAmount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      toast({ title: "Validation", description: "Enter a valid amount.", variant: "destructive" });
+      return;
+    }
+    if (busAssignSelectedStudentIds.length === 0) {
+      toast({ title: "Validation", description: "Select at least one student.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      for (const studentId of busAssignSelectedStudentIds) {
+        const student = students.find((s) => s.id === studentId);
+        if (!student?.classId) continue;
+        await fetchApi("/Fees/structures", {
+          method: "POST",
+          body: JSON.stringify({
+            classId: student.classId,
+            academicYearId: selectedYearId || undefined,
+            amount,
+            frequency: busAssignFrequency,
+            name: `Bus Fee - ${student.name}${busAssignRouteNote.trim() ? ` - ${busAssignRouteNote.trim()}` : ""}`,
+            studentId,
+            routeNote: busAssignRouteNote.trim() || undefined,
+          }),
+        });
+      }
+      toast({
+        title: "Saved",
+        description: `Bus fee assigned to ${busAssignSelectedStudentIds.length} student${busAssignSelectedStudentIds.length > 1 ? "s" : ""}.`,
+      });
+      setBusAssignOpen(false);
+      await loadFees();
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: (e as { message?: string })?.message || "Failed to assign bus fee.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getColumns = (): DataTableColumn<FeeStructureRow>[] => {
     if (activeTab === "bus") {
       return [
@@ -486,7 +614,7 @@ export function FeeSetupTab({ classes, students, batches, mode = "setup" }: FeeS
               />
             )}
             <Button
-              onClick={() => openAddModal()}
+              onClick={() => (mode === "bus" ? openBusAssignDialog() : openAddModal())}
               className="gap-2"
               disabled={saving}
             >
@@ -543,6 +671,130 @@ export function FeeSetupTab({ classes, students, batches, mode = "setup" }: FeeS
         allStructures={allStructures}
         saving={saving}
       />
+
+      <Dialog open={busAssignOpen} onOpenChange={setBusAssignOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Assign bus fee (bulk)</DialogTitle>
+            <DialogDescription>
+              Select students and apply one fee amount/frequency in a single action.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className="sm:col-span-1">
+                <SearchableSelect
+                  value={busAssignClassId}
+                  onValueChange={(value) => {
+                    setBusAssignClassId(value);
+                    setBusAssignBatchId(ALL);
+                  }}
+                  placeholder="All classes"
+                  options={[
+                    { value: ALL, label: "All classes" },
+                    ...classes.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <SearchableSelect
+                  value={busAssignBatchId}
+                  onValueChange={setBusAssignBatchId}
+                  placeholder="All batches"
+                  options={[
+                    { value: ALL, label: "All batches" },
+                    ...busAssignBatchOptions.map((b) => ({ value: b.id, label: b.name })),
+                  ]}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Input
+                  value={busAssignSearch}
+                  onChange={(e) => setBusAssignSearch(e.target.value)}
+                  placeholder="Search by student name, admission no, class or batch"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={busAssignAmount}
+                onChange={(e) => setBusAssignAmount(e.target.value)}
+                placeholder="Amount (AED)"
+              />
+              <SearchableSelect
+                value={busAssignFrequency}
+                onValueChange={setBusAssignFrequency}
+                options={[
+                  { value: "Monthly", label: "Monthly" },
+                  { value: "Per term", label: "Per term" },
+                  { value: "Annual", label: "Annual" },
+                  { value: "Once", label: "Once" },
+                ]}
+              />
+              <Input
+                value={busAssignRouteNote}
+                onChange={(e) => setBusAssignRouteNote(e.target.value)}
+                placeholder="Route / note (optional)"
+              />
+            </div>
+
+            <div className="rounded-md border border-slate-200">
+              <div className="flex items-center justify-between border-b bg-slate-50 px-3 py-2 text-sm">
+                <button
+                  type="button"
+                  onClick={toggleSelectAllBusStudents}
+                  className="font-medium text-[hsl(193,76%,36%)] hover:underline"
+                >
+                  {allBusAssignableSelected ? "Clear selection" : "Select all visible"}
+                </button>
+                <span className="text-slate-500">
+                  {busAssignSelectedStudentIds.length} selected / {busAssignableStudents.length} visible
+                </span>
+              </div>
+              <div className="max-h-72 overflow-y-auto p-2">
+                {busAssignableStudents.length === 0 ? (
+                  <p className="p-3 text-sm text-slate-500">No students available for bus fee assignment.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {busAssignableStudents.map((s) => (
+                      <label
+                        key={s.id}
+                        className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={busAssignSelectedStudentIds.includes(s.id)}
+                            onChange={() => toggleBusStudent(s.id)}
+                            className="h-4 w-4 rounded border-slate-300 accent-[hsl(193,76%,36%)]"
+                          />
+                          <span className="text-sm font-medium text-slate-700">{s.name}</span>
+                          <span className="text-xs text-slate-500">({s.admissionNumber})</span>
+                        </div>
+                        <span className="text-xs text-slate-500">
+                          {s.className || "—"} {s.batchName ? `• ${s.batchName}` : ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setBusAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleBusBulkAssign} disabled={saving}>
+              {saving ? "Saving…" : "Assign fee to selected"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}

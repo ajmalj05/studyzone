@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface TeacherAttendanceItemDto {
   teacherUserId: string;
@@ -25,7 +26,8 @@ interface TeacherDto {
   subject?: string;
 }
 
-const STAFF_ATTENDANCE_STATUSES = ["Present", "Absent", "Late"];
+type StaffAttendanceStatus = "" | "Present" | "Absent" | "Late";
+const STAFF_ATTENDANCE_STATUSES: StaffAttendanceStatus[] = ["Present", "Absent", "Late"];
 
 export default function StaffAttendance() {
   const navigate = useNavigate();
@@ -48,13 +50,13 @@ export default function StaffAttendance() {
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherAttendanceItemDto | null>(null);
-  const [editStatus, setEditStatus] = useState<string>("Present");
+  const [editStatus, setEditStatus] = useState<StaffAttendanceStatus>("");
   
   // New attendance modal state
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
-  const [newStatus, setNewStatus] = useState("Present");
+  const [newStatus, setNewStatus] = useState<StaffAttendanceStatus>("");
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -72,8 +74,8 @@ export default function StaffAttendance() {
       });
       
       setTeachers(Array.isArray(merged) ? merged : []);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to fetch teachers", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to fetch teachers", variant: "destructive" });
       setTeachers([]);
     } finally {
       setLoading(false);
@@ -84,8 +86,8 @@ export default function StaffAttendance() {
     try {
       const data = await fetchApi("/Users?role=teacher");
       setAllTeachers(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to fetch teacher list", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to fetch teacher list", variant: "destructive" });
     }
   };
 
@@ -96,7 +98,7 @@ export default function StaffAttendance() {
 
   const openEditModal = (teacher: TeacherAttendanceItemDto) => {
     setEditingTeacher(teacher);
-    setEditStatus(teacher.status || "Present");
+    setEditStatus((teacher.status as StaffAttendanceStatus) || "");
     setEditModalOpen(true);
   };
 
@@ -112,7 +114,7 @@ export default function StaffAttendance() {
     );
   };
 
-  const handleInlineStatusChange = async (teacher: TeacherAttendanceItemDto, status: string) => {
+  const handleInlineStatusChange = async (teacher: TeacherAttendanceItemDto, status: StaffAttendanceStatus) => {
     const previousStatus = teacher.status;
     setTeachers((items) =>
       items.map((item) =>
@@ -129,18 +131,34 @@ export default function StaffAttendance() {
         }),
       });
       toast({ title: "Success", description: `${teacher.teacherName}'s attendance updated.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTeachers((items) =>
         items.map((item) =>
           item.teacherUserId === teacher.teacherUserId ? { ...item, status: previousStatus } : item,
         ),
       );
-      toast({ title: "Error", description: err.message || "Failed to update attendance", variant: "destructive" });
+      toast({ title: "Error", description: (err as Error).message || "Failed to update attendance", variant: "destructive" });
     }
   };
 
+  const statusButtonClass = (isSelected: boolean, status: StaffAttendanceStatus) =>
+    cn(
+      "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+      !isSelected && "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+      isSelected &&
+        (status === "Present"
+          ? "border-green-300 bg-green-100 text-green-700"
+          : status === "Absent"
+            ? "border-red-300 bg-red-100 text-red-700"
+            : "border-amber-300 bg-amber-100 text-amber-700"),
+    );
+
   const handleEditSave = async () => {
     if (!editingTeacher) return;
+    if (!editStatus) {
+      toast({ title: "Validation", description: "Please select attendance status", variant: "destructive" });
+      return;
+    }
     
     setSaving(true);
     try {
@@ -154,8 +172,8 @@ export default function StaffAttendance() {
       toast({ title: "Success", description: "Attendance updated successfully" });
       setEditModalOpen(false);
       loadTeachers();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to save attendance", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to save attendance", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -164,6 +182,10 @@ export default function StaffAttendance() {
   const handleNewAttendance = async () => {
     if (!selectedTeacherId) {
       toast({ title: "Error", description: "Please select a teacher", variant: "destructive" });
+      return;
+    }
+    if (!newStatus) {
+      toast({ title: "Validation", description: "Please select attendance status", variant: "destructive" });
       return;
     }
     
@@ -179,12 +201,13 @@ export default function StaffAttendance() {
       toast({ title: "Success", description: "Attendance marked successfully" });
       setNewModalOpen(false);
       setSelectedTeacherId("");
+      setNewStatus("");
       // If the new date matches current view date, refresh the list
       if (newDate === date) {
         loadTeachers();
       }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to save attendance", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to save attendance", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -210,23 +233,23 @@ export default function StaffAttendance() {
       header: "Status",
       align: "center",
       cell: (t) => (
-        <select
-          value={t.status || "Present"}
-          onChange={(e) => handleInlineStatusChange(t, e.target.value)}
-          disabled={saving}
-          className={`h-8 rounded-full border px-3 text-xs font-medium outline-none transition-colors ${
-            t.status === "Present" ? "border-green-200 bg-green-100 text-green-700" :
-            t.status === "Absent" ? "border-red-200 bg-red-100 text-red-700" :
-            t.status === "Late" ? "border-amber-200 bg-amber-100 text-amber-700" :
-            "border-gray-200 bg-gray-100 text-gray-600"
-          }`}
-        >
-          {STAFF_ATTENDANCE_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
+        <div className="flex justify-center gap-1.5">
+          {STAFF_ATTENDANCE_STATUSES.map((status) => {
+            const selected = t.status === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                disabled={saving}
+                onClick={() => handleInlineStatusChange(t, status)}
+                className={statusButtonClass(selected, status)}
+              >
+                <span className={cn("inline-block h-3.5 w-3.5 rounded-[3px] border", selected ? "border-current bg-current/15" : "border-slate-300")} />
+                {status}
+              </button>
+            );
+          })}
+        </div>
       ),
     },
     {
@@ -298,6 +321,7 @@ export default function StaffAttendance() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
+                <p className="text-xs text-muted-foreground">No default selection. Choose one status to save.</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setEditStatus("Present")}
@@ -335,7 +359,7 @@ export default function StaffAttendance() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleEditSave} disabled={saving}>
+            <Button onClick={handleEditSave} disabled={saving || !editStatus}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -366,6 +390,7 @@ export default function StaffAttendance() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
+              <p className="text-xs text-muted-foreground">No default selection. Choose one status to mark attendance.</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setNewStatus("Present")}
@@ -402,7 +427,7 @@ export default function StaffAttendance() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleNewAttendance} disabled={saving || !selectedTeacherId}>
+            <Button onClick={handleNewAttendance} disabled={saving || !selectedTeacherId || !newStatus}>
               {saving ? "Saving..." : "Mark Attendance"}
             </Button>
           </DialogFooter>
@@ -416,7 +441,7 @@ export default function StaffAttendance() {
         previewData={{ headers: ["Name", "Subject", "Status", "Date"], rows: teachers.map(t => [
           t.teacherName ? t.teacherName.charAt(0).toUpperCase() + t.teacherName.slice(1).toLowerCase() : '-',
           t.subject ?? "—",
-          t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1).toLowerCase() : '—',
+          t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1).toLowerCase() : "Not marked",
           date
         ]) }}
       />

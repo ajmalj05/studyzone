@@ -58,9 +58,13 @@ public class BatchService : IBatchService
     {
         if (!Guid.TryParse(request.ClassId, out var classId))
             throw new ArgumentException("Invalid class id.", nameof(request));
+        var batchName = request.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(batchName))
+            throw new InvalidOperationException("Batch name is required.");
         var academicYearId = await ResolveAcademicYearIdAsync(
             string.IsNullOrWhiteSpace(request.AcademicYearId) ? null : request.AcademicYearId, ct)
             ?? throw new InvalidOperationException("Academic year is required. Set current academic year in settings.");
+        await EnsureBatchNameUniqueAsync(classId, academicYearId, batchName, null, ct);
         var classTeacherId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
             ? (Guid?)null
             : ctGuid;
@@ -70,7 +74,7 @@ public class BatchService : IBatchService
             Id = Guid.NewGuid(),
             ClassId = classId,
             AcademicYearId = academicYearId,
-            Name = request.Name,
+            Name = batchName,
             SeatLimit = request.SeatLimit,
             ClassTeacherUserId = classTeacherId,
             CreatedAt = DateTime.UtcNow
@@ -84,7 +88,11 @@ public class BatchService : IBatchService
         if (!Guid.TryParse(id, out var guid))
             throw new ArgumentException("Invalid id.", nameof(id));
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Batch not found.");
-        entity.Name = request.Name;
+        var batchName = request.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(batchName))
+            throw new InvalidOperationException("Batch name is required.");
+        await EnsureBatchNameUniqueAsync(entity.ClassId, entity.AcademicYearId, batchName, entity.Id, ct);
+        entity.Name = batchName;
         entity.SeatLimit = request.SeatLimit;
         var classTeacherId = string.IsNullOrWhiteSpace(request.ClassTeacherUserId) || !Guid.TryParse(request.ClassTeacherUserId, out var ctGuid)
             ? (Guid?)null
@@ -115,6 +123,22 @@ public class BatchService : IBatchService
         var location = batchName == null ? className : $"{className} - {batchName}";
 
         throw new InvalidOperationException($"{teacherName} is already assigned to {location}.");
+    }
+
+    private async Task EnsureBatchNameUniqueAsync(
+        Guid classId,
+        Guid academicYearId,
+        string batchName,
+        Guid? currentBatchId,
+        CancellationToken ct)
+    {
+        var batchesInClass = await _repo.GetByClassIdAndAcademicYearAsync(classId, academicYearId, ct);
+        var duplicate = batchesInClass.FirstOrDefault(b =>
+            (!currentBatchId.HasValue || b.Id != currentBatchId.Value) &&
+            string.Equals((b.Name ?? string.Empty).Trim(), batchName, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicate != null)
+            throw new InvalidOperationException($"Batch '{batchName}' already exists for this class and academic year.");
     }
 
     private async Task<Guid?> ResolveAcademicYearIdAsync(string? academicYearId, CancellationToken ct)

@@ -15,7 +15,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchApi } from "@/lib/api";
-import { BarChart3, Download } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface ClassDto {
   id: string;
@@ -84,6 +84,48 @@ interface TeacherWorkloadRow {
   periodsPerWeek: number;
 }
 
+interface StudentLiteDto {
+  id: string;
+  name: string;
+  admissionNumber?: string;
+  classId?: string;
+  className?: string;
+  batchId?: string;
+  batchName?: string;
+}
+
+interface TeacherLiteDto {
+  id: string;
+  name: string;
+  userId: string;
+}
+
+interface BatchLiteDto {
+  id: string;
+  name: string;
+  className?: string;
+}
+
+interface TimetableSlotRow {
+  id: string;
+  batchId: string;
+  batchName: string;
+  dayOfWeek: number;
+  periodOrder: number;
+  subject: string;
+  room?: string;
+  teacherUserId?: string;
+  teacherName?: string;
+}
+
+interface ExamMarkRow {
+  studentId: string;
+  studentName: string;
+  subject: string;
+  marksObtained: number;
+  maxMarks: number;
+}
+
 function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]);
@@ -92,6 +134,30 @@ function toCsv(rows: Record<string, unknown>[]): string {
     lines.push(headers.map((h) => String(row[h] ?? "").replace(/"/g, '""')).map((c) => `"${c}"`).join(","));
   }
   return lines.join("\n");
+}
+
+function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  const csv = toCsv(rows);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function eachDateIso(fromIso: string, toIso: string): string[] {
+  if (!fromIso || !toIso) return [];
+  const from = new Date(`${fromIso}T00:00:00`);
+  const to = new Date(`${toIso}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) return [];
+  const out: string[] = [];
+  const cur = new Date(from);
+  while (cur <= to) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
 }
 
 export default function Reports() {
@@ -110,6 +176,16 @@ export default function Reports() {
   const [customReportType, setCustomReportType] = useState<"admission" | "workload">("admission");
   const [admissionConversion, setAdmissionConversion] = useState<AdmissionConversionReport | null>(null);
   const [teacherWorkload, setTeacherWorkload] = useState<TeacherWorkloadRow[]>([]);
+  const [students, setStudents] = useState<StudentLiteDto[]>([]);
+  const [teachers, setTeachers] = useState<TeacherLiteDto[]>([]);
+  const [batches, setBatches] = useState<BatchLiteDto[]>([]);
+  const [downloadExamId, setDownloadExamId] = useState("");
+  const [downloadSubject, setDownloadSubject] = useState("");
+  const [downloadStudentId, setDownloadStudentId] = useState("");
+  const [downloadTeacherId, setDownloadTeacherId] = useState("");
+  const [downloadClassId, setDownloadClassId] = useState("all");
+  const [downloadFrom, setDownloadFrom] = useState("");
+  const [downloadTo, setDownloadTo] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("enrollment");
@@ -128,6 +204,17 @@ export default function Reports() {
         ]);
         setClasses(Array.isArray(cList) ? cList : []);
         setExams(Array.isArray(eList) ? eList : []);
+        const [studentRes, teacherRes, batchRes] = await Promise.all([
+          fetchApi("/Students?status=Active&take=1000").catch(() => []),
+          fetchApi("/Users?role=teacher").catch(() => []),
+          fetchApi("/Batches").catch(() => []),
+        ]);
+        const studentItems = Array.isArray(studentRes)
+          ? (studentRes as StudentLiteDto[])
+          : ((studentRes as { items?: StudentLiteDto[] })?.items ?? []);
+        setStudents(studentItems);
+        setTeachers(Array.isArray(teacherRes) ? (teacherRes as TeacherLiteDto[]) : []);
+        setBatches(Array.isArray(batchRes) ? (batchRes as BatchLiteDto[]) : []);
       } catch (_) {}
     })();
   }, []);
@@ -206,23 +293,11 @@ export default function Reports() {
   };
 
   const exportEnrollment = () => {
-    const csv = toCsv(enrollment.map((r) => ({ ClassName: r.className, StudentCount: r.studentCount })));
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "enrollment-report.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadCsv("enrollment-report.csv", enrollment.map((r) => ({ ClassName: r.className, StudentCount: r.studentCount })));
   };
 
   const exportBatchStrength = () => {
-    const csv = toCsv(batchStrength.map((r) => ({ Class: r.className, Batch: r.batchName, StudentCount: r.studentCount })));
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "batch-strength-report.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadCsv("batch-strength-report.csv", batchStrength.map((r) => ({ Class: r.className, Batch: r.batchName, StudentCount: r.studentCount })));
   };
 
   const exportFinancial = () => {
@@ -232,17 +307,11 @@ export default function Reports() {
       { Metric: "Total Outstanding", Value: financial.totalOutstanding },
       ...financial.outstandingByClass.map((r) => ({ Metric: `Outstanding - ${r.className}`, Value: r.outstanding })),
     ];
-    const csv = toCsv(rows);
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "financial-report.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadCsv("financial-report.csv", rows);
   };
 
   const exportAttendance = () => {
-    const csv = toCsv(
+    downloadCsv("attendance-report.csv",
       attendance.map((r) => ({
         StudentName: r.studentName,
         Class: r.className ?? "",
@@ -253,17 +322,11 @@ export default function Reports() {
         ChronicAbsentee: r.chronicAbsentee ? "Yes" : "No",
       }))
     );
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "attendance-report.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
   };
 
   const exportAcademic = () => {
     if (!academic) return;
-    const csv = toCsv(
+    downloadCsv("academic-report.csv",
       academic.rows.map((r) => ({
         Rank: r.rank,
         StudentName: r.studentName,
@@ -272,12 +335,6 @@ export default function Reports() {
         Percentage: r.percentage,
       }))
     );
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "academic-report.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
   };
 
   const loadCustomReport = async () => {
@@ -304,27 +361,170 @@ export default function Reports() {
 
   const exportCustomReport = () => {
     if (customReportType === "admission" && admissionConversion) {
-      const csv = toCsv([
+      downloadCsv("admission-conversion.csv", [
         { Metric: "New Enquiries", Value: admissionConversion.newEnquiries },
         { Metric: "Contacted", Value: admissionConversion.contacted },
         { Metric: "Interview Scheduled", Value: admissionConversion.interviewScheduled },
         { Metric: "Admitted (in range)", Value: admissionConversion.admittedInRange },
       ]);
-      const blob = new Blob([csv], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "admission-conversion.csv";
-      a.click();
-      URL.revokeObjectURL(a.href);
     } else if (customReportType === "workload" && teacherWorkload.length > 0) {
-      const csv = toCsv(teacherWorkload.map((r) => ({ Teacher: r.teacherName, PeriodsPerWeek: r.periodsPerWeek })));
-      const blob = new Blob([csv], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "teacher-workload.csv";
-      a.click();
-      URL.revokeObjectURL(a.href);
+      downloadCsv("teacher-workload.csv", teacherWorkload.map((r) => ({ Teacher: r.teacherName, PeriodsPerWeek: r.periodsPerWeek })));
     }
+  };
+
+  const exportStudentTimetable = async () => {
+    if (!downloadStudentId) return;
+    const student = students.find((s) => s.id === downloadStudentId);
+    if (!student?.batchId) return;
+    try {
+      const slots = (await fetchApi(`/Timetable/batch/${student.batchId}`)) as TimetableSlotRow[];
+      const rows = (Array.isArray(slots) ? slots : [])
+        .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodOrder - b.periodOrder)
+        .map((s) => ({
+          Student: student.name,
+          AdmissionNo: student.admissionNumber ?? "",
+          Batch: s.batchName,
+          Day: s.dayOfWeek,
+          Period: s.periodOrder,
+          Subject: s.subject,
+          Teacher: s.teacherName ?? "",
+          Room: s.room ?? "",
+        }));
+      downloadCsv(`student-timetable-${student.name}.csv`, rows);
+    } catch {}
+  };
+
+  const exportTeacherTimetable = async () => {
+    if (!downloadTeacherId || batches.length === 0) return;
+    const teacher = teachers.find((t) => t.userId === downloadTeacherId || t.id === downloadTeacherId);
+    try {
+      const allSlots = (
+        await Promise.all(
+          batches.map((b) =>
+            fetchApi(`/Timetable/batch/${b.id}`).catch(() => [] as TimetableSlotRow[])
+          )
+        )
+      ).flat();
+      const rows = allSlots
+        .filter((s) => s.teacherUserId === downloadTeacherId)
+        .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodOrder - b.periodOrder)
+        .map((s) => ({
+          Teacher: teacher?.name ?? downloadTeacherId,
+          Batch: s.batchName,
+          Day: s.dayOfWeek,
+          Period: s.periodOrder,
+          Subject: s.subject,
+          Room: s.room ?? "",
+        }));
+      downloadCsv(`teacher-timetable-${teacher?.name ?? "teacher"}.csv`, rows);
+    } catch {}
+  };
+
+  const exportMarkListSingleStudentAllSubjects = async () => {
+    if (!downloadExamId || !downloadStudentId) return;
+    try {
+      const marks = (await fetchApi(`/Exams/${downloadExamId}/marks`)) as ExamMarkRow[];
+      const student = students.find((s) => s.id === downloadStudentId);
+      const rows = (Array.isArray(marks) ? marks : [])
+        .filter((m) => m.studentId === downloadStudentId)
+        .map((m) => ({
+          Student: m.studentName,
+          Subject: m.subject,
+          MarksObtained: m.marksObtained,
+          MaxMarks: m.maxMarks,
+        }));
+      downloadCsv(`mark-list-${student?.name ?? "student"}-all-subjects.csv`, rows);
+    } catch {}
+  };
+
+  const exportMarkListAllStudentsSingleSubject = async () => {
+    if (!downloadExamId || !downloadSubject.trim()) return;
+    try {
+      const marks = (await fetchApi(`/Exams/${downloadExamId}/marks`)) as ExamMarkRow[];
+      const rows = (Array.isArray(marks) ? marks : [])
+        .filter((m) => m.subject.toLowerCase() === downloadSubject.trim().toLowerCase())
+        .map((m) => ({
+          Subject: m.subject,
+          Student: m.studentName,
+          MarksObtained: m.marksObtained,
+          MaxMarks: m.maxMarks,
+        }));
+      downloadCsv(`mark-list-${downloadSubject.trim()}-all-students.csv`, rows);
+    } catch {}
+  };
+
+  const exportTeacherAttendanceSingle = async () => {
+    if (!downloadTeacherId || !downloadFrom || !downloadTo) return;
+    const teacher = teachers.find((t) => t.userId === downloadTeacherId || t.id === downloadTeacherId);
+    try {
+      const rowsRaw = (await fetchApi(`/Attendance/teacher/${downloadTeacherId}?from=${downloadFrom}&to=${downloadTo}`)) as Array<{
+        date: string;
+        status: string;
+      }>;
+      const rows = (Array.isArray(rowsRaw) ? rowsRaw : []).map((r) => ({
+        Teacher: teacher?.name ?? downloadTeacherId,
+        Date: r.date?.slice(0, 10),
+        Status: r.status,
+      }));
+      downloadCsv(`teacher-attendance-${teacher?.name ?? "teacher"}.csv`, rows);
+    } catch {}
+  };
+
+  const exportTeacherAttendanceAll = async () => {
+    if (!downloadFrom || !downloadTo) return;
+    const days = eachDateIso(downloadFrom, downloadTo);
+    if (days.length === 0) return;
+    try {
+      const perDay = await Promise.all(
+        days.map((d) => fetchApi(`/Attendance/teachers?date=${new Date(`${d}T12:00:00`).toISOString()}`).catch(() => []))
+      );
+      const rows: Record<string, unknown>[] = [];
+      perDay.forEach((entries, index) => {
+        const day = days[index];
+        (Array.isArray(entries) ? entries : []).forEach((e) => {
+          const row = e as { teacherName?: string; status?: string };
+          rows.push({ Date: day, Teacher: row.teacherName ?? "", Status: row.status ?? "" });
+        });
+      });
+      downloadCsv("teacher-attendance-all.csv", rows);
+    } catch {}
+  };
+
+  const exportStudentAttendanceSingle = async () => {
+    if (!downloadStudentId || !downloadFrom || !downloadTo) return;
+    const student = students.find((s) => s.id === downloadStudentId);
+    try {
+      const detail = (await fetchApi(`/Reports/attendance/student?studentId=${downloadStudentId}&from=${downloadFrom}&to=${downloadTo}`)) as {
+        studentName?: string;
+        rows?: Array<{ date?: string; status?: string; className?: string }>;
+      };
+      const rows = (detail?.rows ?? []).map((r) => ({
+        Student: detail.studentName || student?.name || "",
+        Date: r.date?.slice(0, 10),
+        Status: r.status ?? "",
+        Class: r.className ?? "",
+      }));
+      downloadCsv(`student-attendance-${student?.name ?? "student"}.csv`, rows);
+    } catch {}
+  };
+
+  const exportStudentAttendanceAll = async () => {
+    if (!downloadFrom || !downloadTo) return;
+    try {
+      const classQ = downloadClassId !== "all" ? `&classId=${downloadClassId}` : "";
+      const data = (await fetchApi(`/Reports/attendance?from=${downloadFrom}&to=${downloadTo}${classQ}`)) as {
+        rows: AttendanceRow[];
+      };
+      const rows = (data?.rows ?? []).map((r) => ({
+        Student: r.studentName,
+        Class: r.className ?? "",
+        PresentDays: r.presentDays,
+        AbsentDays: r.absentDays,
+        TotalDays: r.totalDays,
+        Percentage: r.percentage,
+      }));
+      downloadCsv("student-attendance-all.csv", rows);
+    } catch {}
   };
 
   return (
@@ -339,13 +539,14 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
                 <TabsTrigger value="batch">Batch Strength</TabsTrigger>
                 <TabsTrigger value="financial">Financial</TabsTrigger>
                 <TabsTrigger value="attendance">Attendance</TabsTrigger>
                 <TabsTrigger value="academic">Academic</TabsTrigger>
                 <TabsTrigger value="custom">Custom</TabsTrigger>
+                <TabsTrigger value="downloads">Downloads</TabsTrigger>
               </TabsList>
 
               <TabsContent value="enrollment" className="space-y-4 pt-4">
@@ -638,6 +839,124 @@ export default function Reports() {
                     </TableBody>
                   </Table>
                 )}
+              </TabsContent>
+
+              <TabsContent value="downloads" className="space-y-4 pt-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Student Timetable</CardTitle>
+                      <CardDescription>Download timetable for one student.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <SearchableSelect
+                        value={downloadStudentId}
+                        onValueChange={setDownloadStudentId}
+                        placeholder="Select student"
+                        options={students.map((s) => ({ value: s.id, label: `${s.name}${s.batchName ? ` (${s.batchName})` : ""}` }))}
+                      />
+                      <Button onClick={exportStudentTimetable} disabled={!downloadStudentId}>
+                        <Download className="mr-2 h-4 w-4" /> Download Student Timetable
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Teacher Timetable</CardTitle>
+                      <CardDescription>Download timetable for one teacher.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <SearchableSelect
+                        value={downloadTeacherId}
+                        onValueChange={setDownloadTeacherId}
+                        placeholder="Select teacher"
+                        options={teachers.map((t) => ({ value: t.userId || t.id, label: t.name }))}
+                      />
+                      <Button onClick={exportTeacherTimetable} disabled={!downloadTeacherId}>
+                        <Download className="mr-2 h-4 w-4" /> Download Teacher Timetable
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Mark List</CardTitle>
+                      <CardDescription>Single student (all subjects) and single subject (all students).</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <SearchableSelect
+                        value={downloadExamId}
+                        onValueChange={setDownloadExamId}
+                        placeholder="Select exam"
+                        options={exams.map((e) => ({ value: e.id, label: e.name }))}
+                      />
+                      <SearchableSelect
+                        value={downloadStudentId}
+                        onValueChange={setDownloadStudentId}
+                        placeholder="Select student (for single student export)"
+                        options={students.map((s) => ({ value: s.id, label: s.name }))}
+                      />
+                      <Button onClick={exportMarkListSingleStudentAllSubjects} disabled={!downloadExamId || !downloadStudentId}>
+                        <Download className="mr-2 h-4 w-4" /> Mark List: Single Student (All Subjects)
+                      </Button>
+                      <Input
+                        value={downloadSubject}
+                        onChange={(e) => setDownloadSubject(e.target.value)}
+                        placeholder="Subject name (for all students export)"
+                      />
+                      <Button onClick={exportMarkListAllStudentsSingleSubject} disabled={!downloadExamId || !downloadSubject.trim()}>
+                        <Download className="mr-2 h-4 w-4" /> Mark List: All Students (Single Subject)
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Attendance Sheets</CardTitle>
+                      <CardDescription>Teacher and student attendance downloads.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input type="date" value={downloadFrom} onChange={(e) => setDownloadFrom(e.target.value)} />
+                        <Input type="date" value={downloadTo} onChange={(e) => setDownloadTo(e.target.value)} />
+                      </div>
+                      <SearchableSelect
+                        value={downloadTeacherId}
+                        onValueChange={setDownloadTeacherId}
+                        placeholder="Select teacher (single teacher sheet)"
+                        options={teachers.map((t) => ({ value: t.userId || t.id, label: t.name }))}
+                      />
+                      <Button onClick={exportTeacherAttendanceSingle} disabled={!downloadTeacherId || !downloadFrom || !downloadTo}>
+                        <Download className="mr-2 h-4 w-4" /> Attendance: Single Teacher
+                      </Button>
+                      <Button onClick={exportTeacherAttendanceAll} disabled={!downloadFrom || !downloadTo}>
+                        <Download className="mr-2 h-4 w-4" /> Attendance: All Teachers
+                      </Button>
+                      <SearchableSelect
+                        value={downloadStudentId}
+                        onValueChange={setDownloadStudentId}
+                        placeholder="Select student (single student sheet)"
+                        options={students.map((s) => ({ value: s.id, label: s.name }))}
+                      />
+                      <Button onClick={exportStudentAttendanceSingle} disabled={!downloadStudentId || !downloadFrom || !downloadTo}>
+                        <Download className="mr-2 h-4 w-4" /> Attendance: Single Student
+                      </Button>
+                      <SearchableSelect
+                        value={downloadClassId}
+                        onValueChange={setDownloadClassId}
+                        placeholder="Class filter for all students"
+                        options={[
+                          { value: "all", label: "All classes" },
+                          ...classes.map((c) => ({ value: c.id, label: c.name })),
+                        ]}
+                      />
+                      <Button onClick={exportStudentAttendanceAll} disabled={!downloadFrom || !downloadTo}>
+                        <Download className="mr-2 h-4 w-4" /> Attendance: All Students
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

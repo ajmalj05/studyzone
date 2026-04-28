@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,9 @@ interface SubjectDto {
 }
 
 export default function Exams() {
+  const { pathname } = useLocation();
+  const isResultsModule = pathname.includes("/admin/academics/results");
+  const isExamsModule = !isResultsModule;
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [exams, setExams] = useState<ExamDto[]>([]);
@@ -123,13 +127,19 @@ export default function Exams() {
   const [rejectEntryId, setRejectEntryId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [scheduleEntries, setScheduleEntries] = useState<ExamScheduleEntryDto[]>([]);
+  const [scheduleSubjects, setScheduleSubjects] = useState<SubjectDto[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({ subjectName: "", scheduledDate: "", startTime: "", endTime: "", venue: "" });
 
   usePageHeaderConfigEffect(
-    { title: "Exams & Results", description: "Create Exams And Record Marks By Class." },
-    [],
+    {
+      title: isResultsModule ? "Results" : "Exams",
+      description: isResultsModule
+        ? "Add exam results and approve submitted marks."
+        : "Create exams and manage exam schedules.",
+    },
+    [isResultsModule],
   );
 
   const loadExams = async () => {
@@ -203,6 +213,15 @@ export default function Exams() {
   }, [marksClassFilter]);
 
   const selectedExam = exams.find((e) => e.id === selectedExamId);
+  const scheduleClassIds = useMemo(() => {
+    if (!selectedExam) return [] as string[];
+    const ids = selectedExam.classIds?.length
+      ? selectedExam.classIds
+      : selectedExam.classId
+        ? [selectedExam.classId]
+        : [];
+    return Array.from(new Set(ids.filter(Boolean)));
+  }, [selectedExam]);
   const createBatchOptions = batches.filter((b) => form.classIds.includes(b.classId));
   const marksClassOptions = selectedExam?.classIds?.length
     ? classes.filter((c) => selectedExam.classIds?.includes(c.id))
@@ -245,6 +264,45 @@ export default function Exams() {
         setSelectedSubject("");
       });
   }, [marksClassFilter]);
+
+  useEffect(() => {
+    if (!selectedExamId) {
+      setScheduleSubjects([]);
+      return;
+    }
+    if (scheduleClassIds.length === 0) {
+      fetchApi("/Subjects")
+        .then((list: SubjectDto[]) => {
+          const safeList = Array.isArray(list) ? list : [];
+          setScheduleSubjects(safeList);
+        })
+        .catch(() => setScheduleSubjects([]));
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await Promise.all(
+          scheduleClassIds.map((classId) =>
+            fetchApi(`/Subjects/for-class/${classId}`).catch(() => [] as SubjectDto[])
+          )
+        );
+        if (cancelled) return;
+        const map = new Map<string, SubjectDto>();
+        all.flat().forEach((s) => {
+          const key = (s.id || s.name || "").toLowerCase();
+          if (!key || map.has(key)) return;
+          map.set(key, s);
+        });
+        setScheduleSubjects(Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)));
+      } catch {
+        if (!cancelled) setScheduleSubjects([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExamId, scheduleClassIds]);
 
   const getGrade = (marksValue: number) => {
     if (marksValue >= 90) return "A+";
@@ -361,7 +419,13 @@ export default function Exams() {
 
   const openAddSchedule = () => {
     setEditingScheduleId(null);
-    setScheduleForm({ subjectName: "", scheduledDate: "", startTime: "", endTime: "", venue: "" });
+    setScheduleForm({
+      subjectName: scheduleSubjects[0]?.name ?? "",
+      scheduledDate: "",
+      startTime: "",
+      endTime: "",
+      venue: "",
+    });
     setShowScheduleForm(true);
   };
 
@@ -453,6 +517,7 @@ export default function Exams() {
   };
 
   const handleOpenMarks = (examId: string) => {
+    if (!isResultsModule) return;
     const exam = exams.find((e) => e.id === examId);
     const defaultClassId = exam?.classIds?.[0] || exam?.classId || "";
     const defaultClassIsWide = !exam?.classIds?.length || exam.classWideClassIds?.includes(defaultClassId);
@@ -465,6 +530,7 @@ export default function Exams() {
   };
 
   const handleOpenSchedule = (examId: string) => {
+    if (!isExamsModule) return;
     setSelectedExamId(examId);
     setShowSchedulePanel(true);
   };
@@ -527,10 +593,12 @@ export default function Exams() {
       align: "right",
       cell: (exam) => (
         <div className="flex items-center justify-end gap-1.5">
-          <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-[var(--radius)] px-2.5 text-xs font-medium" onClick={() => handleOpenMarks(exam.id)}>
-            <PencilLine className="h-3 w-3" /> Marks
-          </Button>
-          {isAdmin && (
+          {isResultsModule && (
+            <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-[var(--radius)] px-2.5 text-xs font-medium" onClick={() => handleOpenMarks(exam.id)}>
+              <PencilLine className="h-3 w-3" /> Marks
+            </Button>
+          )}
+          {isExamsModule && isAdmin && (
             <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-[var(--radius)] px-2.5 text-xs font-medium" onClick={() => handleOpenSchedule(exam.id)}>
               <CalendarDays className="h-3 w-3" /> Schedule
             </Button>
@@ -556,13 +624,15 @@ export default function Exams() {
                 title="All exams"
                 description=""
               />
-              <Button
-                type="button"
-                className="shrink-0 gap-2 rounded-lg"
-                onClick={() => setShowCreate(true)}
-              >
-                <Plus className="h-4 w-4" /> Create Exam
-              </Button>
+              {isExamsModule && (
+                <Button
+                  type="button"
+                  className="shrink-0 gap-2 rounded-lg"
+                  onClick={() => setShowCreate(true)}
+                >
+                  <Plus className="h-4 w-4" /> Create Exam
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <DataTable
@@ -574,7 +644,7 @@ export default function Exams() {
               />
             </CardContent>
           </Card>
-          <Dialog open={showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) { setClassPickerOpen(false); setBatchPickerOpen(false); } }}>
+          <Dialog open={isExamsModule && showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) { setClassPickerOpen(false); setBatchPickerOpen(false); } }}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create Exam</DialogTitle>
@@ -773,7 +843,7 @@ export default function Exams() {
         </div>
 
       {/* ── Marks modal ─────────────────────────────────────────────────── */}
-      {selectedExam && (
+      {selectedExam && isResultsModule && (
         <Dialog open={showMarksPanel} onOpenChange={setShowMarksPanel}>
           <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
             <DialogTitle className="sr-only">{selectedExam.name} marks</DialogTitle>
@@ -972,7 +1042,7 @@ export default function Exams() {
       )}
 
       {/* ── Schedule modal ───────────────────────────────────────────────── */}
-      {selectedExam && isAdmin && (
+      {selectedExam && isExamsModule && isAdmin && (
         <Dialog open={showSchedulePanel} onOpenChange={(o) => { setShowSchedulePanel(o); if (!o) setShowScheduleForm(false); }}>
           <DialogContent className="max-w-3xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
             <DialogTitle className="sr-only">{selectedExam.name} schedule</DialogTitle>
@@ -1075,10 +1145,16 @@ export default function Exams() {
           <form onSubmit={handleSaveSchedule} className="space-y-3">
             <div className="space-y-1">
               <Label>Subject</Label>
-              {subjectsForExamClass.length > 0 ? (
-                <SearchableSelect value={scheduleForm.subjectName} onValueChange={(v) => setScheduleForm((f) => ({ ...f, subjectName: v }))} placeholder="Select subject" options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))} />
-              ) : (
-                <Input value={scheduleForm.subjectName} onChange={(e) => setScheduleForm((f) => ({ ...f, subjectName: e.target.value }))} placeholder="e.g. Mathematics" required />
+              <SearchableSelect
+                value={scheduleForm.subjectName}
+                onValueChange={(v) => setScheduleForm((f) => ({ ...f, subjectName: v }))}
+                placeholder="Select subject"
+                options={scheduleSubjects.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
+                disabled={scheduleSubjects.length === 0}
+                emptyMessage="No subjects assigned to this exam's classes."
+              />
+              {scheduleSubjects.length === 0 && (
+                <p className="text-xs text-muted-foreground">No class-assigned subjects found for this exam scope.</p>
               )}
             </div>
             <div className="space-y-1">

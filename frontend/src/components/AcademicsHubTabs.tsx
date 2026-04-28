@@ -70,8 +70,14 @@ export function AcademicsHubTabs() {
         <HubNavLink
           to={`${base}/exams`}
           icon={FileText}
-          label="Exams & results"
+          label="Exams"
           active={pathname === `${base}/exams`}
+        />
+        <HubNavLink
+          to={`${base}/results`}
+          icon={FileText}
+          label="Results"
+          active={pathname === `${base}/results`}
         />
         <HubNavLink
           to={`${base}/years`}

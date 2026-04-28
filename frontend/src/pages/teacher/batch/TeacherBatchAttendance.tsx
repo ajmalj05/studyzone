@@ -7,6 +7,7 @@ import { Download } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useTeacherCurrentBatch, batchDisplayName } from "@/context/TeacherCurrentBatchContext";
+import { cn } from "@/lib/utils";
 
 interface StudentDto {
   id: string;
@@ -19,11 +20,14 @@ interface AttendanceRecordDto {
   status: string;
 }
 
+type AttendanceStatus = "Present" | "Absent" | "Late";
+const ATTENDANCE_OPTIONS: AttendanceStatus[] = ["Present", "Absent", "Late"];
+
 export default function TeacherBatchAttendance() {
   const batch = useTeacherCurrentBatch();
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [statusByStudent, setStatusByStudent] = useState<Record<string, string>>({});
+  const [statusByStudent, setStatusByStudent] = useState<Record<string, AttendanceStatus | "">>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
@@ -31,6 +35,17 @@ export default function TeacherBatchAttendance() {
 
   const today = new Date().toISOString().slice(0, 10);
   const isToday = date === today;
+  const statusButtonClass = (isSelected: boolean, status: AttendanceStatus) =>
+    cn(
+      "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+      !isSelected && "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+      isSelected &&
+        (status === "Present"
+          ? "border-green-300 bg-green-100 text-green-700"
+          : status === "Absent"
+            ? "border-red-300 bg-red-100 text-red-700"
+            : "border-amber-300 bg-amber-100 text-amber-700"),
+    );
 
   useEffect(() => {
     if (!batch.isClassTeacher) {
@@ -56,9 +71,9 @@ export default function TeacherBatchAttendance() {
         });
         setHasExistingRecords(att.length > 0);
         list.forEach((s) => {
-          if (!(s.id in map)) map[s.id] = "Present";
+          if (!(s.id in map)) map[s.id] = "";
         });
-        setStatusByStudent(map);
+        setStatusByStudent(map as Record<string, AttendanceStatus | "">);
       })
       .catch((e: Error) =>
         toast({ title: "Error", description: e.message || "Failed to load", variant: "destructive" }),
@@ -68,6 +83,15 @@ export default function TeacherBatchAttendance() {
 
   const handleSubmit = async () => {
     if (!batch.isClassTeacher) return;
+    const unselectedCount = students.filter((s) => !statusByStudent[s.id]).length;
+    if (unselectedCount > 0) {
+      toast({
+        title: "Select attendance status",
+        description: `Please select status for ${unselectedCount} student${unselectedCount > 1 ? "s" : ""}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       await fetchApi("/Attendance/bulk", {
@@ -75,7 +99,7 @@ export default function TeacherBatchAttendance() {
         body: JSON.stringify({
           batchId: batch.id,
           date: new Date(date + "T12:00:00").toISOString(),
-          items: students.map((s) => ({ studentId: s.id, status: statusByStudent[s.id] || "Present" })),
+          items: students.map((s) => ({ studentId: s.id, status: statusByStudent[s.id] as AttendanceStatus })),
         }),
       });
       toast({ title: "Success", description: "Attendance saved." });
@@ -142,69 +166,55 @@ export default function TeacherBatchAttendance() {
               <p className="py-4 text-muted-foreground">Loading…</p>
             ) : (
               <>
-                <div className="space-y-3">
-                  {students.length > 0 && (
-                    <div className="grid grid-cols-[1.2fr_2fr_auto] items-center px-4 py-2 text-xs font-medium text-muted-foreground">
-                      <span>Student ID</span>
-                      <span>Student Name</span>
-                      <span className="text-center">Status</span>
-                    </div>
-                  )}
-                  {students.map((s, i) => (
-                    <motion.div
-                      key={s.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="grid grid-cols-[1.2fr_2fr_auto] items-center gap-3 rounded-xl bg-muted/50 px-4 py-3"
-                    >
-                      <span className="text-sm font-medium text-foreground">{s.admissionNumber || "—"}</span>
-                      <span className="text-sm font-medium text-foreground">{s.name}</span>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          disabled={!isEditable}
-                          variant={statusByStudent[s.id] === "Present" ? "default" : "outline"}
-                          onClick={() => {
-                            if (!isEditable) return;
-                            setStatusByStudent((p) => ({ ...p, [s.id]: "Present" }));
-                          }}
-                          className={
-                            statusByStudent[s.id] === "Present"
-                              ? "rounded-xl bg-success text-xs text-success-foreground hover:bg-success/90"
-                              : "rounded-xl text-xs"
-                          }
-                        >
-                          Present
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={!isEditable}
-                          variant={statusByStudent[s.id] === "Absent" ? "destructive" : "outline"}
-                          onClick={() => {
-                            if (!isEditable) return;
-                            setStatusByStudent((p) => ({ ...p, [s.id]: "Absent" }));
-                          }}
-                          className="rounded-xl text-xs"
-                        >
-                          Absent
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={!isEditable}
-                          variant={statusByStudent[s.id] === "Late" ? "secondary" : "outline"}
-                          onClick={() => {
-                            if (!isEditable) return;
-                            setStatusByStudent((p) => ({ ...p, [s.id]: "Late" }));
-                          }}
-                          className="rounded-xl text-xs"
-                        >
-                          Late
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                {students.length > 0 && (
+                  <div className="overflow-x-auto rounded-xl border border-border/60">
+                    <table className="w-full min-w-[700px] text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/40">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admission #</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {students.map((s, i) => (
+                          <motion.tr
+                            key={s.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                            className={cn("border-b border-border/40", i % 2 !== 0 && "bg-muted/10")}
+                          >
+                            <td className="px-4 py-3 font-medium text-foreground">{s.admissionNumber || "—"}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{s.name}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1.5">
+                                {ATTENDANCE_OPTIONS.map((status) => {
+                                  const selected = statusByStudent[s.id] === status;
+                                  return (
+                                    <button
+                                      key={status}
+                                      type="button"
+                                      disabled={!isEditable}
+                                      onClick={() => {
+                                        if (!isEditable) return;
+                                        setStatusByStudent((p) => ({ ...p, [s.id]: status }));
+                                      }}
+                                      className={statusButtonClass(selected, status)}
+                                    >
+                                      <span className={cn("inline-block h-3.5 w-3.5 rounded-[3px] border", selected ? "border-current bg-current/15" : "border-slate-300")} />
+                                      {status}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 {students.length > 0 && (
                   <div className="mt-6 flex justify-end">
                     <Button

@@ -37,6 +37,22 @@ public class FeeChargeRepository : IFeeChargeRepository
         return await _db.FeeCharges.AsNoTracking().CountAsync(x => x.FeeStructureId == feeStructureId, ct);
     }
 
+    public async Task<bool> ExistsAsync(Guid studentId, Guid feeStructureId, string period, CancellationToken ct = default)
+    {
+        var normalizedPeriod = (period ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPeriod))
+            return false;
+        return await _db.FeeCharges
+            .AsNoTracking()
+            .AnyAsync(
+                x =>
+                    x.StudentId == studentId &&
+                    x.FeeStructureId == feeStructureId &&
+                    x.Period == normalizedPeriod,
+                ct
+            );
+    }
+
     public async Task<FeeCharge> AddAsync(FeeCharge entity, CancellationToken ct = default)
     {
         _db.FeeCharges.Add(entity);

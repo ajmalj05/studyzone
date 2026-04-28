@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import mascotImg from '@/assets/mascot.png';
 import logoImg from '@/assets/logo.png';
 
-const teacherModelImageUrl = "https://upload.wikimedia.org/wikipedia/commons/a/a2/English_Class_in_School.jpg";
-
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,10 +52,10 @@ const Login = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className={`w-full max-w-4xl md:max-w-3xl rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row ${isTeacherView ? "bg-slate-900" : "bg-card"}`}
+        className="w-full max-w-4xl md:max-w-3xl rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row bg-card"
       >
         {/* Left Side: Login Form - scales within outer box, no scroll */}
-        <div className={`w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center ${isTeacherView ? "bg-white" : ""}`}>
+        <div className="w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center bg-white">
           {/* Logo & Title - scale with container, no overflow */}
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8 flex-shrink-0">
             <img src={logoImg} alt="Studyzone" className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 object-contain flex-shrink-0" />
@@ -68,9 +66,11 @@ const Login = () => {
             {isTeacherView ? "Teacher Portal Login" : "Parent Login"}
           </h2>
           {isTeacherView && (
-            <p className="text-xs sm:text-sm text-muted-foreground -mt-3 mb-5 sm:mb-6">
-              Sign in to manage attendance, marks, and classroom activities.
-            </p>
+            <div className="-mt-3 mb-5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Sign in to manage attendance, marks, and classroom activities.
+              </p>
+            </div>
           )}
 
           {/* Form - spacing scales */}
@@ -183,7 +183,7 @@ const Login = () => {
         {/* Right Side: Full image */}
         <div className="hidden md:block md:w-1/2 min-w-0 relative overflow-hidden border-l border-border">
           <img
-            src={isTeacherView ? teacherModelImageUrl : logoImg}
+            src={isTeacherView ? mascotImg : logoImg}
             alt={isTeacherView ? "Teacher Portal" : "Parent Portal"}
             className="absolute inset-0 h-full w-full object-cover"
           />

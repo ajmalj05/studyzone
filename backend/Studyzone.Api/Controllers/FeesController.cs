@@ -76,7 +76,8 @@ public class FeesController : ControllerBase
             await _service.AddChargeAsync(request, ct);
             return NoContent();
         }
-        catch (ArgumentException) { return BadRequest(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPost("generate-charges")]

@@ -37,11 +37,17 @@ public class SubjectService : ISubjectService
 
     public async Task<SubjectDto> CreateAsync(CreateSubjectRequest request, CancellationToken ct = default)
     {
+        var name = (request.Name ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Subject name is required.");
+        if (await _repo.ExistsByNameAsync(name, null, ct))
+            throw new InvalidOperationException($"Subject '{name}' already exists.");
+
         var entity = new Subject
         {
             Id = Guid.NewGuid(),
-            Name = request.Name ?? string.Empty,
-            Code = request.Code,
+            Name = name,
+            Code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim(),
             CreatedAt = DateTime.UtcNow
         };
         var added = await _repo.AddAsync(entity, ct);
@@ -53,8 +59,14 @@ public class SubjectService : ISubjectService
         if (!Guid.TryParse(id, out var guid))
             throw new ArgumentException("Invalid id.", nameof(id));
         var entity = await _repo.GetByIdAsync(guid, ct) ?? throw new InvalidOperationException("Subject not found.");
-        entity.Name = request.Name ?? string.Empty;
-        entity.Code = request.Code;
+        var name = (request.Name ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Subject name is required.");
+        if (await _repo.ExistsByNameAsync(name, guid, ct))
+            throw new InvalidOperationException($"Subject '{name}' already exists.");
+
+        entity.Name = name;
+        entity.Code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim();
         await _repo.UpdateAsync(entity, ct);
         return Map(entity);
     }

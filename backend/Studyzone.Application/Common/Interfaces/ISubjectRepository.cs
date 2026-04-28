@@ -11,4 +11,5 @@ public interface ISubjectRepository
     Task UpdateAsync(Subject entity, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task SetSubjectsForClassAsync(Guid classId, IReadOnlyList<Guid> subjectIds, CancellationToken ct = default);
+    Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default);
 }

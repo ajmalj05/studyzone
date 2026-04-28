@@ -54,6 +54,8 @@ export default function Subjects() {
   const [classSubjectIds, setClassSubjectIds] = useState<Set<string>>(new Set());
   const [mappingLoading, setMappingLoading] = useState(false);
   const [savingMapping, setSavingMapping] = useState(false);
+  const [bulkMapOpen, setBulkMapOpen] = useState(false);
+  const [bulkClassIds, setBulkClassIds] = useState<string[]>([]);
 
   usePageHeaderConfigEffect(
     { title: "Subjects", description: "Add subjects and map them to classes." },
@@ -124,7 +126,8 @@ export default function Subjects() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) {
+    const normalizedName = form.name.trim();
+    if (!normalizedName) {
       toast({
         title: "Validation",
         description: "Subject name is required.",
@@ -132,8 +135,21 @@ export default function Subjects() {
       });
       return;
     }
+    const duplicate = subjects.find(
+      (s) =>
+        s.id !== editingId &&
+        s.name.trim().toLowerCase() === normalizedName.toLowerCase(),
+    );
+    if (duplicate) {
+      toast({
+        title: "Duplicate subject",
+        description: `Subject '${normalizedName}' already exists.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
-      const payload = { name: form.name.trim(), code: form.code.trim() || undefined };
+      const payload = { name: normalizedName, code: form.code.trim() || undefined };
       if (editingId) {
         await fetchApi(`/Subjects/${editingId}`, {
           method: "PUT",
@@ -205,6 +221,79 @@ export default function Subjects() {
       toast({
         title: "Error",
         description: (err as Error).message || "Failed to save mapping",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingMapping(false);
+    }
+  };
+
+  const toggleSelectAllSubjects = () => {
+    setClassSubjectIds((prev) => {
+      if (subjects.length === 0) return prev;
+      if (prev.size === subjects.length) {
+        return new Set<string>();
+      }
+      return new Set(subjects.map((s) => s.id));
+    });
+  };
+
+  const toggleBulkClass = (classId: string) => {
+    setBulkClassIds((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId],
+    );
+  };
+
+  const runBulkMapping = async () => {
+    if (bulkClassIds.length === 0) {
+      toast({
+        title: "Validation",
+        description: "Select at least one class.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSavingMapping(true);
+    try {
+      let updatedCount = 0;
+      let alreadyMappedCount = 0;
+      for (const classId of bulkClassIds) {
+        const existing = (await fetchApi(`/Subjects/for-class/${classId}`)) as SubjectDto[];
+        const existingIds = new Set((Array.isArray(existing) ? existing : []).map((s) => s.id));
+        const selectedIds = new Set(Array.from(classSubjectIds));
+        const sameSize = existingIds.size === selectedIds.size;
+        const sameValues = sameSize && Array.from(existingIds).every((id) => selectedIds.has(id));
+        if (sameValues) {
+          alreadyMappedCount += 1;
+          continue;
+        }
+        await fetchApi(`/Subjects/for-class/${classId}`, {
+          method: "PUT",
+          body: JSON.stringify({ subjectIds: Array.from(classSubjectIds) }),
+        });
+        updatedCount += 1;
+      }
+
+      if (updatedCount > 0) {
+        toast({
+          title: "Success",
+          description: `Mapping saved for ${updatedCount} class${updatedCount > 1 ? "es" : ""}.`,
+        });
+      }
+      if (alreadyMappedCount > 0) {
+        toast({
+          title: "You already mapped",
+          description: `${alreadyMappedCount} class${alreadyMappedCount > 1 ? "es are" : " is"} already mapped with the same subjects.`,
+          variant: "destructive",
+        });
+      }
+      setBulkMapOpen(false);
+      setBulkClassIds([]);
+      if (selectedClassId) await loadMapping(selectedClassId);
+    } catch (err: unknown) {
+      toast({
+        title: "Error",
+        description: (err as Error).message || "Failed to map subjects",
         variant: "destructive",
       });
     } finally {
@@ -297,7 +386,29 @@ export default function Subjects() {
             </div>
             {selectedClassId && (
               <div className="space-y-2">
-                <Label>Subjects for this class</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Subjects for this class</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={toggleSelectAllSubjects}
+                    >
+                      {classSubjectIds.size === subjects.length && subjects.length > 0
+                        ? "Clear all subjects"
+                        : "Select all subjects"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setBulkMapOpen(true)}
+                    >
+                      Map multiple classes
+                    </Button>
+                  </div>
+                </div>
                 {mappingLoading ? (
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 ) : subjects.length === 0 ? (
@@ -404,6 +515,43 @@ export default function Subjects() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={bulkMapOpen} onOpenChange={setBulkMapOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Map subjects to multiple classes</DialogTitle>
+            <DialogDescription>
+              Select classes and apply the current selected subject set in one click.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
+              {classes.map((c) => (
+                <label key={c.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/30">
+                  <input
+                    type="checkbox"
+                    checked={bulkClassIds.includes(c.id)}
+                    onChange={() => toggleBulkClass(c.id)}
+                    className="size-4 rounded border-input accent-[hsl(194,70%,27%)]"
+                  />
+                  <span className="text-sm">{c.name} ({c.code})</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Subjects selected: {classSubjectIds.size}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setBulkMapOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={runBulkMapping} disabled={savingMapping}>
+              {savingMapping ? "Mapping..." : "Apply mapping"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -328,7 +328,7 @@ export default function Students() {
                     {/* Form fields */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required /></div>
-                      <div className="space-y-1"><Label>DOB</Label><DatePicker value={form.dateOfBirth} onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} /></div>
+                      <div className="space-y-1"><Label>DOB</Label><DatePicker value={form.dateOfBirth} onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="Select date of birth" /></div>
                       <div className="space-y-1"><Label>Gender</Label><SearchableSelect value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v }))} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }, { value: "Other", label: "Other" }]} /></div>
                       <div className="space-y-1"><Label>Class *</Label><SearchableSelect value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v, batchId: "" }))} placeholder="Class" options={classes.map((c) => ({ value: c.id, label: c.name }))} /></div>
                       <div className="space-y-1"><Label>Batch</Label><SearchableSelect value={form.batchId} onValueChange={(v) => setForm((f) => ({ ...f, batchId: v }))} placeholder="Batch" options={batches.filter((b) => b.classId === form.classId).map((b) => ({ value: b.id, label: b.name }))} /></div>

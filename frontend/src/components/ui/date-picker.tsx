@@ -56,7 +56,7 @@ export function DatePicker({
     : placeholder;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -87,12 +87,18 @@ export function DatePicker({
       <PopoverContent
         className="w-auto p-0 rounded-xl shadow-lg border border-border/60"
         align="start"
+        side="bottom"
         sideOffset={4}
+        avoidCollisions={false}
       >
         <Calendar
           mode="single"
           selected={selectedDate}
           onSelect={handleSelect}
+          defaultMonth={selectedDate ?? new Date()}
+          captionLayout="dropdown-buttons"
+          fromYear={1950}
+          toYear={new Date().getFullYear() + 20}
           initialFocus
           className="rounded-xl"
         />

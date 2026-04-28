@@ -41,8 +41,15 @@ public class SubjectsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SubjectDto>> Create([FromBody] CreateSubjectRequest request, CancellationToken ct)
     {
-        var dto = await _service.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        try
+        {
+            var dto = await _service.CreateAsync(request, ct);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -53,7 +60,12 @@ public class SubjectsController : ControllerBase
             var dto = await _service.UpdateAsync(id, request, ct);
             return Ok(dto);
         }
-        catch (InvalidOperationException) { return NotFound(); }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
@@ -64,7 +76,14 @@ public class SubjectsController : ControllerBase
             await _service.DeleteAsync(id, ct);
             return NoContent();
         }
-        catch (ArgumentException) { return NotFound(); }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("for-class/{classId}")]

@@ -138,7 +138,7 @@ public class AttendanceService : IAttendanceService
                 TeacherUserId = t.Id,
                 TeacherName = t.Name,
                 Subject = null,
-                Status = record?.Status ?? "Present"
+                Status = record?.Status ?? string.Empty
             });
         }
         return result.OrderBy(x => x.TeacherName).ToList();

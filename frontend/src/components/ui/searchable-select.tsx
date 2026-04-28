@@ -44,6 +44,12 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const selected = options.find((opt) => opt.value === value);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleListWheel: React.WheelEventHandler<HTMLDivElement> = (event) => {
+    // Prevent parent dialog/page scroll from hijacking dropdown wheel scrolling.
+    event.stopPropagation();
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -75,7 +81,11 @@ export function SearchableSelect({
               className="h-9 text-sm"
             />
           </div>
-          <CommandList className="max-h-56">
+          <CommandList
+            ref={listRef}
+            className="max-h-56 overflow-y-auto overscroll-contain"
+            onWheel={handleListWheel}
+          >
             <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
               {emptyMessage}
             </CommandEmpty>
