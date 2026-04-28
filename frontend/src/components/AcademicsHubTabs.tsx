@@ -1,10 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, BookMarked, Library, CalendarDays, FileText, Calendar } from "lucide-react";
+import { BookOpen, BookMarked, Library, CalendarDays, FileText, ClipboardCheck, BarChart3, ShieldCheck } from "lucide-react";
 
 const tabBase =
-  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap py-3 px-2 text-sm font-semibold transition-colors md:text-base";
+  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap py-3 px-3 text-[12px] font-semibold transition-colors";
 const tabInactive = "text-slate-500 hover:text-slate-700";
-const tabActive = "text-[hsl(194,70%,27%)]";
+const tabActive = "text-teal-700";
 
 const base = "/admin/academics";
 
@@ -32,14 +32,14 @@ function HubNavLink({
 
 /** In-app tabs for the admin Academics hub (`/admin/academics/*`). */
 export function AcademicsHubTabs() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const isMarksEntryTab = pathname === `${base}/results` && !search.includes("mode=published");
+  const isPublishedResultsTab = pathname === `${base}/results` && search.includes("mode=published");
 
   return (
-    <div className="min-w-0 max-w-full bg-card px-1 pb-0">
-
-
+    <div className="min-w-0 max-w-full bg-white px-1 pb-0">
       <nav
-        className="flex min-w-0 max-w-full flex-nowrap items-center gap-x-2 overflow-x-auto overflow-y-hidden py-1 md:gap-x-3"
+        className="flex min-w-0 max-w-full flex-nowrap items-center gap-x-1 overflow-x-auto overflow-y-hidden py-1.5 md:gap-x-2"
         aria-label="Academics"
       >
         <HubNavLink
@@ -70,20 +70,26 @@ export function AcademicsHubTabs() {
         <HubNavLink
           to={`${base}/exams`}
           icon={FileText}
-          label="Exams"
+          label="Exam Schedule"
           active={pathname === `${base}/exams`}
         />
         <HubNavLink
           to={`${base}/results`}
-          icon={FileText}
-          label="Results"
-          active={pathname === `${base}/results`}
+          icon={ClipboardCheck}
+          label="Marks Entry"
+          active={isMarksEntryTab}
         />
         <HubNavLink
-          to={`${base}/years`}
-          icon={Calendar}
-          label="Academic Years"
-          active={pathname === `${base}/years`}
+          to={`${base}/results?mode=published`}
+          icon={BarChart3}
+          label="Results"
+          active={isPublishedResultsTab}
+        />
+        <HubNavLink
+          to={`${base}/approvals`}
+          icon={ShieldCheck}
+          label="Approvals"
+          active={pathname === `${base}/approvals`}
         />
       </nav>
     </div>

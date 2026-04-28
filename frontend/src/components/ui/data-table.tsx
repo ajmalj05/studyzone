@@ -51,7 +51,7 @@ function DataTableBadge({ label, variant }: { label: string; variant: BadgeVaria
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium border",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border",
         variantClasses[variant]
       )}
     >
@@ -99,7 +99,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (loading) {
     return (
-      <div className={cn("rounded-xl border border-border/60 bg-card shadow-sm", className)}>
+      <div className={cn("rounded-[14px] border border-slate-200 bg-white shadow-sm", className)}>
         <LoadingState />
       </div>
     );
@@ -107,25 +107,25 @@ export function DataTable<T>({
 
   if (!data || data.length === 0) {
     return (
-      <div className={cn("rounded-xl border border-border/60 bg-card shadow-sm", className)}>
+      <div className={cn("rounded-[14px] border border-slate-200 bg-white shadow-sm", className)}>
         <EmptyState message={emptyMessage} description={emptyDescription} />
       </div>
     );
   }
 
   return (
-    <div className={cn("rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden", className)}>
+    <div className={cn("overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-sm", className)}>
       <div className={cn("overflow-x-auto", maxHeight && "overflow-y-auto")} style={maxHeight ? { maxHeight } : undefined}>
         <table className="w-full text-sm">
           <thead>
-            <tr className={cn("bg-slate-100 dark:bg-slate-800/50 border-b border-border/60", headerClassName)}>
+            <tr className={cn("border-b border-slate-200 bg-slate-50", headerClassName)}>
               {columns.map((column, index) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400",
-                    index === 0 && "rounded-tl-xl",
-                    index === columns.length - 1 && "rounded-tr-xl",
+                    "px-4 py-3 text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500",
+                    index === 0 && "rounded-tl-[14px]",
+                    index === columns.length - 1 && "rounded-tr-[14px]",
                     column.align === "center" && "text-center",
                     column.align === "right" && "w-px whitespace-nowrap text-right",
                     column.align === "left" && "text-left",
@@ -143,7 +143,7 @@ export function DataTable<T>({
               <tr
                 key={keyExtractor(row)}
                 className={cn(
-                  "border-b border-border/30 last:border-0 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30",
+                  "border-b border-slate-200/80 last:border-0 transition-colors hover:bg-slate-50",
                   onRowClick && "cursor-pointer",
                   rowClassName
                 )}

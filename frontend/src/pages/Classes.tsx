@@ -148,6 +148,32 @@ export default function Classes() {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Total Classes</p>
+            <p className="mt-1 text-2xl font-extrabold text-teal-700">{classes.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">With Code</p>
+            <p className="mt-1 text-2xl font-extrabold text-blue-600">{classes.filter((c) => !!c.code?.trim()).length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Editable</p>
+            <p className="mt-1 text-2xl font-extrabold text-emerald-600">{classes.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Status</p>
+            <p className="mt-1 text-2xl font-extrabold text-amber-600">Active</p>
+          </CardContent>
+        </Card>
+      </div>
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
           <AcademicsCardIconLead

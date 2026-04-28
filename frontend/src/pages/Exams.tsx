@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,15 @@ import { AcademicsCardIconLead } from "@/components/AcademicsCardIconLead";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+
+const TYPE_LABEL: Record<string, string> = { UnitTest: "Unit Test", "Unit Test": "Unit Test", MidTerm: "Mid Term", "Mid Term": "Mid Term", Final: "Final" };
+const TYPE_COLOR: Record<string, string> = {
+  UnitTest: "bg-blue-50 text-blue-700 border-blue-200",
+  "Unit Test": "bg-blue-50 text-blue-700 border-blue-200",
+  MidTerm: "bg-violet-50 text-violet-700 border-violet-200",
+  "Mid Term": "bg-violet-50 text-violet-700 border-violet-200",
+  Final: "bg-rose-50 text-rose-700 border-rose-200",
+};
 
 interface ExamDto {
   id: string;
@@ -98,9 +107,12 @@ interface SubjectDto {
 }
 
 export default function Exams() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
   const isResultsModule = pathname.includes("/admin/academics/results");
-  const isExamsModule = !isResultsModule;
+  const isPublishedResultsMode = isResultsModule && new URLSearchParams(search).get("mode") === "published";
+  const isMarksEntryMode = isResultsModule && !isPublishedResultsMode;
+  const isExamsModule = pathname.includes("/admin/academics/exams");
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [exams, setExams] = useState<ExamDto[]>([]);
@@ -131,15 +143,20 @@ export default function Exams() {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({ subjectName: "", scheduledDate: "", startTime: "", endTime: "", venue: "" });
+  const [scheduleTypeFilter, setScheduleTypeFilter] = useState("_all");
+  const [scheduleClassFilter, setScheduleClassFilter] = useState("_all");
+  const [marksTypeFilter, setMarksTypeFilter] = useState("_all");
 
   usePageHeaderConfigEffect(
     {
-      title: isResultsModule ? "Results" : "Exams",
-      description: isResultsModule
-        ? "Add exam results and approve submitted marks."
+      title: isExamsModule ? "Exam Schedule" : isPublishedResultsMode ? "Results" : "Marks Entry",
+      description: isPublishedResultsMode
+        ? "View and analyze published exam results."
+        : isMarksEntryMode
+        ? "Enter and save student marks per exam, then submit for approval."
         : "Create exams and manage exam schedules.",
     },
-    [isResultsModule],
+    [isExamsModule, isPublishedResultsMode, isMarksEntryMode],
   );
 
   const loadExams = async () => {
@@ -266,6 +283,19 @@ export default function Exams() {
   }, [marksClassFilter]);
 
   useEffect(() => {
+    if (!isMarksEntryMode) return;
+    if (selectedExamId || exams.length === 0) return;
+    const exam = exams[0];
+    const defaultClassId = exam.classIds?.[0] || exam.classId || "";
+    const defaultClassIsWide = !exam.classIds?.length || exam.classWideClassIds?.includes(defaultClassId);
+    const defaultBatchId = defaultClassIsWide ? "" : (exam.batchIds?.find((batchId) => batches.find((b) => b.id === batchId)?.classId === defaultClassId) || "");
+    setSelectedExamId(exam.id);
+    setMarksClassFilter(defaultClassId);
+    setMarksBatchFilter(defaultBatchId);
+    setSelectedSubject("");
+  }, [isMarksEntryMode, selectedExamId, exams, batches]);
+
+  useEffect(() => {
     if (!selectedExamId) {
       setScheduleSubjects([]);
       return;
@@ -334,6 +364,12 @@ export default function Exams() {
     marks.forEach((m) => names.add(m.subject));
     return Array.from(names).sort();
   }, [subjectsForExamClass, marks]);
+
+  const filteredMarksExams = useMemo(
+    () =>
+      exams.filter((e) => marksTypeFilter === "_all" || (TYPE_LABEL[e.type] ?? e.type).trim() === marksTypeFilter),
+    [exams, marksTypeFilter],
+  );
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -517,7 +553,7 @@ export default function Exams() {
   };
 
   const handleOpenMarks = (examId: string) => {
-    if (!isResultsModule) return;
+    if (!isMarksEntryMode) return;
     const exam = exams.find((e) => e.id === examId);
     const defaultClassId = exam?.classIds?.[0] || exam?.classId || "";
     const defaultClassIsWide = !exam?.classIds?.length || exam.classWideClassIds?.includes(defaultClassId);
@@ -529,19 +565,22 @@ export default function Exams() {
     setShowMarksPanel(true);
   };
 
+  const handleSelectMarksExamInline = (examId: string) => {
+    if (!isMarksEntryMode) return;
+    const exam = exams.find((e) => e.id === examId);
+    const defaultClassId = exam?.classIds?.[0] || exam?.classId || "";
+    const defaultClassIsWide = !exam?.classIds?.length || exam.classWideClassIds?.includes(defaultClassId);
+    const defaultBatchId = defaultClassIsWide ? "" : (exam?.batchIds?.find((batchId) => batches.find((b) => b.id === batchId)?.classId === defaultClassId) || "");
+    setSelectedExamId(examId);
+    setMarksClassFilter(defaultClassId);
+    setMarksBatchFilter(defaultBatchId);
+    setSelectedSubject("");
+  };
+
   const handleOpenSchedule = (examId: string) => {
     if (!isExamsModule) return;
     setSelectedExamId(examId);
     setShowSchedulePanel(true);
-  };
-
-  const TYPE_LABEL: Record<string, string> = { UnitTest: "Unit Test", "Unit Test": "Unit Test", MidTerm: "Mid Term", "Mid Term": "Mid Term", Final: "Final" };
-  const TYPE_COLOR: Record<string, string> = {
-    UnitTest: "bg-blue-50 text-blue-700 border-blue-200",
-    "Unit Test": "bg-blue-50 text-blue-700 border-blue-200",
-    MidTerm: "bg-violet-50 text-violet-700 border-violet-200",
-    "Mid Term": "bg-violet-50 text-violet-700 border-violet-200",
-    Final: "bg-rose-50 text-rose-700 border-rose-200",
   };
 
   const examColumns: DataTableColumn<ExamDto>[] = [
@@ -593,7 +632,7 @@ export default function Exams() {
       align: "right",
       cell: (exam) => (
         <div className="flex items-center justify-end gap-1.5">
-          {isResultsModule && (
+          {isMarksEntryMode && (
             <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-[var(--radius)] px-2.5 text-xs font-medium" onClick={() => handleOpenMarks(exam.id)}>
               <PencilLine className="h-3 w-3" /> Marks
             </Button>
@@ -608,6 +647,80 @@ export default function Exams() {
     },
   ];
 
+  const totalExams = exams.length;
+  const totalSchedules = exams.filter((e) => !!e.examDate).length;
+  const totalMarksRows = marks.length;
+  const pendingMarksRows = marks.filter((m) => (m.status ?? "Pending") === "Pending").length;
+  const scheduleTypeOptions = useMemo(
+    () => ["_all", ...Array.from(new Set(exams.map((e) => (TYPE_LABEL[e.type] ?? e.type).trim()))).filter(Boolean)],
+    [exams],
+  );
+  const filteredScheduleExams = useMemo(() => {
+    return exams.filter((e) => {
+      const examType = (TYPE_LABEL[e.type] ?? e.type).trim();
+      const classMatch =
+        scheduleClassFilter === "_all" ||
+        e.classId === scheduleClassFilter ||
+        e.classIds?.includes(scheduleClassFilter) ||
+        e.classWideClassIds?.includes(scheduleClassFilter);
+      const typeMatch = scheduleTypeFilter === "_all" || examType === scheduleTypeFilter;
+      return classMatch && typeMatch;
+    });
+  }, [exams, scheduleClassFilter, scheduleTypeFilter]);
+  const upcomingScheduleExams = useMemo(
+    () =>
+      exams
+        .filter((e) => !!e.examDate)
+        .sort((a, b) => new Date(a.examDate as string).getTime() - new Date(b.examDate as string).getTime())
+        .slice(0, 4),
+    [exams],
+  );
+  const typeDistribution = useMemo(() => {
+    const map = new Map<string, number>();
+    exams.forEach((e) => {
+      const k = (TYPE_LABEL[e.type] ?? e.type).trim() || "Other";
+      map.set(k, (map.get(k) ?? 0) + 1);
+    });
+    return Array.from(map.entries());
+  }, [exams]);
+
+  const resolveExamStatus = (exam: ExamDto) => {
+    if (!exam.examDate) {
+      return { label: "Not Scheduled", className: "bg-slate-100 text-slate-600" };
+    }
+    const examDate = new Date(exam.examDate);
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfExamDay = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate());
+    if (startOfExamDay > startOfToday) {
+      return { label: "Upcoming", className: "bg-amber-100 text-amber-700" };
+    }
+    return { label: "Scheduled", className: "bg-emerald-100 text-emerald-700" };
+  };
+
+  const marksTypeOptions = useMemo(
+    () => ["_all", ...Array.from(new Set(exams.map((e) => (TYPE_LABEL[e.type] ?? e.type).trim()))).filter(Boolean)],
+    [exams],
+  );
+  const createExamTypeOptions = useMemo(() => {
+    const defaults = ["Unit Test", "Mid Term", "Final", "Practical", "Weekly Test", "Monthly Test", "Model Exam"];
+    const fromData = exams.map((e) => (TYPE_LABEL[e.type] ?? e.type).trim()).filter(Boolean);
+    return Array.from(new Set([...defaults, ...fromData]));
+  }, [exams]);
+
+  const exportMarksCsv = () => {
+    const rows = marks.map((m) => [m.studentName, m.subject, String(m.marksObtained), String(m.maxMarks), m.status ?? "Pending"]);
+    const csv = [["Student", "Subject", "Marks", "Max", "Status"], ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${selectedExam?.name ?? "marks"}-log.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">Loading...</div>
@@ -616,13 +729,19 @@ export default function Exams() {
 
   return (
     <div className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Total Exams</p><p className="mt-1 text-2xl font-extrabold text-teal-700">{totalExams}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">{isExamsModule ? "Scheduled" : isPublishedResultsMode ? "Published" : "Marks Rows"}</p><p className="mt-1 text-2xl font-extrabold text-blue-600">{isExamsModule ? totalSchedules : isPublishedResultsMode ? marks.filter((m) => m.status === "Approved").length : totalMarksRows}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">{isExamsModule ? "Upcoming" : isPublishedResultsMode ? "Pending Approval" : "Pending Approval"}</p><p className="mt-1 text-2xl font-extrabold text-amber-600">{isExamsModule ? exams.filter((e) => !!e.examDate && new Date(e.examDate) >= new Date()).length : pendingMarksRows}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Mode</p><p className="mt-1 text-base font-extrabold text-emerald-600">{isExamsModule ? "Exam Schedule" : isPublishedResultsMode ? "Published Results" : "Marks Entry"}</p></CardContent></Card>
+        </div>
         <div className="space-y-4">
           <Card>
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
               <AcademicsCardIconLead
                 icon={FileText}
-                title="All exams"
-                description=""
+                title={isExamsModule ? "Exam Schedule" : isPublishedResultsMode ? "Results Explorer" : "Marks Entry"}
+                description={isExamsModule ? "Create exams and manage exam timetable." : isPublishedResultsMode ? "Filter and view published results by exam, class, batch and subject." : "Enter and save student marks per exam, then submit for approval."}
               />
               {isExamsModule && (
                 <Button
@@ -635,13 +754,385 @@ export default function Exams() {
               )}
             </CardHeader>
             <CardContent>
-              <DataTable
-                data={exams}
-                columns={examColumns}
-                keyExtractor={(e) => e.id}
-                emptyMessage="No Exams Yet."
-                emptyDescription="Create one using the button above."
-              />
+              {isPublishedResultsMode ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-5">
+                    <SearchableSelect value={selectedExamId || "_all"} onValueChange={(v) => setSelectedExamId(v === "_all" ? "" : v)} placeholder="All exams" options={[{ value: "_all", label: "All Exams" }, ...exams.map((e) => ({ value: e.id, label: e.name }))]} />
+                    <SearchableSelect value={marksClassFilter || "_all"} onValueChange={(v) => { setMarksClassFilter(v === "_all" ? "" : v); setMarksBatchFilter(""); }} placeholder="All classes" options={[{ value: "_all", label: "All Classes" }, ...classes.map((c) => ({ value: c.id, label: c.name }))]} />
+                    <SearchableSelect value={marksBatchFilter || "_all"} onValueChange={(v) => setMarksBatchFilter(v === "_all" ? "" : v)} placeholder="All batches" options={[{ value: "_all", label: "All Batches" }, ...batches.filter((b) => !marksClassFilter || b.classId === marksClassFilter).map((b) => ({ value: b.id, label: b.name }))]} />
+                    <SearchableSelect value={selectedSubject || "_all"} onValueChange={(v) => setSelectedSubject(v === "_all" ? "" : v)} placeholder="All subjects" options={[{ value: "_all", label: "All Subjects" }, ...Array.from(new Set(marks.map((m) => m.subject))).map((s) => ({ value: s, label: s }))]} />
+                    <SearchableSelect value={"_approved"} onValueChange={() => {}} placeholder="Status" options={[{ value: "_approved", label: "Approved" }]} disabled />
+                  </div>
+                  <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50">
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Student</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Subject</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Marks</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {marks
+                          .filter((m) => (m.status ?? "") === "Approved")
+                          .filter((m) => !selectedSubject || m.subject === selectedSubject)
+                          .map((m) => (
+                            <tr key={m.id} className="border-b border-slate-200/80 last:border-0 hover:bg-slate-50">
+                              <td className="px-4 py-3">{m.studentName}</td>
+                              <td className="px-4 py-3">{m.subject}</td>
+                              <td className="px-4 py-3">{m.marksObtained}/{m.maxMarks}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Approved</span>
+                              </td>
+                            </tr>
+                          ))}
+                        {marks.filter((m) => (m.status ?? "") === "Approved").filter((m) => !selectedSubject || m.subject === selectedSubject).length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-500">
+                              No published results match the selected filters. Approve submissions in Approvals first.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : isExamsModule ? (
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="min-w-[180px] max-w-[220px]">
+                        <SearchableSelect
+                          value={scheduleTypeFilter}
+                          onValueChange={setScheduleTypeFilter}
+                          placeholder="Filter exam type"
+                          options={scheduleTypeOptions.map((opt) => ({
+                            value: opt,
+                            label: opt === "_all" ? "All" : opt,
+                          }))}
+                        />
+                      </div>
+                      <div className="ml-auto min-w-[170px] max-w-[220px] flex-1">
+                        <SearchableSelect
+                          value={scheduleClassFilter}
+                          onValueChange={setScheduleClassFilter}
+                          placeholder="All classes"
+                          options={[
+                            { value: "_all", label: "All Classes" },
+                            ...classes.map((c) => ({ value: c.id, label: c.name })),
+                          ]}
+                        />
+                      </div>
+                      {isAdmin && (
+                        <Button type="button" className="h-8 gap-1.5 rounded-md px-3 text-xs" onClick={() => setShowCreate(true)}>
+                          <Plus className="h-3.5 w-3.5" /> Schedule Exam
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {filteredScheduleExams.map((exam) => (
+                        <div key={exam.id} className="rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">{exam.name}</p>
+                              <p className="text-xs text-slate-500">{exam.className ?? exam.classNames?.join(", ") ?? "All classes"}</p>
+                            </div>
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold">
+                              {TYPE_LABEL[exam.type] ?? exam.type}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
+                              <div className="font-semibold text-slate-800">{exam.examDate ? new Date(exam.examDate).toLocaleDateString() : "Date N/A"}</div>
+                              <div className="text-slate-500">DATE</div>
+                            </div>
+                            <div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
+                              <div className="font-semibold text-slate-800">{exam.examDate ? new Date(exam.examDate).toLocaleDateString(undefined, { weekday: "long" }) : "Day N/A"}</div>
+                              <div className="text-slate-500">DAY</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", resolveExamStatus(exam).className)}>
+                              {resolveExamStatus(exam).label}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <Button type="button" size="sm" className="h-7 rounded-md px-2.5 text-xs" onClick={() => handleOpenSchedule(exam.id)}>
+                                Manage
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 rounded-md px-2.5 text-xs"
+                                onClick={() => {
+                                  if (isMarksEntryMode) {
+                                    handleOpenMarks(exam.id);
+                                    return;
+                                  }
+                                  navigate("/admin/academics/results");
+                                }}
+                              >
+                                Marks
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {filteredScheduleExams.length === 0 && (
+                        <div className="col-span-full rounded-[14px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+                          No scheduled exams match the selected filters.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm">
+                      <p className="text-sm font-bold text-slate-900">By Type</p>
+                      <p className="mb-2 text-xs text-slate-500">Exam distribution</p>
+                      <div className="space-y-2">
+                        {typeDistribution.map(([type, count]) => {
+                          const max = Math.max(...typeDistribution.map((x) => x[1]), 1);
+                          const width = Math.max(8, Math.round((count / max) * 100));
+                          return (
+                            <div key={type} className="grid grid-cols-[70px_1fr_18px] items-center gap-2 text-xs">
+                              <span>{type}</span>
+                              <div className="h-1.5 rounded-full bg-slate-100">
+                                <div className="h-1.5 rounded-full bg-teal-500" style={{ width: `${width}%` }} />
+                              </div>
+                              <span className="text-right text-slate-500">{count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm">
+                      <p className="text-sm font-bold text-slate-900">Upcoming</p>
+                      <p className="mb-2 text-xs text-slate-500">Next scheduled exams</p>
+                      <div className="space-y-2">
+                        {upcomingScheduleExams.map((exam) => (
+                          <div key={exam.id} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs">
+                            <p className="font-semibold text-slate-800">{exam.name}</p>
+                            <p className="text-slate-500">
+                              {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : "No date"} · {exam.className ?? exam.classNames?.[0] ?? "All classes"}
+                            </p>
+                          </div>
+                        ))}
+                        {upcomingScheduleExams.length === 0 && <p className="text-xs text-slate-500">No upcoming exams</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-slate-900">Select Exam</p>
+                    <div className="max-w-[190px]">
+                      <SearchableSelect
+                        value={marksTypeFilter}
+                        onValueChange={setMarksTypeFilter}
+                        placeholder="Filter exam type"
+                        options={marksTypeOptions.map((opt) => ({
+                          value: opt,
+                          label: opt === "_all" ? "All" : opt,
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {filteredMarksExams.map((exam) => (
+                        <button
+                          key={exam.id}
+                          type="button"
+                          onClick={() => handleSelectMarksExamInline(exam.id)}
+                          className={cn(
+                            "w-full rounded-xl border p-2.5 text-left transition-colors",
+                            selectedExamId === exam.id
+                              ? "border-teal-500 bg-teal-50/40"
+                              : "border-slate-200 bg-white hover:bg-slate-50",
+                          )}
+                        >
+                          <p className="text-sm font-semibold text-slate-900">{exam.name}</p>
+                          <p className="text-xs text-slate-500">{exam.className ?? "All Classes"} · {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : "No date"}</p>
+                          <div className="mt-2 flex items-center gap-1">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{TYPE_LABEL[exam.type] ?? exam.type}</span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{marks.filter((m) => m.examId === exam.id).length || "No"} marks</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-900">{selectedExam?.name ?? "Select exam"}</span>
+                        {selectedExam && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold">{TYPE_LABEL[selectedExam.type] ?? selectedExam.type}</span>}
+                        {selectedExam && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold">{selectedExam.className ?? "All Classes"}</span>}
+                      </div>
+                      <Button type="button" size="sm" variant="outline" className="h-7 rounded-md px-2 text-xs" onClick={exportMarksCsv}>
+                        Export
+                      </Button>
+                    </div>
+
+                    <div className="border-b border-slate-200 px-3 py-2 text-xs text-slate-600">
+                      <div className="flex items-center gap-6">
+                        <span className="font-semibold text-slate-900">1 Class</span>
+                        <span>2 Batch</span>
+                        <span>3 Subject</span>
+                        <span>4 Enter Marks</span>
+                      </div>
+                    </div>
+
+                    <div className="border-b border-slate-200 px-3 py-3">
+                      <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_90px_auto]">
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Class *</Label>
+                          <SearchableSelect
+                            value={marksClassFilter}
+                            onValueChange={(v) => {
+                              setMarksClassFilter(v);
+                              setMarksBatchFilter("");
+                            }}
+                            placeholder="-- Class --"
+                            options={marksClassOptions.map((c) => ({ value: c.id, label: c.name }))}
+                          />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Batch *</Label>
+                          <SearchableSelect
+                            value={marksBatchFilter || "_all"}
+                            onValueChange={(v) => setMarksBatchFilter(v === "_all" ? "" : v)}
+                            placeholder="-- Batch --"
+                            options={[
+                              { value: "_all", label: "-- Batch --" },
+                              ...marksBatchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                            ]}
+                            disabled={!marksClassFilter}
+                          />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Subject *</Label>
+                          <SearchableSelect
+                            value={selectedSubject}
+                            onValueChange={setSelectedSubject}
+                            placeholder="-- Subject --"
+                            options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
+                            disabled={!marksClassFilter}
+                          />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Max Marks</Label>
+                          <Input value={adminMaxMarks} readOnly className="h-9" />
+                        </div>
+                        <div className="flex items-end">
+                          <Button type="button" className="h-9 rounded-md px-3 text-xs" disabled={!marksClassFilter || !selectedSubject}>
+                            Load Students
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[260px] overflow-auto px-3 py-3">
+                      {!marksClassFilter || !selectedSubject ? (
+                        <div className="flex h-[140px] items-center justify-center text-center">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">Select class, batch and subject</p>
+                            <p className="text-xs text-slate-500">All students in that batch will load for marks entry</p>
+                          </div>
+                        </div>
+                      ) : marksFilteredStudents.length === 0 ? (
+                        <p className="py-12 text-center text-sm text-slate-500">No active students found for this selection.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {marksFilteredStudents.map((student) => {
+                            const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: adminMaxMarks };
+                            return (
+                              <div key={student.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-2.5 py-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-800">{student.name}</p>
+                                  <p className="text-[10px] text-slate-500">{student.admissionNumber ?? "—"}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    value={val.obtained}
+                                    onChange={(e) => setMark(student.id, e.target.value)}
+                                    className="h-8 w-20 text-center"
+                                    min={0}
+                                    max={parseFloat(adminMaxMarks) || 999}
+                                  />
+                                  <span className="text-xs text-slate-500">/ {adminMaxMarks}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-200 px-3 py-2.5">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold text-slate-700">Saved Marks Log</p>
+                        <div className="flex items-center gap-2">
+                          <SearchableSelect value={marksClassFilter || "_all"} onValueChange={(v) => setMarksClassFilter(v === "_all" ? "" : v)} placeholder="All classes" options={[{ value: "_all", label: "All classes" }, ...classes.map((c) => ({ value: c.id, label: c.name }))]} className="w-[140px]" />
+                          <SearchableSelect value={selectedSubject || "_all"} onValueChange={(v) => setSelectedSubject(v === "_all" ? "" : v)} placeholder="All subjects" options={[{ value: "_all", label: "All subjects" }, ...Array.from(new Set(marks.map((m) => m.subject))).map((s) => ({ value: s, label: s }))]} className="w-[140px]" />
+                        </div>
+                      </div>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-slate-50">
+                              <th className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.6px] text-slate-500">Student</th>
+                              <th className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.6px] text-slate-500">Subject</th>
+                              <th className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.6px] text-slate-500">Marks</th>
+                              <th className="px-2 py-2 text-left text-[10px] uppercase tracking-[0.6px] text-slate-500">Status</th>
+                              <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.6px] text-slate-500">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {marks.map((m) => (
+                              <tr key={m.id} className="border-t border-slate-200">
+                                <td className="px-2 py-2">{m.studentName}</td>
+                                <td className="px-2 py-2">{m.subject}</td>
+                                <td className="px-2 py-2">{m.marksObtained}/{m.maxMarks}</td>
+                                <td className="px-2 py-2">{m.status ?? "Pending"}</td>
+                                <td className="px-2 py-2">
+                                  <div className="flex justify-end gap-1">
+                                    {(m.status ?? "Pending") === "Pending" && (
+                                      <>
+                                        <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={() => handleApproveRow(m.id)}>Approve</Button>
+                                        <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[10px] text-red-600" onClick={() => openReject(m.id)}>Reject</Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            {marks.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="px-2 py-8 text-center text-xs text-slate-500">No marks logged yet.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-2 flex justify-end gap-2">
+                        {isAdmin && (
+                          <Button variant="secondary" size="sm" className="rounded-md text-xs" disabled={approvingAll || !selectedExamId} onClick={handleApproveAll}>
+                            {approvingAll ? "Approving..." : "Approve All Pending"}
+                          </Button>
+                        )}
+                        <Button size="sm" className="rounded-md text-xs" onClick={handleSaveMarks} disabled={savingMarks || !selectedSubject || marksFilteredStudents.length === 0}>
+                          {savingMarks ? "Saving..." : "Save Marks"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           <Dialog open={isExamsModule && showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) { setClassPickerOpen(false); setBatchPickerOpen(false); } }}>
@@ -658,18 +1149,12 @@ export default function Exams() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Exam Type <span className="text-destructive">*</span></Label>
-                    <Input
+                    <SearchableSelect
                       value={form.type}
-                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                      placeholder="e.g. Unit Test, Mid Term, Practical"
-                      list="exam-type-suggestions"
-                      required
+                      onValueChange={(value) => setForm((f) => ({ ...f, type: value }))}
+                      placeholder="Select exam type"
+                      options={createExamTypeOptions.map((t) => ({ value: t, label: t }))}
                     />
-                    <datalist id="exam-type-suggestions">
-                      <option value="Unit Test" />
-                      <option value="Mid Term" />
-                      <option value="Final" />
-                    </datalist>
                   </div>
                 </div>
 
@@ -843,7 +1328,7 @@ export default function Exams() {
         </div>
 
       {/* ── Marks modal ─────────────────────────────────────────────────── */}
-      {selectedExam && isResultsModule && (
+      {selectedExam && isMarksEntryMode && (
         <Dialog open={showMarksPanel} onOpenChange={setShowMarksPanel}>
           <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
             <DialogTitle className="sr-only">{selectedExam.name} marks</DialogTitle>

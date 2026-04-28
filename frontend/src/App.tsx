@@ -19,6 +19,7 @@ import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
+import AcademicsApprovals from "./pages/AcademicsApprovals";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import Settings from "./pages/Settings";
 import AcademicYearPage from "./pages/AcademicYearPage";
@@ -132,6 +133,7 @@ const App = () => (
                   <Route path="timetable" element={<Timetable />} />
                   <Route path="exams" element={<Exams />} />
                   <Route path="results" element={<Exams />} />
+                  <Route path="approvals" element={<AcademicsApprovals />} />
                   <Route path="years" element={<AcademicYearPage />} />
                 </Route>
                 <Route path="classes" element={<Navigate to="/admin/academics/classes" replace />} />
@@ -139,6 +141,7 @@ const App = () => (
                 <Route path="timetable" element={<Navigate to="/admin/academics/timetable" replace />} />
                 <Route path="exams" element={<Navigate to="/admin/academics/exams" replace />} />
                 <Route path="results" element={<Navigate to="/admin/academics/results" replace />} />
+                <Route path="approvals" element={<Navigate to="/admin/academics/approvals" replace />} />
                 <Route path="requests/student" element={<AdminStudentRequests />} />
                 <Route path="requests/teacher" element={<Navigate to="/admin/communication/teacher-requests" replace />} />
                 <Route path="requests/parent" element={<Navigate to="/admin/communication/parent-requests" replace />} />

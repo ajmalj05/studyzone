@@ -500,6 +500,12 @@ export default function Timetable() {
 
   return (
     <div className="space-y-6">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Working Days</p><p className="mt-1 text-2xl font-extrabold text-teal-700">{settingsForm.workingDayCount}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Periods / Day</p><p className="mt-1 text-2xl font-extrabold text-blue-600">{settingsForm.periodsPerDay}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Batches</p><p className="mt-1 text-2xl font-extrabold text-emerald-600">{batches.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Slots Saved</p><p className="mt-1 text-2xl font-extrabold text-amber-600">{slots.length}</p></CardContent></Card>
+      </div>
       <div className="space-y-6">
         <Card className="border-border/60 shadow-sm">
           <CardHeader className="flex flex-col gap-4 border-b border-border/50 bg-card px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0 sm:px-6">

@@ -215,6 +215,34 @@ export default function Batches() {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Total Batches</p>
+            <p className="mt-1 text-2xl font-extrabold text-teal-700">{batches.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Filtered</p>
+            <p className="mt-1 text-2xl font-extrabold text-blue-600">{batchesFiltered.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">With Teacher</p>
+            <p className="mt-1 text-2xl font-extrabold text-emerald-600">
+              {batches.filter((b) => !!getClassTeacherName(b)).length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Academic Year</p>
+            <p className="mt-1 truncate text-base font-extrabold text-amber-600">{currentYear?.name ?? "Current"}</p>
+          </CardContent>
+        </Card>
+      </div>
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
           <AcademicsCardIconLead

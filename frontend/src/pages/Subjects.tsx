@@ -341,6 +341,12 @@ export default function Subjects() {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Total Subjects</p><p className="mt-1 text-2xl font-extrabold text-teal-700">{subjects.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Classes</p><p className="mt-1 text-2xl font-extrabold text-blue-600">{classes.length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Mapped</p><p className="mt-1 text-2xl font-extrabold text-emerald-600">{classSubjectIds.size}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Selected Class</p><p className="mt-1 text-base font-extrabold text-amber-600">{classes.find((c) => c.id === selectedClassId)?.name ?? "None"}</p></CardContent></Card>
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
         <Card className="min-w-0">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">

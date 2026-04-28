@@ -19,17 +19,17 @@ export function AcademicsCardIconLead({
 }: AcademicsCardIconLeadProps) {
   return (
     <div className={cn("flex min-w-0 flex-1 items-stretch gap-3 sm:gap-4", className)}>
-      {/* <div
-        className="flex w-14 shrink-0 items-center justify-center self-stretch rounded-lg bg-muted/80 text-[hsl(194,70%,27%)] shadow-sm sm:w-16"
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-[10px] border border-teal-200 bg-teal-50 text-teal-700"
         aria-hidden
       >
-        <Icon className="h-6 w-6" strokeWidth={2} />
-      </div> */}
+        <Icon className="h-5 w-5" strokeWidth={2} />
+      </div>
       <div className="min-w-0 flex-1 space-y-1.5 text-left">
-        <CardTitle className="text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">
+        <CardTitle className="text-[15px] font-bold leading-tight tracking-tight text-slate-900 sm:text-base">
           {title}
         </CardTitle>
-        <CardDescription className="text-sm leading-snug">{description}</CardDescription>
+        <CardDescription className="text-xs leading-snug text-slate-500">{description}</CardDescription>
       </div>
     </div>
   );
