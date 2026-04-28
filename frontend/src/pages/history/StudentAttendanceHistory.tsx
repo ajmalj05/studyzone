@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadModal } from "@/components/DownloadModal";
 import { fetchApi } from "@/lib/api";
 import { useOptionalPageHeaderDispatch } from "@/context/PageHeaderContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface AttendanceReportRowDto {
   studentId: string;
@@ -33,7 +34,9 @@ interface ClassDto {
 
 const StudentAttendanceHistory = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [classes, setClasses] = useState<ClassDto[]>([]);
+  const [teacherAssignedClasses, setTeacherAssignedClasses] = useState<ClassDto[]>([]);
   const [classId, setClassId] = useState("");
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
@@ -63,6 +66,26 @@ const StudentAttendanceHistory = () => {
       .then((list: ClassDto[]) => setClasses(Array.isArray(list) ? list : []))
       .catch(() => setClasses([]));
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== "teacher") return;
+    fetchApi("/TeacherPortal/assigned-batches")
+      .then((list: { classId: string; className: string }[]) => {
+        const safe = Array.isArray(list) ? list : [];
+        const map = new Map<string, string>();
+        safe.forEach((b) => {
+          if (!b?.classId || !b?.className) return;
+          if (!map.has(b.classId)) map.set(b.classId, b.className);
+        });
+        const scoped = Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+        setTeacherAssignedClasses(scoped);
+        if (!classId && scoped.length > 0) setClassId(scoped[0].id);
+      })
+      .catch(() => setTeacherAssignedClasses([]));
+  }, [user?.role]);
+
+  const isTeacherScoped = user?.role === "teacher";
+  const classOptions = isTeacherScoped ? teacherAssignedClasses : classes;
 
   useEffect(() => {
     setLoading(true);
@@ -114,8 +137,8 @@ const StudentAttendanceHistory = () => {
               onChange={(e) => setClassId(e.target.value)}
               className="h-10 rounded-xl border border-input bg-background px-4 py-2 text-sm"
             >
-              <option value="">All</option>
-              {classes.map((c) => (
+              {!isTeacherScoped && <option value="">All</option>}
+              {classOptions.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -168,7 +191,7 @@ const StudentAttendanceHistory = () => {
                       className="border-b border-border/50 last:border-0 hover:bg-muted/10 cursor-pointer"
                       onClick={() =>
                         navigate(
-                          `/admin/history/student-attendance/${r.studentId}?from=${fromDate}&to=${toDate}`
+                          `${user?.role === "teacher" ? "/teacher" : "/admin"}/history/student-attendance/${r.studentId}?from=${fromDate}&to=${toDate}`
                         )
                       }
                     >

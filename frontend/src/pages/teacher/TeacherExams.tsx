@@ -297,10 +297,18 @@ const TeacherExams = () => {
           <tbody>${allSubjectRows}</tbody>
         </table>`;
 
+      const selectedClassNameForPdf =
+        assignedBatches.find((b) => b.classId === selectedExamClassId)?.className
+        ?? selectedExam.className
+        ?? "—";
+      const selectedBatchNamesForPdf = selectedExamBatchIdsForClass
+        .map((id) => assignedBatches.find((b) => b.id === id)?.name)
+        .filter((v): v is string => !!v && v.trim().length > 0);
+
       const metaHtml = `
         <div class="meta-info">
-          <p><strong>Class:</strong> ${selectedExam.classNames?.length ? selectedExam.classNames.join(", ") : (selectedExam.className ?? "—")}</p>
-          ${selectedExam.batchNames?.length ? `<p><strong>Batch:</strong> ${selectedExam.batchNames.join(", ")}</p>` : ""}
+          <p><strong>Class:</strong> ${selectedClassNameForPdf}</p>
+          ${selectedBatchNamesForPdf.length ? `<p><strong>Batch:</strong> ${selectedBatchNamesForPdf.join(", ")}</p>` : ""}
           <p><strong>Exam Type:</strong> ${TYPE_LABEL[selectedExam.type] ?? selectedExam.type}</p>
           <p><strong>Date:</strong> ${examDate}</p>
           ${selectedSubject ? `<p><strong>Subject:</strong> ${selectedSubject}</p>` : ""}

@@ -126,6 +126,16 @@ interface ExamMarkRow {
   maxMarks: number;
 }
 
+const WEEKDAY_LABEL: Record<number, string> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+};
+
 function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]);
@@ -395,12 +405,17 @@ export default function Reports() {
   };
 
   const exportTeacherTimetable = async () => {
-    if (!downloadTeacherId || batches.length === 0) return;
+    if (!downloadTeacherId) return;
     const teacher = teachers.find((t) => t.userId === downloadTeacherId || t.id === downloadTeacherId);
     try {
+      const sourceBatches =
+        batches.length > 0
+          ? batches
+          : (((await fetchApi("/Batches").catch(() => [])) as BatchLiteDto[]) ?? []);
+      if (sourceBatches.length === 0) return;
       const allSlots = (
         await Promise.all(
-          batches.map((b) =>
+          sourceBatches.map((b) =>
             fetchApi(`/Timetable/batch/${b.id}`).catch(() => [] as TimetableSlotRow[])
           )
         )
@@ -411,7 +426,7 @@ export default function Reports() {
         .map((s) => ({
           Teacher: teacher?.name ?? downloadTeacherId,
           Batch: s.batchName,
-          Day: s.dayOfWeek,
+          Day: WEEKDAY_LABEL[s.dayOfWeek] ?? String(s.dayOfWeek),
           Period: s.periodOrder,
           Subject: s.subject,
           Room: s.room ?? "",

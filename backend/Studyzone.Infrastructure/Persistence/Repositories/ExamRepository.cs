@@ -102,6 +102,13 @@ public class ExamRepository : IExamRepository
         return entity;
     }
 
+    public async Task<Exam> UpdateAsync(Exam entity, CancellationToken ct = default)
+    {
+        _db.Exams.Update(entity);
+        await _db.SaveChangesAsync(ct);
+        return entity;
+    }
+
     public async Task<IReadOnlyList<ExamClass>> GetExamClassesByExamIdAsync(Guid examId, CancellationToken ct = default)
     {
         return await _db.ExamClasses.AsNoTracking()

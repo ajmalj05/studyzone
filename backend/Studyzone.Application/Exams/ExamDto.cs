@@ -28,6 +28,11 @@ public class CreateExamRequest
     public DateTime? ExamDate { get; set; }
 }
 
+public class UpdateExamDateRequest
+{
+    public DateTime? ExamDate { get; set; }
+}
+
 public class MarksEntryDto
 {
     public string Id { get; set; } = string.Empty;

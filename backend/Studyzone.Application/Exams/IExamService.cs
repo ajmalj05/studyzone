@@ -7,6 +7,7 @@ public interface IExamService
     Task<IReadOnlyList<ExamDto>> GetAllForClassIdsAsync(IReadOnlyList<string> classIds, CancellationToken ct = default);
     Task<IReadOnlyList<ExamDto>> GetAllForClassAndBatchIdsAsync(IReadOnlyList<string> classIds, IReadOnlyList<string> batchIds, CancellationToken ct = default);
     Task<ExamDto> CreateAsync(CreateExamRequest request, CancellationToken ct = default);
+    Task<ExamDto?> UpdateExamDateAsync(string examId, DateTime? examDate, CancellationToken ct = default);
     Task<IReadOnlyList<MarksEntryDto>> GetMarksByExamAsync(string examId, bool approvedOnly = false, CancellationToken ct = default);
     Task SaveMarksAsync(SaveMarksRequest request, CancellationToken ct = default);
     Task<int> ApproveAllPendingMarksForExamAsync(string examId, string approvedByUserId, CancellationToken ct = default);

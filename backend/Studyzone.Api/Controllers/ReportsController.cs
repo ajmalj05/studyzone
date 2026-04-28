@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Studyzone.Application.Portal;
 using Studyzone.Application.Reports;
 
 namespace Studyzone.Api.Controllers;
@@ -10,10 +12,12 @@ namespace Studyzone.Api.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IReportsService _service;
+    private readonly IPortalService _portal;
 
-    public ReportsController(IReportsService service)
+    public ReportsController(IReportsService service, IPortalService portal)
     {
         _service = service;
+        _portal = portal;
     }
 
     [HttpGet("enrollment")]
@@ -40,7 +44,28 @@ public class ReportsController : ControllerBase
     [HttpGet("attendance")]
     public async Task<ActionResult<AttendanceReportDto>> GetAttendance([FromQuery] string? classId, [FromQuery] DateTime from, [FromQuery] DateTime to, [FromQuery] string? academicYearId, CancellationToken ct)
     {
-        var dto = await _service.GetAttendanceReportAsync(classId, from, to, academicYearId, ct);
+        var effectiveClassId = classId;
+        if (IsTeacher())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var assignedClassIds = (await _portal.GetTeacherAssignedClassIdsAsync(userId, ct)).Distinct().ToList();
+            if (assignedClassIds.Count == 0)
+                return Ok(new AttendanceReportDto { From = from, To = to, ClassId = classId, Rows = Array.Empty<AttendanceReportRowDto>() });
+
+            if (!string.IsNullOrWhiteSpace(effectiveClassId))
+            {
+                if (!assignedClassIds.Contains(effectiveClassId))
+                    return Forbid();
+            }
+            else
+            {
+                effectiveClassId = assignedClassIds[0];
+            }
+        }
+
+        var dto = await _service.GetAttendanceReportAsync(effectiveClassId, from, to, academicYearId, ct);
         return Ok(dto);
     }
 
@@ -50,6 +75,17 @@ public class ReportsController : ControllerBase
         var dto = await _service.GetStudentAttendanceDetailAsync(studentId, from, to, academicYearId, ct);
         if (dto == null)
             return NotFound();
+
+        if (IsTeacher())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            var assignedClassIds = (await _portal.GetTeacherAssignedClassIdsAsync(userId, ct)).Distinct().ToHashSet();
+            if (string.IsNullOrWhiteSpace(dto.ClassId) || !assignedClassIds.Contains(dto.ClassId))
+                return Forbid();
+        }
+
         return Ok(dto);
     }
 
@@ -75,4 +111,6 @@ public class ReportsController : ControllerBase
         var dto = await _service.GetTeacherWorkloadAsync(ct);
         return Ok(dto);
     }
+
+    private bool IsTeacher() => User.IsInRole("Teacher") || User.IsInRole("teacher");
 }

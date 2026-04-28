@@ -77,6 +77,15 @@ public class ExamsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
     }
 
+    [HttpPut("{id}/date")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<ActionResult<ExamDto>> UpdateExamDate(string id, [FromBody] UpdateExamDateRequest request, CancellationToken ct)
+    {
+        var dto = await _service.UpdateExamDateAsync(id, request.ExamDate, ct);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
+
     [HttpGet("{examId}/marks")]
     public async Task<ActionResult<IReadOnlyList<MarksEntryDto>>> GetMarks(string examId, CancellationToken ct)
     {

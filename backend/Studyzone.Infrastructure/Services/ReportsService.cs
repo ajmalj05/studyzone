@@ -157,6 +157,7 @@ public class ReportsService : IReportsService
             {
                 StudentId = s.Id.ToString(),
                 StudentName = s.Name,
+                ClassId = enr.ClassId?.ToString(),
                 ClassName = className,
                 PresentDays = presentDays,
                 AbsentDays = absentDays,
@@ -184,11 +185,13 @@ public class ReportsService : IReportsService
             return null;
 
         string? className = null;
+        string? classIdValue = null;
         if (year != null)
         {
             var enr = await _enrollmentRepo.GetByStudentAndAcademicYearAsync(sid, year.Id, ct);
             if (enr?.ClassId.HasValue == true)
             {
+                classIdValue = enr.ClassId.Value.ToString();
                 var cls = await _classRepo.GetByIdAsync(enr.ClassId.Value, ct);
                 className = cls?.Name;
             }
@@ -215,6 +218,7 @@ public class ReportsService : IReportsService
         {
             StudentId = student.Id.ToString(),
             StudentName = student.Name,
+            ClassId = classIdValue,
             ClassName = className,
             From = from,
             To = to,

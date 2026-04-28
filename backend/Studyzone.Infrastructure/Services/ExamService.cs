@@ -307,6 +307,32 @@ public class ExamService : IExamService
         };
     }
 
+    public async Task<ExamDto?> UpdateExamDateAsync(string examId, DateTime? examDate, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(examId, out var eid)) return null;
+        var exam = await _examRepo.GetByIdAsync(eid, ct);
+        if (exam == null) return null;
+        exam.ExamDate = examDate;
+        var updated = await _examRepo.UpdateAsync(exam, ct);
+        var (classIds, classNames, classWideClassIds, batchIds, batchNames, firstClassId, firstName) = await ResolveClassesAsync(updated.Id, updated.ClassId, ct);
+        return new ExamDto
+        {
+            Id = updated.Id.ToString(),
+            Name = updated.Name,
+            Type = updated.Type,
+            ClassId = firstClassId,
+            ClassName = firstName,
+            ClassIds = classIds,
+            ClassNames = classNames,
+            ClassWideClassIds = classWideClassIds,
+            BatchIds = batchIds,
+            BatchNames = batchNames,
+            MaxMarks = updated.MaxMarks,
+            ExamDate = updated.ExamDate,
+            CreatedAt = updated.CreatedAt
+        };
+    }
+
     public async Task<IReadOnlyList<MarksEntryDto>> GetMarksByExamAsync(string examId, bool approvedOnly = false, CancellationToken ct = default)
     {
         if (!Guid.TryParse(examId, out var eid)) return Array.Empty<MarksEntryDto>();
@@ -339,6 +365,12 @@ public class ExamService : IExamService
             throw new ArgumentException("Invalid exam id.", nameof(request));
         if (!Guid.TryParse(request.StudentId, out var studentId))
             throw new ArgumentException("Invalid student id.", nameof(request));
+        if (request.MaxMarks <= 0)
+            throw new InvalidOperationException("Max marks must be greater than zero.");
+        if (request.MarksObtained < 0)
+            throw new InvalidOperationException("Marks obtained cannot be negative.");
+        if (request.MarksObtained > request.MaxMarks)
+            throw new InvalidOperationException("Marks obtained cannot be greater than total marks.");
         var links = await _examRepo.GetExamClassesByExamIdAsync(examId, ct);
         if (links.Count > 0)
         {

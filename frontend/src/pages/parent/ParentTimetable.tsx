@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { fetchApi } from "@/lib/api";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
@@ -21,6 +21,7 @@ interface TimetableSlotDto {
 }
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WORKING_DAYS = [1, 2, 3, 4, 5, 6];
 
 const ParentTimetable = () => {
   const [searchParams] = useSearchParams();
@@ -67,6 +68,7 @@ const ParentTimetable = () => {
     acc[day].push(s);
     return acc;
   }, {} as Record<number, TimetableSlotDto[]>);
+  const periodOrders = Array.from(new Set(slots.map((s) => s.periodOrder))).sort((a, b) => a - b);
 
   return (
     <div className="space-y-4">
@@ -89,30 +91,46 @@ const ParentTimetable = () => {
           {loading ? (
             <Card><CardContent className="p-8">Loading...</CardContent></Card>
           ) : slots.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((day) => {
-                const daySlots = (byDay[day] ?? []).sort((a, b) => a.periodOrder - b.periodOrder);
-                return (
-                  <Card key={day} className="rounded-[var(--radius)]">
-                    <CardHeader><CardTitle className="text-base">{DAYS[day] ?? `Day ${day}`}</CardTitle></CardHeader>
-                    <CardContent>
-                      {daySlots.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No classes</p>
-                      ) : (
-                        <ul className="space-y-2 text-sm">
-                          {daySlots.map((s) => (
-                            <li key={s.id} className="flex justify-between">
-                              <span>P{s.periodOrder} {s.subject ?? "—"}</span>
-                              <span className="text-muted-foreground">{s.room ?? ""}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <Card className="rounded-[var(--radius)]">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[780px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="px-4 py-3 text-left font-semibold">Period</th>
+                        {WORKING_DAYS.map((day) => (
+                          <th key={day} className="px-4 py-3 text-left font-semibold">
+                            {DAYS[day] ?? `Day ${day}`}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {periodOrders.map((period) => (
+                        <tr key={period} className="border-b last:border-0">
+                          <td className="px-4 py-3 font-medium text-foreground">P{period}</td>
+                          {WORKING_DAYS.map((day) => {
+                            const slot = (byDay[day] ?? []).find((s) => s.periodOrder === period);
+                            return (
+                              <td key={`${day}-${period}`} className="px-4 py-3 align-top">
+                                {slot ? (
+                                  <div className="space-y-0.5">
+                                    <p className="font-medium text-foreground">{slot.subject ?? "—"}</p>
+                                    {slot.room ? <p className="text-xs text-muted-foreground">{slot.room}</p> : null}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <Card><CardContent className="p-8 text-muted-foreground">No timetable for this child.</CardContent></Card>
           )}

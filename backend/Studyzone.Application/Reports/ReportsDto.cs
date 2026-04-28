@@ -34,6 +34,7 @@ public class AttendanceReportRowDto
 {
     public string StudentId { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;
+    public string? ClassId { get; set; }
     public string? ClassName { get; set; }
     public int PresentDays { get; set; }
     public int AbsentDays { get; set; }
@@ -61,6 +62,7 @@ public class StudentAttendanceDetailDto
 {
     public string StudentId { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;
+    public string? ClassId { get; set; }
     public string? ClassName { get; set; }
     public DateTime From { get; set; }
     public DateTime To { get; set; }

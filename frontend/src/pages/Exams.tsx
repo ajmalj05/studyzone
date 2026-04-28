@@ -146,6 +146,10 @@ export default function Exams() {
   const [scheduleTypeFilter, setScheduleTypeFilter] = useState("_all");
   const [scheduleClassFilter, setScheduleClassFilter] = useState("_all");
   const [marksTypeFilter, setMarksTypeFilter] = useState("_all");
+  const [dateEditOpen, setDateEditOpen] = useState(false);
+  const [dateEditExamId, setDateEditExamId] = useState("");
+  const [dateEditValue, setDateEditValue] = useState("");
+  const [savingDateEdit, setSavingDateEdit] = useState(false);
 
   usePageHeaderConfigEffect(
     {
@@ -526,6 +530,17 @@ export default function Exams() {
     for (const student of marksFilteredStudents) {
       const val = marksByStudentSubject[`${student.id}:${selectedSubject}`];
       if (!val || val.obtained === "") continue;
+      const obtained = parseFloat(val.obtained) || 0;
+      const max = parseFloat(val.max) || parseFloat(adminMaxMarks) || 100;
+      if (obtained > max) {
+        setSavingMarks(false);
+        toast({
+          title: "Validation",
+          description: `${student.name}: marks cannot exceed total marks (${max}).`,
+          variant: "destructive",
+        });
+        return;
+      }
       try {
         await fetchApi("/Exams/marks", {
           method: "POST",
@@ -533,8 +548,8 @@ export default function Exams() {
             examId: selectedExamId,
             studentId: student.id,
             subject: selectedSubject,
-            marksObtained: parseFloat(val.obtained) || 0,
-            maxMarks: parseFloat(val.max) || parseFloat(adminMaxMarks) || 100,
+            marksObtained: obtained,
+            maxMarks: max,
           }),
         });
         saved++;
@@ -697,6 +712,15 @@ export default function Exams() {
     }
     return { label: "Scheduled", className: "bg-emerald-100 text-emerald-700" };
   };
+  const cardTopAccentClass = (exam: ExamDto, index: number) => {
+    const byType = (TYPE_LABEL[exam.type] ?? exam.type).toLowerCase();
+    if (byType.includes("unit")) return "border-t-blue-500";
+    if (byType.includes("mid")) return "border-t-amber-500";
+    if (byType.includes("final")) return "border-t-emerald-500";
+    if (byType.includes("practical")) return "border-t-violet-500";
+    const palette = ["border-t-sky-500", "border-t-orange-500", "border-t-teal-500", "border-t-rose-500"];
+    return palette[index % palette.length];
+  };
 
   const marksTypeOptions = useMemo(
     () => ["_all", ...Array.from(new Set(exams.map((e) => (TYPE_LABEL[e.type] ?? e.type).trim()))).filter(Boolean)],
@@ -719,6 +743,30 @@ export default function Exams() {
     a.download = `${selectedExam?.name ?? "marks"}-log.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const openSetExamDate = (exam: ExamDto) => {
+    setDateEditExamId(exam.id);
+    setDateEditValue(exam.examDate ? exam.examDate.slice(0, 10) : "");
+    setDateEditOpen(true);
+  };
+
+  const handleSaveExamDate = async () => {
+    if (!dateEditExamId) return;
+    setSavingDateEdit(true);
+    try {
+      const dto = (await fetchApi(`/Exams/${dateEditExamId}/date`, {
+        method: "PUT",
+        body: JSON.stringify({ examDate: dateEditValue ? new Date(dateEditValue).toISOString() : null }),
+      })) as ExamDto;
+      setExams((prev) => prev.map((e) => (e.id === dto.id ? { ...e, examDate: dto.examDate } : e)));
+      setDateEditOpen(false);
+      toast({ title: "Updated", description: "Exam date saved." });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to update date.", variant: "destructive" });
+    } finally {
+      setSavingDateEdit(false);
+    }
   };
 
   if (loading) {
@@ -832,8 +880,14 @@ export default function Exams() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {filteredScheduleExams.map((exam) => (
-                        <div key={exam.id} className="rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm">
+                      {filteredScheduleExams.map((exam, index) => (
+                        <div
+                          key={exam.id}
+                          className={cn(
+                            "rounded-[14px] border border-slate-200 border-t-[4px] bg-white p-3 shadow-sm",
+                            cardTopAccentClass(exam, index),
+                          )}
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-sm font-bold text-slate-900">{exam.name}</p>
@@ -853,6 +907,13 @@ export default function Exams() {
                               <div className="text-slate-500">DAY</div>
                             </div>
                           </div>
+                          {!exam.examDate && (
+                            <div className="mt-2">
+                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-md px-2 text-[10px]" onClick={() => openSetExamDate(exam)}>
+                                Set Start Date
+                              </Button>
+                            </div>
+                          )}
                           <div className="mt-3 flex items-center justify-between">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", resolveExamStatus(exam).className)}>
                               {resolveExamStatus(exam).label}
@@ -1618,6 +1679,25 @@ export default function Exams() {
               <Button type="submit" variant="destructive">Reject entry</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dateEditOpen} onOpenChange={setDateEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Exam Start Date</DialogTitle>
+            <DialogDescription>Save a date for exams that were created without one.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <DatePicker value={dateEditValue} onChange={setDateEditValue} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDateEditOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={handleSaveExamDate} disabled={savingDateEdit || !dateEditValue}>
+              {savingDateEdit ? "Saving..." : "Save Date"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
