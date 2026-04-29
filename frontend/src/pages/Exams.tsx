@@ -268,6 +268,15 @@ export default function Exams() {
     if (!selectedClassIsClassWide && (!s.batchId || !selectedExamBatchIdsForClass.includes(s.batchId))) return false;
     return !marksBatchFilter || s.batchId === marksBatchFilter;
   });
+  const scheduleMaxForSubject = useCallback((subjectName: string, classId: string) => {
+    const entry = scheduleEntries.find(
+      (e) =>
+        e.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase() &&
+        (!e.classId || e.classId === classId),
+    );
+    if (entry?.maxMarks != null && entry.maxMarks > 0) return String(entry.maxMarks);
+    return null;
+  }, [scheduleEntries]);
   const adminMaxMarks = selectedExam?.maxMarks != null ? String(selectedExam.maxMarks) : "100";
   const marksCapMax = useMemo(() => {
     if (!selectedSubject.trim() || !marksClassFilter) return adminMaxMarks;
@@ -371,16 +380,6 @@ export default function Exams() {
     }
     setScheduleTableDraft(next);
   }, [showSchedulePanel, selectedExam, scheduleSubjects, scheduleEntries]);
-
-  const scheduleMaxForSubject = useCallback((subjectName: string, classId: string) => {
-    const entry = scheduleEntries.find(
-      (e) =>
-        e.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase() &&
-        (!e.classId || e.classId === classId),
-    );
-    if (entry?.maxMarks != null && entry.maxMarks > 0) return String(entry.maxMarks);
-    return null;
-  }, [scheduleEntries]);
 
   const subjectHasScheduleForClass = useCallback(
     (subjectName: string, classId: string) =>

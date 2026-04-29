@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -62,6 +63,8 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ type: 'charge'; id: string; name: string } | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
+  const [bulkPrinting, setBulkPrinting] = useState(false);
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
 
   const [billingRecords, setBillingRecords] = useState<StudentBillingRecord[]>([]);
   const [charges, setCharges] = useState<StudentCharge[]>([]);
@@ -181,6 +184,14 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
       return null;
     }
   };
+
+  useEffect(() => {
+    setSelectedPaymentIds([]);
+  }, [selectedStudent?.studentId]);
+
+  useEffect(() => {
+    setSelectedPaymentIds((prev) => prev.filter((id) => paymentHistory.some((p) => p.id === id)));
+  }, [paymentHistory]);
 
   const filteredRecords = billingRecords.filter(record => {
     if (searchTerm && !record.studentName.toLowerCase().includes(searchTerm.toLowerCase()) && 
@@ -542,45 +553,44 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
+  const getFallbackReceipt = (paymentId: string): FeeReceiptDto | null => {
+    const payment = paymentHistory.find(p => p.id === paymentId);
+    if (!payment) return null;
+    return {
+      id: paymentId,
+      receiptNumber: `REC-${paymentId.toUpperCase()}`,
+      studentName: selectedStudent?.studentName || "Student",
+      admissionNumber: selectedStudent?.admissionNumber || "ADM001",
+      className: selectedStudent?.className || "Class 1",
+      paidAt: payment.date,
+      totalCharges: payment.amount,
+      deposit: payment.amount,
+      remainingBalance: 0,
+      currencySymbol: "AED",
+      particulars: [{ name: payment.feeType, amount: payment.amount }],
+    };
+  };
+
+  const loadReceiptByPaymentId = async (paymentId: string): Promise<FeeReceiptDto | null> => {
+    try {
+      return await fetchApi(`/Fees/receipt/${encodeURIComponent(paymentId)}`) as FeeReceiptDto;
+    } catch {
+      return getFallbackReceipt(paymentId);
+    }
+  };
+
   const handleViewReceipt = async (paymentId: string) => {
     if (!paymentId || printingId) return;
     
     try {
       setPrintingId(paymentId);
-      let receipt: FeeReceiptDto | null = null;
-      let school: SchoolProfileForReceipt | null = null;
-      
-      try {
-        [receipt, school] = await Promise.all([
-          fetchApi(`/Fees/receipt/${encodeURIComponent(paymentId)}`) as Promise<FeeReceiptDto>,
-          fetchApi("/SchoolProfile").catch(() => null) as Promise<SchoolProfileForReceipt | null>,
-        ]);
-      } catch (apiErr) {
-        // If API fails (e.g., mock data), generate a demo receipt
-        console.log("API failed, showing demo receipt");
-      }
-
-      // If no receipt from API, create a demo one for testing
+      const [receipt, school] = await Promise.all([
+        loadReceiptByPaymentId(paymentId),
+        fetchApi("/SchoolProfile").catch(() => null) as Promise<SchoolProfileForReceipt | null>,
+      ]);
       if (!receipt) {
-        const payment = paymentHistory.find(p => p.id === paymentId);
-        if (payment) {
-          receipt = {
-            id: paymentId,
-            receiptNumber: `REC-${paymentId.toUpperCase()}`,
-            studentName: selectedStudent?.studentName || "Student",
-            admissionNumber: selectedStudent?.admissionNumber || "ADM001",
-            className: selectedStudent?.className || "Class 1",
-            paidAt: payment.date,
-            totalCharges: payment.amount,
-            deposit: payment.amount,
-            remainingBalance: 0,
-            currencySymbol: "AED",
-            particulars: [{ name: payment.feeType, amount: payment.amount }],
-          };
-        } else {
-          toast({ title: "Error", description: "Receipt data not available.", variant: "destructive" });
-          return;
-        }
+        toast({ title: "Error", description: "Receipt data not available.", variant: "destructive" });
+        return;
       }
 
       const html = buildReceiptHtml(receipt, school);
@@ -597,6 +607,107 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
       toast({ title: "Error", description: (e as Error).message || "Failed to load receipt", variant: "destructive" });
     } finally {
       setPrintingId(null);
+    }
+  };
+
+  const handlePrintSelectedReceipts = async () => {
+    if (selectedPaymentIds.length === 0) {
+      toast({ title: "No payments selected", description: "Select at least one payment to print." });
+      return;
+    }
+
+    try {
+      setBulkPrinting(true);
+      const school = await fetchApi("/SchoolProfile").catch(() => null) as SchoolProfileForReceipt | null;
+      const receipts = await Promise.all(selectedPaymentIds.map((id) => loadReceiptByPaymentId(id)));
+      const validReceipts = receipts.filter((r): r is FeeReceiptDto => !!r);
+
+      if (validReceipts.length === 0) {
+        toast({ title: "Error", description: "No receipt data available for selected payments.", variant: "destructive" });
+        return;
+      }
+
+      const printDate = new Date().toLocaleString();
+      const feeRows = validReceipts.flatMap((receipt) => {
+        const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
+        const particulars = receipt.particulars ?? [];
+        if (particulars.length === 0) {
+          return [{
+            receiptNumber: receipt.receiptNumber,
+            paidDate,
+            name: "General",
+            amount: Number(receipt.deposit ?? receipt.totalCharges ?? 0),
+          }];
+        }
+        return particulars.map((p) => ({
+          receiptNumber: receipt.receiptNumber,
+          paidDate,
+          name: String(p.name),
+          amount: Number(p.amount ?? 0),
+        }));
+      });
+      const rowsHtml = feeRows
+        .map(
+          (row, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${row.receiptNumber}</td>
+              <td>${row.paidDate}</td>
+              <td>${row.name}</td>
+              <td class="text-right">AED ${row.amount.toLocaleString("en-AE")}</td>
+            </tr>
+          `
+        )
+        .join("");
+      const grandTotal = feeRows.reduce((sum, r) => sum + r.amount, 0);
+
+      const metaInfo = `
+        <p><strong>Generated on:</strong> ${printDate}</p>
+        <p><strong>Student:</strong> ${selectedStudent?.studentName || "—"} (${selectedStudent?.admissionNumber || "—"})</p>
+        <p><strong>Class:</strong> ${selectedStudent?.className || "—"} ${selectedStudent?.batch ? `- ${selectedStudent.batch}` : ""}</p>
+        <p><strong>Selected Receipts:</strong> ${validReceipts.length}</p>
+      `;
+
+      const tableContent = `
+        <table>
+          <thead>
+            <tr>
+              <th>Sr. No.</th>
+              <th>Receipt #</th>
+              <th>Date</th>
+              <th>Fee particulars</th>
+              <th class="text-right">Amount (AED)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr>
+              <td colspan="4" class="text-right"><strong>Grand Total</strong></td>
+              <td class="text-right"><strong>${grandTotal.toLocaleString("en-AE")}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      const combinedHtml = buildReportHtml(
+        "Selected Fees Receipt",
+        tableContent,
+        school,
+        metaInfo
+      );
+
+      const blob = new Blob([combinedHtml], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, "_blank");
+
+      if (!newWindow) {
+        toast({ title: "Popup blocked", description: "Allow popups to print selected receipts.", variant: "destructive" });
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error).message || "Failed to print selected receipts", variant: "destructive" });
+    } finally {
+      setBulkPrinting(false);
     }
   };
 
@@ -782,12 +893,38 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
         </Card>
 
         <Card className="overflow-hidden">
-          <CardHeader className="p-4 border-b border-slate-100">
-            <CardTitle className="text-base font-medium text-slate-900">Payment history</CardTitle>
+          <CardHeader className="border-b border-slate-100 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-base font-medium text-slate-900">Payment history</CardTitle>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="inline-flex items-center gap-2 text-xs text-slate-600">
+                  <Checkbox
+                    checked={paymentHistory.length > 0 && selectedPaymentIds.length === paymentHistory.length}
+                    onCheckedChange={(checked) => {
+                      setSelectedPaymentIds(checked ? paymentHistory.map((p) => p.id) : []);
+                    }}
+                  />
+                  Select all
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={bulkPrinting || selectedPaymentIds.length === 0}
+                  onClick={handlePrintSelectedReceipts}
+                >
+                  <Printer className="mr-1 h-3.5 w-3.5" />
+                  {bulkPrinting ? "Printing..." : `Print selected (${selectedPaymentIds.length})`}
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50">
+                <TableHead className="w-[44px]">
+                  <span className="sr-only">Select payment</span>
+                </TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Fee type</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</TableHead>
@@ -799,13 +936,23 @@ export function StudentBillingTab({ classes, batches, students }: StudentBilling
             <TableBody>
               {paymentHistory.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-sm text-slate-400">
+                  <TableCell colSpan={7} className="text-center py-8 text-sm text-slate-400">
                     No payments recorded.
                   </TableCell>
                 </TableRow>
               ) : (
                 paymentHistory.map((payment) => (
                   <TableRow key={payment.id} className="border-b border-slate-100">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedPaymentIds.includes(payment.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedPaymentIds((prev) =>
+                            checked ? [...prev, payment.id] : prev.filter((id) => id !== payment.id)
+                          );
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="text-slate-600">{payment.date}</TableCell>
                     <TableCell className="font-medium text-slate-700">{payment.feeType}</TableCell>
                     <TableCell className="text-slate-600">{formatCurrency(payment.amount)}</TableCell>

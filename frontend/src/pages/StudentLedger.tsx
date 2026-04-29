@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -298,6 +299,7 @@ export default function StudentLedger() {
   const [batchFilter, setBatchFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [printing, setPrinting] = useState(false);
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [studentFeeOffer, setStudentFeeOffer] = useState<StudentFeeOfferDto | null>(null);
 
   usePageHeaderConfigEffect(
@@ -399,6 +401,14 @@ export default function StudentLedger() {
     }
   }, [classFilter, batchFilter, searchTerm, filteredStudents, selectedStudentId]);
 
+  useEffect(() => {
+    setSelectedPaymentIds([]);
+  }, [selectedStudentId]);
+
+  useEffect(() => {
+    setSelectedPaymentIds((prev) => prev.filter((id) => ledger?.payments?.some((p) => p.id === id)));
+  }, [ledger]);
+
   const handlePrintLedger = async () => {
     if (!ledger || printing) return;
     try {
@@ -445,6 +455,164 @@ export default function StudentLedger() {
       }
     } catch (e: unknown) {
       toast({ title: "Error", description: (e as Error).message || "Failed to print receipt", variant: "destructive" });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handlePrintSelectedReceipts = async () => {
+    if (!ledger || selectedPaymentIds.length === 0 || printing) return;
+    try {
+      setPrinting(true);
+      const school = (await fetchApi("/SchoolProfile").catch(() => null)) as SchoolProfileDto | null;
+      const selectedStudent = filteredStudents.find((s) => s.id === selectedStudentId) ?? null;
+      const receipts = await Promise.all(
+        selectedPaymentIds.map(async (paymentId) => {
+          try {
+            return await fetchApi(`/Fees/receipt/${encodeURIComponent(paymentId)}`) as FeeReceiptDto;
+          } catch {
+            const p = ledger.payments.find((x) => x.id === paymentId);
+            if (!p) return null;
+            return {
+              id: p.id,
+              receiptNumber: p.receiptNumber,
+              studentName: ledger.studentName,
+              admissionNumber: selectedStudent?.admissionNumber || "",
+              className: ledger.className,
+              paidAt: p.paidAt,
+              totalCharges: p.amount,
+              deposit: p.amount,
+              remainingBalance: 0,
+              currencySymbol: "AED",
+              particulars: [{ name: (p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General", amount: p.amount }],
+            } satisfies FeeReceiptDto;
+          }
+        })
+      );
+
+      const validReceipts = receipts.filter((r): r is FeeReceiptDto => !!r);
+      if (validReceipts.length === 0) {
+        toast({ title: "Error", description: "No selected receipts found.", variant: "destructive" });
+        return;
+      }
+
+      const feeRows = validReceipts.flatMap((receipt) => {
+        const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
+        const particulars = receipt.particulars ?? [];
+        if (particulars.length === 0) {
+          return [{
+            receiptNumber: receipt.receiptNumber,
+            paidDate,
+            name: "General",
+            amount: Number(receipt.deposit ?? receipt.totalCharges ?? 0),
+          }];
+        }
+        return particulars.map((particular) => ({
+          receiptNumber: receipt.receiptNumber,
+          paidDate,
+          name: String(particular.name),
+          amount: Number(particular.amount ?? 0),
+        }));
+      });
+
+      const rowsHtml = feeRows
+        .map(
+          (row, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${esc(row.receiptNumber)}</td>
+              <td>${esc(row.paidDate)}</td>
+              <td>${esc(row.name)}</td>
+              <td class="text-right">AED ${row.amount.toLocaleString("en-AE")}</td>
+            </tr>
+          `
+        )
+        .join("");
+      const grandTotal = feeRows.reduce((sum, r) => sum + r.amount, 0);
+      const schoolName = school?.name || "Studyzone Private Institute";
+      const logoUrl = school?.logoUrl || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "/logo.png");
+      const printDate = new Date().toLocaleString();
+
+      const html = `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Selected Fees Receipt</title>
+        <style>
+          @page { size: A4; margin: 8mm; }
+          body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11pt; }
+          .sheet { max-width: 210mm; margin: 0 auto; padding: 10mm 8mm; color: #111827; }
+          .receipt-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+          .receipt-header-left { display: flex; align-items: center; gap: 10px; }
+          .receipt-logo { height: 52px; width: 52px; object-fit: contain; display: block; }
+          .receipt-school-name { margin: 0; font-size: 1.25rem; font-weight: 700; }
+          .receipt-tagline { margin: 0; font-size: 0.8rem; color: #555; }
+          .receipt-contact { margin: 2px 0 0; font-size: 0.75rem; color: #555; }
+          .receipt-grid { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 10px; font-size: 0.8rem; }
+          .receipt-grid td { padding: 3px 6px; vertical-align: top; }
+          .receipt-grid .label { font-weight: 600; width: 24%; }
+          .receipt-grid .value { width: 26%; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #d1d5db; padding: 5px 6px; font-size: 10.5px; vertical-align: top; }
+          th { background: #f3f4f6; text-align: left; font-weight: 700; }
+          .text-right { text-align: right; }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">
+          <div class="receipt-header">
+            <div class="receipt-header-left">
+              <img src="${esc(logoUrl)}" alt="School" class="receipt-logo" />
+              <div>
+                <h1 class="receipt-school-name">${esc(schoolName)}</h1>
+                <p class="receipt-tagline">Fees Paid Receipt (Combined)</p>
+                <p class="receipt-contact">${esc(school?.address || "")}${school?.phone ? " | " + esc(school.phone) : ""}${school?.email ? " | " + esc(school.email) : ""}</p>
+              </div>
+            </div>
+          </div>
+          <table class="receipt-grid">
+            <tr>
+              <td class="label">Student Name</td><td class="value">${esc(ledger.studentName || selectedStudent?.name || "—")}</td>
+              <td class="label">Registration No</td><td class="value">${esc(selectedStudent?.admissionNumber || "—")}</td>
+            </tr>
+            <tr>
+              <td class="label">Class</td><td class="value">${esc(ledger.className || "—")}</td>
+              <td class="label">Generated</td><td class="value">${esc(printDate)}</td>
+            </tr>
+          </table>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 34px;">#</th>
+                <th style="width: 110px;">Receipt #</th>
+                <th style="width: 90px;">Date</th>
+                <th>Fee particulars</th>
+                <th style="width: 110px;" class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+              <tr>
+                <td colspan="4" class="text-right"><strong>Grand Total</strong></td>
+                <td class="text-right"><strong>AED ${grandTotal.toLocaleString("en-AE")}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <script>window.onload=function(){window.print();}</script>
+      </body>
+      </html>`;
+
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank", "noopener,noreferrer,width=900,height=700");
+      if (w) setTimeout(() => URL.revokeObjectURL(url), 5000);
+      else {
+        URL.revokeObjectURL(url);
+        toast({ title: "Popup blocked", description: "Allow popups for this site to print selected receipts.", variant: "destructive" });
+      }
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error).message || "Failed to print selected receipts", variant: "destructive" });
     } finally {
       setPrinting(false);
     }
@@ -572,6 +740,15 @@ export default function StudentLedger() {
                 >
                   Print full ledger
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={printing || selectedPaymentIds.length === 0}
+                  onClick={handlePrintSelectedReceipts}
+                >
+                  Print selected ({selectedPaymentIds.length})
+                </Button>
               </div>
               <Table>
                 <TableHeader>
@@ -594,6 +771,14 @@ export default function StudentLedger() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[44px]">
+                      <Checkbox
+                        checked={ledger.payments.length > 0 && selectedPaymentIds.length === ledger.payments.length}
+                        onCheckedChange={(checked) => {
+                          setSelectedPaymentIds(checked ? ledger.payments.map((p) => p.id) : []);
+                        }}
+                      />
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Fee type</TableHead>
                     <TableHead>Receipt</TableHead>
@@ -605,6 +790,16 @@ export default function StudentLedger() {
                 <TableBody>
                   {ledger.payments.map((p) => (
                     <TableRow key={p.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedPaymentIds.includes(p.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedPaymentIds((prev) =>
+                              checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
+                            );
+                          }}
+                        />
+                      </TableCell>
                       <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
                       <TableCell>{(p.feeType && String(p.feeType).trim()) ? String(p.feeType).trim() : "General"}</TableCell>
                       <TableCell>{p.receiptNumber}</TableCell>
