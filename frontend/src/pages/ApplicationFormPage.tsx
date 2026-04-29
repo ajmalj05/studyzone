@@ -297,52 +297,25 @@ function buildPrintDocumentHtml(
 const validateStudentTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
   const studentName = isNonEmptyString(form.studentName) ? form.studentName : "";
-  const academicYear = isNonEmptyString(form.academicYear) ? form.academicYear : "";
-  const gender = isNonEmptyString(form.gender) ? form.gender : "";
-  const dateOfBirth = isNonEmptyString(form.dateOfBirth) ? form.dateOfBirth : "";
   const nationality = isNonEmptyString(form.nationality) ? form.nationality : "";
   const religion = isNonEmptyString(form.religion) ? form.religion : "";
   const placeOfBirth = isNonEmptyString(form.placeOfBirth) ? form.placeOfBirth : "";
 
   if (!studentName) errors.push("Student name is required");
   else if (!isValidName(studentName)) errors.push("Student name must contain only valid text characters");
-  if (!academicYear) errors.push("Academic year is required");
-  if (!gender) errors.push("Gender is required");
-  if (!dateOfBirth) errors.push("Date of birth is required");
-  if (!nationality) errors.push("Nationality is required");
-  else if (!isValidText(nationality)) errors.push("Nationality must contain only text");
-  if (!religion) errors.push("Religion is required");
-  else if (!isValidText(religion)) errors.push("Religion must contain only text");
-  if (!placeOfBirth) errors.push("Place of birth is required");
-  else if (!isValidText(placeOfBirth)) errors.push("Place of birth must contain only text");
+  if (nationality && !isValidText(nationality)) errors.push("Nationality must contain only text");
+  if (religion && !isValidText(religion)) errors.push("Religion must contain only text");
+  if (placeOfBirth && !isValidText(placeOfBirth)) errors.push("Place of birth must contain only text");
   return errors;
 };
 
 const validateDocumentsTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
-  const passportNo = isNonEmptyString(form.passportNo) ? form.passportNo : "";
-  const passportDateOfIssue = isNonEmptyString(form.passportDateOfIssue) ? form.passportDateOfIssue : "";
-  const passportDateOfExpiry = isNonEmptyString(form.passportDateOfExpiry) ? form.passportDateOfExpiry : "";
   const passportPlaceOfIssue = isNonEmptyString(form.passportPlaceOfIssue) ? form.passportPlaceOfIssue : "";
-  const emiratesIdNo = isNonEmptyString(form.emiratesIdNo) ? form.emiratesIdNo : "";
-  const emiratesIdDateOfExpiry = isNonEmptyString(form.emiratesIdDateOfExpiry) ? form.emiratesIdDateOfExpiry : "";
-  const residenceVisaNo = isNonEmptyString(form.residenceVisaNo) ? form.residenceVisaNo : "";
-  const residenceVisaDateOfIssue = isNonEmptyString(form.residenceVisaDateOfIssue) ? form.residenceVisaDateOfIssue : "";
-  const residenceVisaDateOfExpiry = isNonEmptyString(form.residenceVisaDateOfExpiry) ? form.residenceVisaDateOfExpiry : "";
   const residenceVisaPlaceOfIssue = isNonEmptyString(form.residenceVisaPlaceOfIssue) ? form.residenceVisaPlaceOfIssue : "";
 
-  if (!passportNo) errors.push("Passport number is required");
-  if (!passportDateOfIssue) errors.push("Passport date of issue is required");
-  if (!passportDateOfExpiry) errors.push("Passport date of expiry is required");
-  if (!passportPlaceOfIssue) errors.push("Passport place of issue is required");
-  else if (!isValidText(passportPlaceOfIssue)) errors.push("Passport place of issue must contain only text");
-  if (!emiratesIdNo) errors.push("Emirates ID is required");
-  if (!emiratesIdDateOfExpiry) errors.push("Emirates ID expiry is required");
-  if (!residenceVisaNo) errors.push("Residence visa number is required");
-  if (!residenceVisaDateOfIssue) errors.push("Residence visa date of issue is required");
-  if (!residenceVisaDateOfExpiry) errors.push("Residence visa date of expiry is required");
-  if (!residenceVisaPlaceOfIssue) errors.push("Residence visa place of issue is required");
-  else if (!isValidText(residenceVisaPlaceOfIssue)) errors.push("Residence visa place of issue must contain only text");
+  if (passportPlaceOfIssue && !isValidText(passportPlaceOfIssue)) errors.push("Passport place of issue must contain only text");
+  if (residenceVisaPlaceOfIssue && !isValidText(residenceVisaPlaceOfIssue)) errors.push("Residence visa place of issue must contain only text");
   return errors;
 };
 
@@ -352,12 +325,9 @@ const validateFatherTab = (form: Record<string, unknown>): string[] => {
   const fatherMobile = isNonEmptyString(form.fatherMobileNumber) ? form.fatherMobileNumber : "";
   const fatherEmail = isNonEmptyString(form.fatherEmailAddress) ? form.fatherEmailAddress : "";
 
-  if (!fatherName) errors.push("Father's name is required");
-  else if (!isValidName(fatherName)) errors.push("Father's name must contain only valid text characters");
-  if (!fatherMobile) errors.push("Father's mobile number is required");
-  else if (!isValidPhone(fatherMobile)) errors.push("Father's mobile number must be 7-15 digits");
-  if (!fatherEmail) errors.push("Father's email is required");
-  else if (!isValidEmail(fatherEmail)) errors.push("Father's email is not valid");
+  if (fatherName && !isValidName(fatherName)) errors.push("Father's name must contain only valid text characters");
+  if (fatherMobile && !isValidPhone(fatherMobile)) errors.push("Father's mobile number must be 7-15 digits");
+  if (fatherEmail && !isValidEmail(fatherEmail)) errors.push("Father's email is not valid");
   return errors;
 };
 
@@ -367,12 +337,9 @@ const validateMotherTab = (form: Record<string, unknown>): string[] => {
   const motherMobile = isNonEmptyString(form.motherMobileNumber) ? form.motherMobileNumber : "";
   const motherEmail = isNonEmptyString(form.motherEmailAddress) ? form.motherEmailAddress : "";
 
-  if (!motherName) errors.push("Mother's name is required");
-  else if (!isValidName(motherName)) errors.push("Mother's name must contain only valid text characters");
-  if (!motherMobile) errors.push("Mother's mobile number is required");
-  else if (!isValidPhone(motherMobile)) errors.push("Mother's mobile number must be 7-15 digits");
-  if (!motherEmail) errors.push("Mother's email is required");
-  else if (!isValidEmail(motherEmail)) errors.push("Mother's email is not valid");
+  if (motherName && !isValidName(motherName)) errors.push("Mother's name must contain only valid text characters");
+  if (motherMobile && !isValidPhone(motherMobile)) errors.push("Mother's mobile number must be 7-15 digits");
+  if (motherEmail && !isValidEmail(motherEmail)) errors.push("Mother's email is not valid");
   return errors;
 };
 
@@ -943,7 +910,7 @@ export default function ApplicationFormPage() {
   const renderStudentTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="space-y-2">
-        <Label>Academic Year *</Label>
+        <Label>Academic Year</Label>
         <SearchableSelect
           value={form.academicYear || ""}
           onValueChange={(v) => update("academicYear", v)}
@@ -961,7 +928,7 @@ export default function ApplicationFormPage() {
         <Input value={form.studentName} onChange={(e) => update("studentName", e.target.value)} placeholder="Full name" />
       </div>
       <div className="space-y-2">
-        <Label>Gender *</Label>
+        <Label>Gender</Label>
         <SearchableSelect
           value={form.gender}
           onValueChange={(v) => update("gender", v)}
@@ -973,7 +940,7 @@ export default function ApplicationFormPage() {
         />
       </div>
       <div className="space-y-2">
-        <Label>Date of Birth *</Label>
+        <Label>Date of Birth</Label>
         <DatePicker 
           value={form.dateOfBirth} 
           onChange={(v) => update("dateOfBirth", v)} 
@@ -981,15 +948,15 @@ export default function ApplicationFormPage() {
         />
       </div>
       <div className="space-y-2">
-        <Label>Place of Birth (as per passport) *</Label>
+        <Label>Place of Birth (as per passport)</Label>
         <Input value={form.placeOfBirth} onChange={(e) => update("placeOfBirth", e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>Nationality *</Label>
+        <Label>Nationality</Label>
         <Input value={form.nationality} onChange={(e) => update("nationality", e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>Religion *</Label>
+        <Label>Religion</Label>
         <Input value={form.religion} onChange={(e) => update("religion", e.target.value)} />
       </div>
       <div className="space-y-2">
@@ -1021,7 +988,7 @@ export default function ApplicationFormPage() {
         <Input value={form.countryIfOutsideUae} onChange={(e) => update("countryIfOutsideUae", e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>Syllabus – Previous School *</Label>
+        <Label>Syllabus – Previous School</Label>
         <Input value={form.syllabusPreviousSchool} onChange={(e) => update("syllabusPreviousSchool", e.target.value)} />
       </div>
       <div className="space-y-2">
@@ -1043,15 +1010,15 @@ export default function ApplicationFormPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Passport No *</Label>
+          <Label>Passport No</Label>
           <Input value={form.passportNo} onChange={(e) => update("passportNo", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Place of Issue (Passport) *</Label>
+          <Label>Place of Issue (Passport)</Label>
           <Input value={form.passportPlaceOfIssue} onChange={(e) => update("passportPlaceOfIssue", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Date of Issue (Passport) *</Label>
+          <Label>Date of Issue (Passport)</Label>
           <DatePicker 
             value={form.passportDateOfIssue} 
             onChange={(v) => update("passportDateOfIssue", v)} 
@@ -1059,7 +1026,7 @@ export default function ApplicationFormPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label>Date of Expiry (Passport) *</Label>
+          <Label>Date of Expiry (Passport)</Label>
           <DatePicker 
             value={form.passportDateOfExpiry} 
             onChange={(v) => update("passportDateOfExpiry", v)} 
@@ -1070,11 +1037,11 @@ export default function ApplicationFormPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Emirates ID No *</Label>
+          <Label>Emirates ID No</Label>
           <Input value={form.emiratesIdNo} onChange={(e) => update("emiratesIdNo", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Date of Expiry (Emirates ID) *</Label>
+          <Label>Date of Expiry (Emirates ID)</Label>
           <DatePicker 
             value={form.emiratesIdDateOfExpiry} 
             onChange={(v) => update("emiratesIdDateOfExpiry", v)} 
@@ -1085,15 +1052,15 @@ export default function ApplicationFormPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Residence Visa No *</Label>
+          <Label>Residence Visa No</Label>
           <Input value={form.residenceVisaNo} onChange={(e) => update("residenceVisaNo", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Place of Issue (Residence Visa) *</Label>
+          <Label>Place of Issue (Residence Visa)</Label>
           <Input value={form.residenceVisaPlaceOfIssue} onChange={(e) => update("residenceVisaPlaceOfIssue", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Date of Issue (Residence Visa) *</Label>
+          <Label>Date of Issue (Residence Visa)</Label>
           <DatePicker 
             value={form.residenceVisaDateOfIssue} 
             onChange={(v) => update("residenceVisaDateOfIssue", v)} 
@@ -1101,7 +1068,7 @@ export default function ApplicationFormPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label>Date of Expiry (Residence Visa) *</Label>
+          <Label>Date of Expiry (Residence Visa)</Label>
           <DatePicker 
             value={form.residenceVisaDateOfExpiry} 
             onChange={(v) => update("residenceVisaDateOfExpiry", v)} 
@@ -1126,7 +1093,7 @@ export default function ApplicationFormPage() {
   const renderFatherTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="space-y-2">
-        <Label>Name as in Passport *</Label>
+        <Label>Name as in Passport</Label>
         <Input value={form.fatherNameAsInPassport} onChange={(e) => update("fatherNameAsInPassport", e.target.value)} />
       </div>
       <div className="space-y-2">
@@ -1142,11 +1109,11 @@ export default function ApplicationFormPage() {
         <Input value={form.fatherQualification} onChange={(e) => update("fatherQualification", e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>Mobile Number *</Label>
+        <Label>Mobile Number</Label>
         <Input value={form.fatherMobileNumber} onChange={(e) => update("fatherMobileNumber", e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>Email Address *</Label>
+        <Label>Email Address</Label>
         <Input type="email" value={form.fatherEmailAddress} onChange={(e) => update("fatherEmailAddress", e.target.value)} />
       </div>
       <div className="space-y-2">
@@ -1188,7 +1155,7 @@ export default function ApplicationFormPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Name as in Passport *</Label>
+          <Label>Name as in Passport</Label>
           <Input value={form.motherNameAsInPassport} onChange={(e) => update("motherNameAsInPassport", e.target.value)} />
         </div>
         <div className="space-y-2">
@@ -1204,11 +1171,11 @@ export default function ApplicationFormPage() {
           <Input value={form.motherQualification} onChange={(e) => update("motherQualification", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Mobile Number *</Label>
+          <Label>Mobile Number</Label>
           <Input value={form.motherMobileNumber} onChange={(e) => update("motherMobileNumber", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Email Address *</Label>
+          <Label>Email Address</Label>
           <Input type="email" value={form.motherEmailAddress} onChange={(e) => update("motherEmailAddress", e.target.value)} />
         </div>
         <div className="space-y-2">
@@ -1395,14 +1362,14 @@ export default function ApplicationFormPage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Parent Name & Signature *</Label>
+              <Label>Parent Name & Signature</Label>
               <Input 
                 value={form.declarationParentNameAndSignature} 
                 onChange={(e) => update("declarationParentNameAndSignature", e.target.value)} 
               />
             </div>
             <div className="space-y-2">
-              <Label>Date *</Label>
+              <Label>Date</Label>
               <DatePicker 
                 value={form.declarationDate} 
                 onChange={(v) => update("declarationDate", v)} 

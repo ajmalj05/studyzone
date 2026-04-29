@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -84,6 +85,20 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("Withdrawn");
+  const [bulkStatusNotes, setBulkStatusNotes] = useState("");
+  const [promoteForm, setPromoteForm] = useState({
+    targetAcademicYearId: "",
+    targetClassId: "",
+    targetBatchId: "",
+    targetFeePaymentStartMonth: "",
+    targetFeePaymentStartYear: "",
+    targetBusFeeAmount: "",
+  });
 
   // Form state
   const [form, setForm] = useState({
@@ -134,10 +149,40 @@ export default function Students() {
     loadStudents();
   }, [selectedYearId, classFilter, batchFilter, statusFilter]);
 
+  useEffect(() => {
+    setSelectedStudentIds((prev) => prev.filter((id) => students.some((s) => s.id === id)));
+  }, [students]);
+
   const batchesForClass = classFilter ? batches.filter((b) => b.classId === classFilter) : batches;
+  const promoteBatchesForClass = promoteForm.targetClassId
+    ? batches.filter((b) => b.classId === promoteForm.targetClassId)
+    : [];
+  const selectedCount = selectedStudentIds.length;
 
   // Student table columns
   const studentColumns: DataTableColumn<StudentDto>[] = [
+    {
+      key: "select",
+      header: (
+        <Checkbox
+          checked={students.length > 0 && selectedStudentIds.length === students.length}
+          onCheckedChange={(checked) => {
+            setSelectedStudentIds(checked ? students.map((s) => s.id) : []);
+          }}
+          aria-label="Select all students"
+        />
+      ),
+      className: "w-[42px]",
+      cell: (s) => (
+        <Checkbox
+          checked={selectedStudentIds.includes(s.id)}
+          onCheckedChange={(checked) => {
+            setSelectedStudentIds((prev) => (checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)));
+          }}
+          aria-label={`Select ${s.name}`}
+        />
+      ),
+    },
     {
       key: "admissionNumber",
       header: "Admission #",
@@ -275,6 +320,86 @@ export default function Students() {
     }
   };
 
+  const openPromoteDialog = () => {
+    if (selectedStudentIds.length === 0) {
+      toast({ title: "Select students", description: "Choose at least one student to promote.", variant: "destructive" });
+      return;
+    }
+    setPromoteForm({
+      targetAcademicYearId: selectedYearId || currentYear?.id || "",
+      targetClassId: "",
+      targetBatchId: "",
+      targetFeePaymentStartMonth: "",
+      targetFeePaymentStartYear: "",
+      targetBusFeeAmount: "",
+    });
+    setShowPromoteDialog(true);
+  };
+
+  const submitBulkPromote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoteForm.targetClassId) {
+      toast({ title: "Validation", description: "Target class is required.", variant: "destructive" });
+      return;
+    }
+    setBulkSubmitting(true);
+    try {
+      await fetchApi("/Students/bulk-promote", {
+        method: "POST",
+        body: JSON.stringify({
+          studentIds: selectedStudentIds,
+          targetAcademicYearId: promoteForm.targetAcademicYearId || null,
+          targetClassId: promoteForm.targetClassId,
+          targetBatchId: promoteForm.targetBatchId || null,
+          targetFeePaymentStartMonth: promoteForm.targetFeePaymentStartMonth ? parseInt(promoteForm.targetFeePaymentStartMonth, 10) : null,
+          targetFeePaymentStartYear: promoteForm.targetFeePaymentStartYear ? parseInt(promoteForm.targetFeePaymentStartYear, 10) : null,
+          targetBusFeeAmount: promoteForm.targetBusFeeAmount ? Number(promoteForm.targetBusFeeAmount) : null,
+        }),
+      });
+      toast({ title: "Promotion done", description: `${selectedStudentIds.length} student(s) promoted.` });
+      setShowPromoteDialog(false);
+      setSelectedStudentIds([]);
+      await loadStudents();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to promote students", variant: "destructive" });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const openStatusDialog = () => {
+    if (selectedStudentIds.length === 0) {
+      toast({ title: "Select students", description: "Choose at least one student to update status.", variant: "destructive" });
+      return;
+    }
+    setBulkStatus("Withdrawn");
+    setBulkStatusNotes("");
+    setShowStatusDialog(true);
+  };
+
+  const submitBulkStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBulkSubmitting(true);
+    try {
+      await Promise.all(
+        selectedStudentIds.map((id) =>
+          fetchApi(`/Students/${id}/status`, {
+            method: "POST",
+            body: JSON.stringify({ status: bulkStatus, notes: bulkStatusNotes || null }),
+          })
+        )
+      );
+      toast({ title: "Status updated", description: `${selectedStudentIds.length} student(s) updated to ${bulkStatus}.` });
+      setShowStatusDialog(false);
+      setSelectedStudentIds([]);
+      await loadStudents();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message || "Failed to update student status", variant: "destructive" });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
   usePageHeaderConfigEffect(
     { title: "Student management", description: `Total: ${total}` },
     [total],
@@ -314,6 +439,13 @@ export default function Students() {
                   className="w-[140px]"
                   options={[{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))]}
                 />
+                <Button variant="outline" onClick={openPromoteDialog} disabled={selectedCount === 0}>
+                  <ArrowRightLeft className="h-4 w-4 mr-1.5" />
+                  Promote ({selectedCount})
+                </Button>
+                <Button variant="outline" onClick={openStatusDialog} disabled={selectedCount === 0}>
+                  School leaving / status ({selectedCount})
+                </Button>
                 <Button onClick={openAdd}>Add student</Button>
               </div>
             </CardHeader>
@@ -336,6 +468,115 @@ export default function Students() {
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
                       <Button type="submit">Save</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Promote selected students</DialogTitle>
+                    <DialogDescription>{selectedCount} student(s) will be promoted to the target class/batch.</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={submitBulkPromote} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>Target academic year</Label>
+                        <SearchableSelect
+                          value={promoteForm.targetAcademicYearId || "current"}
+                          onValueChange={(v) => setPromoteForm((f) => ({ ...f, targetAcademicYearId: v === "current" ? "" : v }))}
+                          options={[
+                            { value: "current", label: "Current year" },
+                            ...academicYears.map((y) => ({ value: y.id, label: y.name })),
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Target class *</Label>
+                        <SearchableSelect
+                          value={promoteForm.targetClassId}
+                          onValueChange={(v) => setPromoteForm((f) => ({ ...f, targetClassId: v, targetBatchId: "" }))}
+                          placeholder="Select class"
+                          options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Target batch</Label>
+                        <SearchableSelect
+                          value={promoteForm.targetBatchId || "none"}
+                          onValueChange={(v) => setPromoteForm((f) => ({ ...f, targetBatchId: v === "none" ? "" : v }))}
+                          options={[
+                            { value: "none", label: "No batch" },
+                            ...promoteBatchesForClass.map((b) => ({ value: b.id, label: b.name })),
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Fees start month</Label>
+                        <SearchableSelect
+                          value={promoteForm.targetFeePaymentStartMonth || "none"}
+                          onValueChange={(v) => setPromoteForm((f) => ({ ...f, targetFeePaymentStartMonth: v === "none" ? "" : v }))}
+                          options={[
+                            { value: "none", label: "Not set" },
+                            ...MONTH_NAMES.map((m, idx) => ({ value: String(idx + 1), label: `${idx + 1} - ${m}` })),
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Fees start year</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 2026"
+                          value={promoteForm.targetFeePaymentStartYear}
+                          onChange={(e) => setPromoteForm((f) => ({ ...f, targetFeePaymentStartYear: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Bus fee (AED)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Optional"
+                          value={promoteForm.targetBusFeeAmount}
+                          onChange={(e) => setPromoteForm((f) => ({ ...f, targetBusFeeAmount: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setShowPromoteDialog(false)}>Cancel</Button>
+                      <Button type="submit" disabled={bulkSubmitting}>{bulkSubmitting ? "Promoting..." : "Promote students"}</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>School leaving / status update</DialogTitle>
+                    <DialogDescription>Apply one status to {selectedCount} selected student(s).</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={submitBulkStatus} className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Status</Label>
+                      <SearchableSelect
+                        value={bulkStatus}
+                        onValueChange={setBulkStatus}
+                        options={STATUSES.map((s) => ({ value: s, label: s }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Notes</Label>
+                      <Input
+                        placeholder="Optional note (e.g. School leaving certificate issued)"
+                        value={bulkStatusNotes}
+                        onChange={(e) => setBulkStatusNotes(e.target.value)}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setShowStatusDialog(false)}>Cancel</Button>
+                      <Button type="submit" disabled={bulkSubmitting}>{bulkSubmitting ? "Updating..." : "Update status"}</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
