@@ -400,6 +400,7 @@ export default function StudentLedger() {
       setLedger(null);
     }
   }, [classFilter, batchFilter, searchTerm, filteredStudents, selectedStudentId]);
+  const selectedStudent = students.find((s) => s.id === selectedStudentId) ?? null;
 
   useEffect(() => {
     setSelectedPaymentIds([]);
@@ -629,8 +630,12 @@ export default function StudentLedger() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-6 flex-wrap">
           <div>
-            <CardTitle>Student billing</CardTitle>
-            <CardDescription>View and manage charges, payments, concessions, and receipts for one student.</CardDescription>
+            <CardTitle>{selectedStudentId ? "Student ledger details" : "Student billing"}</CardTitle>
+            <CardDescription>
+              {selectedStudentId
+                ? "Manage charges, payments, concessions, and receipts for the selected student."
+                : "View and manage charges, payments, concessions, and receipts for one student."}
+            </CardDescription>
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
@@ -675,8 +680,34 @@ export default function StudentLedger() {
           </div>
         </CardHeader>
         <CardContent>
-          {selectedStudentId && (
-            <div className="mb-4 flex flex-wrap gap-2">
+          {!selectedStudentId ? (
+            <div className="mt-2">
+              <DataTable
+                data={filteredStudents}
+                columns={[
+                  { key: "name", header: "Name", cell: (s) => s.name },
+                  { key: "admissionNumber", header: "Admission #", cell: (s) => s.admissionNumber },
+                  { key: "className", header: "Class", cell: (s) => classes.find((c) => c.id === s.classId)?.name ?? "-" },
+                  { key: "batchName", header: "Batch", cell: (s) => batches.find((b) => b.id === s.batchId)?.name ?? "-" },
+                ] as DataTableColumn<StudentDto>[]}
+                keyExtractor={(s) => s.id}
+                loading={loading}
+                emptyMessage="No students found"
+                onRowClick={(s) => setSelectedStudentId(s.id)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm text-muted-foreground">
+                  {selectedStudent?.name ?? ledger?.studentName ?? "Student"} ({selectedStudent?.admissionNumber || "—"})
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setSelectedStudentId("")}>
+                  Back to student list
+                </Button>
+              </div>
+
+              <div className="mb-1 flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -701,26 +732,10 @@ export default function StudentLedger() {
               >
                 {generateChargesLoading ? "Generating…" : "Generate outstanding"}
               </Button>
-            </div>
-          )}
+              </div>
 
-          <div className="mt-2">
-            <DataTable
-              data={filteredStudents}
-              columns={[
-                { key: "name", header: "Name", cell: (s) => s.name },
-                { key: "admissionNumber", header: "Admission #", cell: (s) => s.admissionNumber },
-                { key: "className", header: "Class", cell: (s) => classes.find((c) => c.id === s.classId)?.name ?? "-" },
-                { key: "batchName", header: "Batch", cell: (s) => batches.find((b) => b.id === s.batchId)?.name ?? "-" },
-              ] as DataTableColumn<StudentDto>[]}
-              keyExtractor={(s) => s.id}
-              loading={loading}
-              emptyMessage="No students found"
-              onRowClick={(s) => setSelectedStudentId(s.id)}
-            />
-          </div>
-          {ledger && (
-            <div className="space-y-4">
+              {ledger && (
+                <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm">
                   <strong>Total charges:</strong> {formatCurrency(ledger.totalCharges)} | <strong>Total payments:</strong> {formatCurrency(ledger.totalPayments)} | <strong>Balance:</strong> {formatCurrency(ledger.balance)}
@@ -820,6 +835,8 @@ export default function StudentLedger() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+              )}
             </div>
           )}
         </CardContent>
