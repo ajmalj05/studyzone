@@ -10,5 +10,6 @@ public class ExamScheduleEntry
     public string? StartTime { get; set; }
     public string? EndTime { get; set; }
     public string? Venue { get; set; }
+    public decimal? MaxMarks { get; set; }
     public DateTime CreatedAt { get; set; }
 }

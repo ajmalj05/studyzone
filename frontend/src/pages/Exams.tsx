@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
-import { Plus, FileText, CheckCircle2, XCircle, CalendarDays, Pencil, Trash2, ChevronDown, PencilLine, X } from "lucide-react";
+import { Plus, FileText, CheckCircle2, XCircle, CalendarDays, ChevronDown, PencilLine, X, Loader2 } from "lucide-react";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AcademicsCardIconLead } from "@/components/AcademicsCardIconLead";
@@ -78,8 +78,18 @@ interface ExamScheduleEntryDto {
   startTime?: string;
   endTime?: string;
   venue?: string;
+  maxMarks?: number;
   createdAt: string;
 }
+
+type ScheduleTableDraftRow = {
+  entryId?: string;
+  scheduledDate: string;
+  startTime: string;
+  endTime: string;
+  venue: string;
+  maxMarks: string;
+};
 
 interface ClassDto {
   id: string;
@@ -140,9 +150,8 @@ export default function Exams() {
   const [rejectReason, setRejectReason] = useState("");
   const [scheduleEntries, setScheduleEntries] = useState<ExamScheduleEntryDto[]>([]);
   const [scheduleSubjects, setScheduleSubjects] = useState<SubjectDto[]>([]);
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
-  const [scheduleForm, setScheduleForm] = useState({ subjectName: "", scheduledDate: "", startTime: "", endTime: "", venue: "" });
+  const [scheduleTableDraft, setScheduleTableDraft] = useState<Record<string, ScheduleTableDraftRow>>({});
+  const [savingScheduleBulk, setSavingScheduleBulk] = useState(false);
   const [scheduleTypeFilter, setScheduleTypeFilter] = useState("_all");
   const [scheduleClassFilter, setScheduleClassFilter] = useState("_all");
   const [marksTypeFilter, setMarksTypeFilter] = useState("_all");
@@ -260,6 +269,10 @@ export default function Exams() {
     return !marksBatchFilter || s.batchId === marksBatchFilter;
   });
   const adminMaxMarks = selectedExam?.maxMarks != null ? String(selectedExam.maxMarks) : "100";
+  const marksCapMax = useMemo(() => {
+    if (!selectedSubject.trim() || !marksClassFilter) return adminMaxMarks;
+    return scheduleMaxForSubject(selectedSubject, marksClassFilter) ?? adminMaxMarks;
+  }, [selectedSubject, marksClassFilter, scheduleMaxForSubject, adminMaxMarks]);
   const filledMarksCount = selectedSubject
     ? marksFilteredStudents.filter((s) => {
         const v = marksByStudentSubject[`${s.id}:${selectedSubject}`];
@@ -278,7 +291,6 @@ export default function Exams() {
       .then((list: SubjectDto[]) => {
         const safeList = Array.isArray(list) ? list : [];
         setSubjectsForExamClass(safeList);
-        setSelectedSubject((prev) => safeList.some((s) => s.name === prev) ? prev : (safeList[0]?.name ?? ""));
       })
       .catch(() => {
         setSubjectsForExamClass([]);
@@ -338,6 +350,64 @@ export default function Exams() {
     };
   }, [selectedExamId, scheduleClassIds]);
 
+  useEffect(() => {
+    if (!showSchedulePanel || !selectedExam) return;
+    const examDefault = selectedExam.maxMarks != null ? String(selectedExam.maxMarks) : "";
+    const next: Record<string, ScheduleTableDraftRow> = {};
+    for (const s of scheduleSubjects) {
+      const entry = scheduleEntries.find(
+        (e) =>
+          e.subjectName.trim().toLowerCase() === s.name.trim().toLowerCase() &&
+          !e.classId,
+      );
+      next[s.name] = {
+        entryId: entry?.id,
+        scheduledDate: entry?.scheduledDate ? entry.scheduledDate.split("T")[0] : "",
+        startTime: entry?.startTime ?? "",
+        endTime: entry?.endTime ?? "",
+        venue: entry?.venue ?? "",
+        maxMarks: entry?.maxMarks != null && entry.maxMarks > 0 ? String(entry.maxMarks) : examDefault,
+      };
+    }
+    setScheduleTableDraft(next);
+  }, [showSchedulePanel, selectedExam, scheduleSubjects, scheduleEntries]);
+
+  const scheduleMaxForSubject = useCallback((subjectName: string, classId: string) => {
+    const entry = scheduleEntries.find(
+      (e) =>
+        e.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase() &&
+        (!e.classId || e.classId === classId),
+    );
+    if (entry?.maxMarks != null && entry.maxMarks > 0) return String(entry.maxMarks);
+    return null;
+  }, [scheduleEntries]);
+
+  const subjectHasScheduleForClass = useCallback(
+    (subjectName: string, classId: string) =>
+      scheduleEntries.some(
+        (e) =>
+          e.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase() &&
+          (!e.classId || e.classId === classId),
+      ),
+    [scheduleEntries],
+  );
+
+  const marksEntrySubjects = useMemo(() => {
+    if (!marksClassFilter) return [];
+    return subjectsForExamClass.filter((s) => subjectHasScheduleForClass(s.name, marksClassFilter));
+  }, [subjectsForExamClass, marksClassFilter, subjectHasScheduleForClass]);
+
+  useEffect(() => {
+    if (!isMarksEntryMode) return;
+    if (!marksClassFilter) {
+      setSelectedSubject("");
+      return;
+    }
+    setSelectedSubject((prev) =>
+      marksEntrySubjects.some((s) => s.name === prev) ? prev : (marksEntrySubjects[0]?.name ?? ""),
+    );
+  }, [isMarksEntryMode, marksClassFilter, marksEntrySubjects]);
+
   const getGrade = (marksValue: number) => {
     if (marksValue >= 90) return "A+";
     if (marksValue >= 80) return "A";
@@ -350,24 +420,28 @@ export default function Exams() {
   const setMark = (studentId: string, obtained: string) => {
     setMarksByStudentSubject((prev) => ({
       ...prev,
-      [`${studentId}:${selectedSubject}`]: { obtained, max: adminMaxMarks },
+      [`${studentId}:${selectedSubject}`]: { obtained, max: marksCapMax },
     }));
   };
 
   const getCellDisplay = (studentId: string, subjectName: string) => {
+    const cap = scheduleMaxForSubject(subjectName, marksClassFilter) ?? adminMaxMarks;
     const val = marksByStudentSubject[`${studentId}:${subjectName}`];
-    if (val?.obtained) return `${val.obtained}/${val.max || adminMaxMarks} (${getGrade(parseFloat(val.obtained) || 0)})`;
+    if (val?.obtained) return `${val.obtained}/${val.max || cap} (${getGrade(parseFloat(val.obtained) || 0)})`;
     const row = marks.find((m) => m.studentId === studentId && m.subject === subjectName);
     if (row) return `${row.marksObtained}/${row.maxMarks}`;
     return "—";
   };
 
   const overviewSubjects = useMemo(() => {
-    const names = new Set<string>();
-    subjectsForExamClass.forEach((s) => names.add(s.name));
-    marks.forEach((m) => names.add(m.subject));
-    return Array.from(names).sort();
-  }, [subjectsForExamClass, marks]);
+    if (!isMarksEntryMode || !marksClassFilter) {
+      const names = new Set<string>();
+      subjectsForExamClass.forEach((s) => names.add(s.name));
+      marks.forEach((m) => names.add(m.subject));
+      return Array.from(names).sort();
+    }
+    return marksEntrySubjects.map((s) => s.name).sort((a, b) => a.localeCompare(b));
+  }, [isMarksEntryMode, marksClassFilter, subjectsForExamClass, marks, marksEntrySubjects]);
 
   const filteredMarksExams = useMemo(
     () =>
@@ -457,65 +531,62 @@ export default function Exams() {
     }
   };
 
-  const openAddSchedule = () => {
-    setEditingScheduleId(null);
-    setScheduleForm({
-      subjectName: scheduleSubjects[0]?.name ?? "",
-      scheduledDate: "",
-      startTime: "",
-      endTime: "",
-      venue: "",
-    });
-    setShowScheduleForm(true);
+  const patchScheduleDraft = (subjectName: string, patch: Partial<ScheduleTableDraftRow>) => {
+    setScheduleTableDraft((prev) => ({
+      ...prev,
+      [subjectName]: { ...prev[subjectName], ...patch },
+    }));
   };
 
-  const openEditSchedule = (entry: ExamScheduleEntryDto) => {
-    setEditingScheduleId(entry.id);
-    setScheduleForm({
-      subjectName: entry.subjectName,
-      scheduledDate: entry.scheduledDate ? entry.scheduledDate.split("T")[0] : "",
-      startTime: entry.startTime ?? "",
-      endTime: entry.endTime ?? "",
-      venue: entry.venue ?? "",
-    });
-    setShowScheduleForm(true);
-  };
-
-  const handleSaveSchedule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scheduleForm.subjectName.trim() || !scheduleForm.scheduledDate) {
-      toast({ title: "Validation", description: "Subject and date are required.", variant: "destructive" });
-      return;
-    }
+  const handleSaveAllSchedules = async () => {
+    if (!selectedExamId || scheduleSubjects.length === 0) return;
+    setSavingScheduleBulk(true);
+    let saved = 0;
+    let failed = 0;
     try {
-      const body = {
-        subjectName: scheduleForm.subjectName,
-        scheduledDate: new Date(scheduleForm.scheduledDate).toISOString(),
-        startTime: scheduleForm.startTime || undefined,
-        endTime: scheduleForm.endTime || undefined,
-        venue: scheduleForm.venue || undefined,
-      };
-      if (editingScheduleId) {
-        await fetchApi(`/Exams/schedule/${editingScheduleId}`, { method: "PUT", body: JSON.stringify(body) });
-        toast({ title: "Updated", description: "Schedule entry updated." });
-      } else {
-        await fetchApi(`/Exams/${selectedExamId}/schedule`, { method: "POST", body: JSON.stringify(body) });
-        toast({ title: "Added", description: "Schedule entry added." });
+      for (const subj of scheduleSubjects) {
+        const row = scheduleTableDraft[subj.name];
+        if (!row) continue;
+        const hasDate = row.scheduledDate.trim().length > 0;
+        if (!hasDate) {
+          if (row.entryId) {
+            try {
+              await fetchApi(`/Exams/schedule/${row.entryId}`, { method: "DELETE" });
+              saved++;
+            } catch {
+              failed++;
+            }
+          }
+          continue;
+        }
+        const maxMarksRaw = row.maxMarks.trim();
+        const maxMarksNum = maxMarksRaw ? parseFloat(maxMarksRaw) : NaN;
+        const body: Record<string, unknown> = {
+          subjectName: subj.name,
+          scheduledDate: new Date(row.scheduledDate).toISOString(),
+          startTime: row.startTime || undefined,
+          endTime: row.endTime || undefined,
+          venue: row.venue || undefined,
+          maxMarks: !Number.isNaN(maxMarksNum) && maxMarksNum > 0 ? maxMarksNum : null,
+        };
+        try {
+          if (row.entryId) {
+            await fetchApi(`/Exams/schedule/${row.entryId}`, { method: "PUT", body: JSON.stringify(body) });
+          } else {
+            await fetchApi(`/Exams/${selectedExamId}/schedule`, { method: "POST", body: JSON.stringify(body) });
+          }
+          saved++;
+        } catch {
+          failed++;
+        }
       }
-      setShowScheduleForm(false);
       await loadSchedule(selectedExamId);
+      if (saved > 0) toast({ title: "Schedule saved", description: `${saved} subject row(s) updated.` });
+      if (failed > 0) toast({ title: "Some rows failed", description: `${failed} row(s) could not be saved.`, variant: "destructive" });
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
-    }
-  };
-
-  const handleDeleteSchedule = async (entryId: string) => {
-    try {
-      await fetchApi(`/Exams/schedule/${entryId}`, { method: "DELETE" });
-      toast({ title: "Deleted", description: "Schedule entry removed." });
-      await loadSchedule(selectedExamId);
-    } catch (err: unknown) {
-      toast({ title: "Error", description: (err as Error).message || "Failed", variant: "destructive" });
+    } finally {
+      setSavingScheduleBulk(false);
     }
   };
 
@@ -531,7 +602,9 @@ export default function Exams() {
       const val = marksByStudentSubject[`${student.id}:${selectedSubject}`];
       if (!val || val.obtained === "") continue;
       const obtained = parseFloat(val.obtained) || 0;
-      const max = parseFloat(val.max) || parseFloat(adminMaxMarks) || 100;
+      const schedCap = scheduleMaxForSubject(selectedSubject, marksClassFilter);
+      const max =
+        schedCap != null ? parseFloat(schedCap) : parseFloat(val.max) || parseFloat(marksCapMax) || 100;
       if (obtained > max) {
         setSavingMarks(false);
         toast({
@@ -1079,14 +1152,14 @@ export default function Exams() {
                           <SearchableSelect
                             value={selectedSubject}
                             onValueChange={setSelectedSubject}
-                            placeholder="-- Subject --"
-                            options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
-                            disabled={!marksClassFilter}
+                            placeholder={marksEntrySubjects.length === 0 ? "No scheduled subjects" : "-- Subject --"}
+                            options={marksEntrySubjects.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
+                            disabled={!marksClassFilter || marksEntrySubjects.length === 0}
                           />
                         </div>
                         <div>
                           <Label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.6px] text-slate-500">Max Marks</Label>
-                          <Input value={adminMaxMarks} readOnly className="h-9" />
+                          <Input value={marksCapMax} readOnly className="h-9" title="Uses per-subject max from exam schedule when set" />
                         </div>
                         <div className="flex items-end">
                           <Button type="button" className="h-9 rounded-md px-3 text-xs" disabled={!marksClassFilter || !selectedSubject}>
@@ -1097,11 +1170,25 @@ export default function Exams() {
                     </div>
 
                     <div className="max-h-[260px] overflow-auto px-3 py-3">
-                      {!marksClassFilter || !selectedSubject ? (
+                      {!marksClassFilter ? (
                         <div className="flex h-[140px] items-center justify-center text-center">
                           <div>
-                            <p className="text-sm font-semibold text-slate-700">Select class, batch and subject</p>
-                            <p className="text-xs text-slate-500">All students in that batch will load for marks entry</p>
+                            <p className="text-sm font-semibold text-slate-700">Select class and batch</p>
+                            <p className="text-xs text-slate-500">Then pick a subject that is scheduled for this exam</p>
+                          </div>
+                        </div>
+                      ) : marksEntrySubjects.length === 0 ? (
+                        <div className="flex h-[140px] items-center justify-center text-center px-4">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">No scheduled subjects for this class</p>
+                            <p className="text-xs text-slate-500">Open Exam Schedule and save dates for the subjects that take this exam.</p>
+                          </div>
+                        </div>
+                      ) : !selectedSubject ? (
+                        <div className="flex h-[140px] items-center justify-center text-center">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">Select a scheduled subject</p>
+                            <p className="text-xs text-slate-500">Only subjects on the exam timetable are listed</p>
                           </div>
                         </div>
                       ) : marksFilteredStudents.length === 0 ? (
@@ -1109,7 +1196,7 @@ export default function Exams() {
                       ) : (
                         <div className="space-y-2">
                           {marksFilteredStudents.map((student) => {
-                            const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: adminMaxMarks };
+                            const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: marksCapMax };
                             return (
                               <div key={student.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-2.5 py-2">
                                 <div>
@@ -1123,9 +1210,9 @@ export default function Exams() {
                                     onChange={(e) => setMark(student.id, e.target.value)}
                                     className="h-8 w-20 text-center"
                                     min={0}
-                                    max={parseFloat(adminMaxMarks) || 999}
+                                    max={parseFloat(marksCapMax) || 999}
                                   />
-                                  <span className="text-xs text-slate-500">/ {adminMaxMarks}</span>
+                                  <span className="text-xs text-slate-500">/ {marksCapMax}</span>
                                 </div>
                               </div>
                             );
@@ -1139,7 +1226,16 @@ export default function Exams() {
                         <p className="text-xs font-semibold text-slate-700">Saved Marks Log</p>
                         <div className="flex items-center gap-2">
                           <SearchableSelect value={marksClassFilter || "_all"} onValueChange={(v) => setMarksClassFilter(v === "_all" ? "" : v)} placeholder="All classes" options={[{ value: "_all", label: "All classes" }, ...classes.map((c) => ({ value: c.id, label: c.name }))]} className="w-[140px]" />
-                          <SearchableSelect value={selectedSubject || "_all"} onValueChange={(v) => setSelectedSubject(v === "_all" ? "" : v)} placeholder="All subjects" options={[{ value: "_all", label: "All subjects" }, ...Array.from(new Set(marks.map((m) => m.subject))).map((s) => ({ value: s, label: s }))]} className="w-[140px]" />
+                          <SearchableSelect
+                            value={selectedSubject || "_all"}
+                            onValueChange={(v) => setSelectedSubject(v === "_all" ? "" : v)}
+                            placeholder="All subjects"
+                            options={[
+                              { value: "_all", label: "All subjects" },
+                              ...marksEntrySubjects.map((s) => ({ value: s.name, label: s.name })),
+                            ]}
+                            className="w-[140px]"
+                          />
                         </div>
                       </div>
                       <div className="overflow-hidden rounded-lg border border-slate-200">
@@ -1446,9 +1542,9 @@ export default function Exams() {
                   <SearchableSelect
                     value={selectedSubject}
                     onValueChange={setSelectedSubject}
-                    placeholder="Select subject"
-                    options={subjectsForExamClass.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
-                    disabled={!marksClassFilter || subjectsForExamClass.length === 0}
+                    placeholder={marksEntrySubjects.length === 0 ? "No scheduled subjects" : "Select subject"}
+                    options={marksEntrySubjects.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
+                    disabled={!marksClassFilter || marksEntrySubjects.length === 0}
                   />
                 </div>
               </div>
@@ -1496,6 +1592,8 @@ export default function Exams() {
                 <p className="py-10 text-center text-sm text-muted-foreground">Select a class to enter marks.</p>
               ) : subjectsForExamClass.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">No subjects mapped to this class.</p>
+              ) : marksEntrySubjects.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">No scheduled subjects for this exam and class. Add them under Exam Schedule first.</p>
               ) : marksFilteredStudents.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">No active students found for this selection.</p>
               ) : selectedSubject ? (
@@ -1507,9 +1605,9 @@ export default function Exams() {
                     {selectedClassName && <p className="text-xs text-muted-foreground">{selectedClassName}</p>}
                   </div>
                   {marksFilteredStudents.map((student, index) => {
-                    const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: adminMaxMarks };
+                    const val = marksByStudentSubject[`${student.id}:${selectedSubject}`] ?? { obtained: "", max: marksCapMax };
                     const num = parseFloat(val.obtained || "0");
-                    const maxNum = parseFloat(adminMaxMarks || "100");
+                    const maxNum = parseFloat(marksCapMax || "100");
                     const pct = val.obtained && maxNum > 0 ? Math.round((num / maxNum) * 100) : null;
                     const grade = val.obtained ? getGrade(num) : "—";
                     const rowMark = marks.find((m) => m.studentId === student.id && m.subject === selectedSubject);
@@ -1537,9 +1635,9 @@ export default function Exams() {
                             onChange={(e) => setMark(student.id, e.target.value)}
                             className="h-9 w-24 rounded-xl text-center"
                             min={0}
-                            max={parseFloat(adminMaxMarks) || 999}
+                            max={parseFloat(marksCapMax) || 999}
                           />
-                          <span className="text-sm text-muted-foreground">/ {adminMaxMarks}</span>
+                          <span className="text-sm text-muted-foreground">/ {marksCapMax}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={cn("w-8 text-center text-sm font-bold", grade === "F" ? "text-destructive" : grade === "A+" ? "text-emerald-600" : "text-primary")}>
@@ -1589,73 +1687,100 @@ export default function Exams() {
 
       {/* ── Schedule modal ───────────────────────────────────────────────── */}
       {selectedExam && isExamsModule && isAdmin && (
-        <Dialog open={showSchedulePanel} onOpenChange={(o) => { setShowSchedulePanel(o); if (!o) setShowScheduleForm(false); }}>
-          <DialogContent className="max-w-3xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
+        <Dialog open={showSchedulePanel} onOpenChange={setShowSchedulePanel}>
+          <DialogContent className="max-w-5xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
             <DialogTitle className="sr-only">{selectedExam.name} schedule</DialogTitle>
             <DialogDescription className="sr-only">
-              View and manage subject dates, times, and venues for this exam.
+              Set exam date, time, venue, and maximum marks for each subject in this exam scope.
             </DialogDescription>
-            {/* Header */}
             <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0">
               <div>
                 <h2 className="text-base font-bold text-foreground capitalize">{selectedExam.name} — Schedule</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Per-Subject Exam Dates, Times And Venues</p>
+                <p className="text-xs text-muted-foreground mt-0.5">One row per subject · save when done</p>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={() => setShowSchedulePanel(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {scheduleEntries.length === 0 ? (
+            <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3">
+              {scheduleSubjects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
                   <CalendarDays className="h-9 w-9 mb-2 opacity-30" />
-                  <p className="text-sm font-medium">No Schedule Entries Yet.</p>
-                  <p className="text-xs opacity-60 mt-1">Click "Add Entry" To Set Subject Dates And Times.</p>
+                  <p className="text-sm font-medium">No subjects in exam scope</p>
+                  <p className="text-xs opacity-60 mt-1">Assign classes to this exam or map subjects to those classes first.</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Start</TableHead>
-                      <TableHead>End</TableHead>
-                      <TableHead>Venue</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="min-w-[120px]">Subject</TableHead>
+                      <TableHead className="min-w-[140px]">Date</TableHead>
+                      <TableHead className="min-w-[100px]">Start</TableHead>
+                      <TableHead className="min-w-[100px]">End</TableHead>
+                      <TableHead className="min-w-[100px]">Venue</TableHead>
+                      <TableHead className="min-w-[88px]">Max marks</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {scheduleEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-semibold capitalize">{entry.subjectName}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(entry.scheduledDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{entry.startTime ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{entry.endTime ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground capitalize">{entry.venue ?? "—"}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button type="button" variant="outline" className="h-7 w-7 p-0 rounded-[var(--radius)]" onClick={() => openEditSchedule(entry)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button type="button" variant="destructive" className="h-7 w-7 p-0 rounded-[var(--radius)]" onClick={() => void handleDeleteSchedule(entry.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {scheduleSubjects.map((subj) => {
+                      const row = scheduleTableDraft[subj.name] ?? {
+                        scheduledDate: "",
+                        startTime: "",
+                        endTime: "",
+                        venue: "",
+                        maxMarks: selectedExam.maxMarks != null ? String(selectedExam.maxMarks) : "",
+                      };
+                      return (
+                        <TableRow key={subj.id}>
+                          <TableCell className="font-semibold align-top">{subj.name}</TableCell>
+                          <TableCell className="align-top">
+                            <DatePicker value={row.scheduledDate} onChange={(v) => patchScheduleDraft(subj.name, { scheduledDate: v })} />
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <TimePicker value={row.startTime} onChange={(v) => patchScheduleDraft(subj.name, { startTime: v })} placeholder="Start" interval={15} />
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <TimePicker value={row.endTime} onChange={(v) => patchScheduleDraft(subj.name, { endTime: v })} placeholder="End" interval={15} />
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <Input
+                              value={row.venue}
+                              onChange={(e) => patchScheduleDraft(subj.name, { venue: e.target.value })}
+                              placeholder="Hall / room"
+                              className="h-9"
+                            />
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={row.maxMarks}
+                              onChange={(e) => patchScheduleDraft(subj.name, { maxMarks: e.target.value })}
+                              placeholder="—"
+                              className="h-9 w-[88px]"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
             </div>
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-border/50 shrink-0">
-              <Button size="sm" className="rounded-lg gap-1.5" onClick={openAddSchedule}>
-                <Plus className="h-3.5 w-3.5" /> Add Entry
+              <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={() => setShowSchedulePanel(false)}>
+                Close
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-lg gap-1.5"
+                disabled={savingScheduleBulk || scheduleSubjects.length === 0}
+                onClick={() => void handleSaveAllSchedules()}
+              >
+                {savingScheduleBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {savingScheduleBulk ? "Saving…" : "Save schedule"}
               </Button>
             </div>
           </DialogContent>
@@ -1701,49 +1826,6 @@ export default function Exams() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Schedule entry form sub-dialog ──────────────────────────────── */}
-      <Dialog open={showScheduleForm} onOpenChange={setShowScheduleForm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingScheduleId ? "Edit Schedule Entry" : "Add Schedule Entry"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveSchedule} className="space-y-3">
-            <div className="space-y-1">
-              <Label>Subject</Label>
-              <SearchableSelect
-                value={scheduleForm.subjectName}
-                onValueChange={(v) => setScheduleForm((f) => ({ ...f, subjectName: v }))}
-                placeholder="Select subject"
-                options={scheduleSubjects.map((s) => ({ value: s.name, label: s.name + (s.code ? ` (${s.code})` : "") }))}
-                disabled={scheduleSubjects.length === 0}
-                emptyMessage="No subjects assigned to this exam's classes."
-              />
-              {scheduleSubjects.length === 0 && (
-                <p className="text-xs text-muted-foreground">No class-assigned subjects found for this exam scope.</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label>Date</Label>
-              <DatePicker value={scheduleForm.scheduledDate} onChange={(v) => setScheduleForm((f) => ({ ...f, scheduledDate: v }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Start Time</Label>
-                <TimePicker value={scheduleForm.startTime} onChange={(v) => setScheduleForm((f) => ({ ...f, startTime: v }))} placeholder="Select start time" interval={15} />
-              </div>
-              <div className="space-y-1">
-                <Label>End Time</Label>
-                <TimePicker value={scheduleForm.endTime} onChange={(v) => setScheduleForm((f) => ({ ...f, endTime: v }))} placeholder="Select end time" interval={15} />
-              </div>
-            </div>
-            <div className="space-y-1"><Label>Venue</Label><Input value={scheduleForm.venue} onChange={(e) => setScheduleForm((f) => ({ ...f, venue: e.target.value }))} placeholder="e.g. Hall A (optional)" /></div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowScheduleForm(false)}>Cancel</Button>
-              <Button type="submit">{editingScheduleId ? "Update" : "Add"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

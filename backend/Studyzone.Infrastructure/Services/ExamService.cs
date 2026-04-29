@@ -371,17 +371,27 @@ public class ExamService : IExamService
             throw new InvalidOperationException("Marks obtained cannot be negative.");
         if (request.MarksObtained > request.MaxMarks)
             throw new InvalidOperationException("Marks obtained cannot be greater than total marks.");
+        var enrollment = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct);
         var links = await _examRepo.GetExamClassesByExamIdAsync(examId, ct);
         if (links.Count > 0)
         {
-            var enrollment = await _enrollmentRepo.GetCurrentForStudentAsync(studentId, ct)
-                ?? throw new InvalidOperationException("Student is not enrolled in the exam scope.");
+            if (enrollment == null)
+                throw new InvalidOperationException("Student is not enrolled in the exam scope.");
             var allowed = links.Any(link =>
                 (link.BatchId.HasValue && enrollment.BatchId == link.BatchId.Value) ||
                 (!link.BatchId.HasValue && enrollment.ClassId == link.ClassId));
             if (!allowed)
                 throw new InvalidOperationException("Student is not in a class or batch assigned to this exam.");
         }
+
+        var scheduleRows = await _scheduleRepo.GetByExamIdAsync(examId, ct);
+        if (enrollment != null)
+        {
+            var scheduleForSubject = PickScheduleEntryForMarks(scheduleRows, request.Subject, enrollment.ClassId);
+            if (scheduleForSubject?.MaxMarks is decimal cap && cap > 0 && request.MaxMarks != cap)
+                throw new InvalidOperationException($"Max marks for this subject must be {cap} (per exam schedule).");
+        }
+
         var entry = new MarksEntry
         {
             ExamId = examId,
@@ -483,6 +493,7 @@ public class ExamService : IExamService
                 StartTime = entry.StartTime,
                 EndTime = entry.EndTime,
                 Venue = entry.Venue,
+                MaxMarks = entry.MaxMarks,
                 CreatedAt = entry.CreatedAt
             });
         }
@@ -504,6 +515,7 @@ public class ExamService : IExamService
             StartTime = request.StartTime,
             EndTime = request.EndTime,
             Venue = request.Venue,
+            MaxMarks = request.MaxMarks.HasValue && request.MaxMarks.Value > 0 ? request.MaxMarks.Value : null,
             CreatedAt = DateTime.UtcNow
         };
         var added = await _scheduleRepo.AddAsync(entity, ct);
@@ -526,6 +538,7 @@ public class ExamService : IExamService
             StartTime = added.StartTime,
             EndTime = added.EndTime,
             Venue = added.Venue,
+            MaxMarks = added.MaxMarks,
             CreatedAt = added.CreatedAt
         };
     }
@@ -543,6 +556,7 @@ public class ExamService : IExamService
         entry.StartTime = request.StartTime;
         entry.EndTime = request.EndTime;
         entry.Venue = request.Venue;
+        entry.MaxMarks = request.MaxMarks.HasValue && request.MaxMarks.Value > 0 ? request.MaxMarks.Value : null;
         await _scheduleRepo.UpdateAsync(entry, ct);
         var exam = await _examRepo.GetByIdAsync(entry.ExamId, ct);
         string? className = null;
@@ -563,6 +577,7 @@ public class ExamService : IExamService
             StartTime = entry.StartTime,
             EndTime = entry.EndTime,
             Venue = entry.Venue,
+            MaxMarks = entry.MaxMarks,
             CreatedAt = entry.CreatedAt
         };
     }
@@ -597,9 +612,34 @@ public class ExamService : IExamService
                 StartTime = entry.StartTime,
                 EndTime = entry.EndTime,
                 Venue = entry.Venue,
+                MaxMarks = entry.MaxMarks,
                 CreatedAt = entry.CreatedAt
             });
         }
         return result;
+    }
+
+    private static ExamScheduleEntry? PickScheduleEntryForMarks(IReadOnlyList<ExamScheduleEntry> entries, string subject, Guid? studentClassId)
+    {
+        var trimmed = subject.Trim();
+        List<ExamScheduleEntry> matches = [];
+        foreach (var e in entries)
+        {
+            if (string.Equals(e.SubjectName.Trim(), trimmed, StringComparison.OrdinalIgnoreCase))
+                matches.Add(e);
+        }
+        if (matches.Count == 0) return null;
+        if (studentClassId.HasValue)
+        {
+            foreach (var e in matches)
+            {
+                if (e.ClassId == studentClassId.Value) return e;
+            }
+        }
+        foreach (var e in matches)
+        {
+            if (!e.ClassId.HasValue) return e;
+        }
+        return matches[0];
     }
 }

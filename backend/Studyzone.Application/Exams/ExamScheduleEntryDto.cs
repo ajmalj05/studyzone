@@ -12,6 +12,7 @@ public class ExamScheduleEntryDto
     public string? StartTime { get; set; }
     public string? EndTime { get; set; }
     public string? Venue { get; set; }
+    public decimal? MaxMarks { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -24,6 +25,7 @@ public class CreateExamScheduleEntryRequest
     public string? StartTime { get; set; }
     public string? EndTime { get; set; }
     public string? Venue { get; set; }
+    public decimal? MaxMarks { get; set; }
 }
 
 public class UpdateExamScheduleEntryRequest
@@ -34,4 +36,5 @@ public class UpdateExamScheduleEntryRequest
     public string? StartTime { get; set; }
     public string? EndTime { get; set; }
     public string? Venue { get; set; }
+    public decimal? MaxMarks { get; set; }
 }

@@ -115,6 +115,9 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_ExamScheduleEntries_ExamId_SubjectName"
             ON "ExamScheduleEntries" ("ExamId", "SubjectName");
         """);
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "ExamScheduleEntries" ADD COLUMN IF NOT EXISTS "MaxMarks" numeric NULL;
+        """);
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];
     var seedAdminPassword = builder.Configuration["Seed:AdminPassword"];
     var seedAdminName = builder.Configuration["Seed:AdminName"];

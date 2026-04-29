@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,8 +36,8 @@ interface TeacherAssignedBatchDto {
   isClassTeacher?: boolean; subjectsTaught?: string[];
 }
 interface ExamScheduleEntryDto {
-  id: string; examId: string; subjectName: string;
-  scheduledDate: string; startTime?: string; endTime?: string; venue?: string;
+  id: string; examId: string; subjectName: string; classId?: string;
+  scheduledDate: string; startTime?: string; endTime?: string; venue?: string; maxMarks?: number;
 }
 interface TeacherMarksScopeDto { isClassTeacher: boolean; subjectScope: string[]; }
 
@@ -164,9 +164,33 @@ const TeacherExams = () => {
     return scopeFromBatches(assignedBatches, selectedExamClassId);
   }, [marksScope, assignedBatches, selectedExamClassId]);
 
-  const entrySubjects = useMemo(
+  const entrySubjectsUnfiltered = useMemo(
     () => buildEntrySubjects(classSubjects, effectiveMarksScope),
     [classSubjects, effectiveMarksScope],
+  );
+
+  const entrySubjects = useMemo(() => {
+    const base = entrySubjectsUnfiltered;
+    return base.filter((s) =>
+      scheduleEntries.some(
+        (e) =>
+          e.subjectName.trim().toLowerCase() === s.name.trim().toLowerCase() &&
+          (!e.classId || e.classId === selectedExamClassId),
+      ),
+    );
+  }, [entrySubjectsUnfiltered, scheduleEntries, selectedExamClassId]);
+
+  const scheduleMaxForSubject = useCallback(
+    (subjectName: string) => {
+      const entry = scheduleEntries.find(
+        (e) =>
+          e.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase() &&
+          (!e.classId || e.classId === selectedExamClassId),
+      );
+      if (entry?.maxMarks != null && entry.maxMarks > 0) return String(entry.maxMarks);
+      return null;
+    },
+    [scheduleEntries, selectedExamClassId],
   );
 
   useEffect(() => {
@@ -193,9 +217,19 @@ const TeacherExams = () => {
     setModalOpen(true);
   };
 
+  const adminMax = selectedExam?.maxMarks != null ? String(selectedExam.maxMarks) : "100";
+  const marksCapMax = useMemo(() => {
+    if (!selectedSubject.trim()) return adminMax;
+    return scheduleMaxForSubject(selectedSubject) ?? adminMax;
+  }, [selectedSubject, scheduleMaxForSubject, adminMax]);
+
+  const setMark = (studentId: string, obtained: string) =>
+    setMarksByStudentSubject((p) => ({ ...p, [`${studentId}:${selectedSubject}`]: { obtained, max: marksCapMax } }));
+
   const getCellDisplay = (studentId: string, subjectName: string) => {
+    const cap = scheduleMaxForSubject(subjectName) ?? adminMax;
     const val = marksByStudentSubject[`${studentId}:${subjectName}`];
-    if (val?.obtained) return `${val.obtained}/${val.max || "100"} (${getGrade(parseFloat(val.obtained) || 0)})`;
+    if (val?.obtained) return `${val.obtained}/${val.max || cap} (${getGrade(parseFloat(val.obtained) || 0)})`;
     const row = marks.find((m) => m.studentId === studentId && m.subject === subjectName);
     if (row) return `${row.marksObtained}/${row.maxMarks}`;
     return "—";
@@ -211,10 +245,18 @@ const TeacherExams = () => {
     for (const s of students) {
       const val = marksByStudentSubject[`${s.id}:${selectedSubject}`];
       if (!val || (val.obtained === "" && val.max === "")) continue;
+      const schedCap = scheduleMaxForSubject(selectedSubject);
+      const maxMarks = schedCap != null ? parseFloat(schedCap) : parseFloat(val.max) || parseFloat(marksCapMax) || 100;
+      const obtained = parseFloat(val.obtained) || 0;
+      if (obtained > maxMarks) {
+        setSaving(false);
+        toast({ title: "Validation", description: `Marks cannot exceed ${maxMarks} for this subject.`, variant: "destructive" });
+        return;
+      }
       try {
         await fetchApi("/Exams/marks", {
           method: "POST",
-          body: JSON.stringify({ examId: selectedExamId, studentId: s.id, subject: selectedSubject, marksObtained: parseFloat(val.obtained) || 0, maxMarks: parseFloat(val.max) || 100 }),
+          body: JSON.stringify({ examId: selectedExamId, studentId: s.id, subject: selectedSubject, marksObtained: obtained, maxMarks }),
         });
         saved++;
       } catch { failed++; }
@@ -230,11 +272,6 @@ const TeacherExams = () => {
     }
     if (failed > 0) toast({ title: "Error", description: `${failed} save(s) failed.`, variant: "destructive" });
   };
-
-  const adminMax = selectedExam?.maxMarks != null ? String(selectedExam.maxMarks) : "100";
-
-  const setMark = (studentId: string, obtained: string, max: string) =>
-    setMarksByStudentSubject((p) => ({ ...p, [`${studentId}:${selectedSubject}`]: { obtained, max } }));
 
   const handleExportPdf = async () => {
     if (!selectedExam) return;
@@ -543,9 +580,15 @@ const TeacherExams = () => {
                     {/* Overview tab */}
                     <TabsContent value="overview" className="mt-0">
                       {entrySubjects.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="flex flex-col items-center justify-center py-12 text-center max-w-md mx-auto">
                           <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                          <p className="text-sm text-muted-foreground">No Subjects Available For Your Role On This Class.</p>
+                          <p className="text-sm text-muted-foreground">
+                            {entrySubjectsUnfiltered.length === 0
+                              ? "No subjects available for your role on this class."
+                              : scheduleEntries.length === 0
+                                ? "Exam timetable is not set yet. Marks and overview will list subjects once the admin schedules them."
+                                : "None of your subjects are on the exam timetable for this class. Only scheduled subjects appear here."}
+                          </p>
                         </div>
                       ) : students.length === 0 ? (
                         <p className="text-muted-foreground py-10 text-center text-sm">No active students.</p>
@@ -590,9 +633,15 @@ const TeacherExams = () => {
                     {/* Enter marks tab */}
                     <TabsContent value="entry" className="mt-0 space-y-4">
                       {entrySubjects.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="flex flex-col items-center justify-center py-12 text-center max-w-md mx-auto">
                           <PencilLine className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                          <p className="text-sm text-muted-foreground">No Subjects Available For Marks Entry.</p>
+                          <p className="text-sm text-muted-foreground">
+                            {entrySubjectsUnfiltered.length === 0
+                              ? "No subjects available for marks entry for your role on this class."
+                              : scheduleEntries.length === 0
+                                ? "Exam timetable is not set yet. You can enter marks only for subjects the admin adds to the schedule."
+                                : "None of your subjects are scheduled for this exam. The subject list matches the exam timetable only."}
+                          </p>
                         </div>
                       ) : (
                         <>
@@ -625,9 +674,9 @@ const TeacherExams = () => {
                             <>
                               <div className="space-y-2">
                                 {students.map((s, i) => {
-                                  const val = marksByStudentSubject[`${s.id}:${selectedSubject}`] ?? { obtained: "", max: adminMax };
+                                  const val = marksByStudentSubject[`${s.id}:${selectedSubject}`] ?? { obtained: "", max: marksCapMax };
                                   const num = parseFloat(val.obtained || "0");
-                                  const maxNum = parseFloat(val.max || "100");
+                                  const maxNum = parseFloat(val.max || marksCapMax || "100");
                                   const pct = val.obtained && maxNum > 0 ? Math.round((num / maxNum) * 100) : null;
                                   const grade = val.obtained ? getGrade(num) : "—";
                                   const rowMark = marks.find((m) => m.studentId === s.id && m.subject === selectedSubject);
@@ -652,12 +701,12 @@ const TeacherExams = () => {
                                           type="number"
                                           placeholder="Marks"
                                           value={val.obtained}
-                                          onChange={(e) => setMark(s.id, e.target.value, adminMax)}
+                                          onChange={(e) => setMark(s.id, e.target.value)}
                                           className="w-24 rounded-xl text-center h-9"
                                           min={0}
-                                          max={parseFloat(adminMax) || 999}
+                                          max={parseFloat(marksCapMax) || 999}
                                         />
-                                        <span className="text-muted-foreground text-sm">/ {adminMax}</span>
+                                        <span className="text-muted-foreground text-sm">/ {marksCapMax}</span>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <span className={cn(
@@ -714,7 +763,7 @@ const TeacherExams = () => {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b bg-muted/40">
-                                {["Subject", "Date", "Start", "End", "Venue"].map((h) => (
+                                {["Subject", "Date", "Start", "End", "Venue", "Max marks"].map((h) => (
                                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
                                 ))}
                               </tr>
@@ -729,6 +778,7 @@ const TeacherExams = () => {
                                   <td className="px-4 py-3 text-muted-foreground">{entry.startTime ?? "—"}</td>
                                   <td className="px-4 py-3 text-muted-foreground">{entry.endTime ?? "—"}</td>
                                   <td className="px-4 py-3 text-muted-foreground">{entry.venue ?? "—"}</td>
+                                  <td className="px-4 py-3 text-muted-foreground tabular-nums">{entry.maxMarks != null && entry.maxMarks > 0 ? entry.maxMarks : "—"}</td>
                                 </tr>
                               ))}
                             </tbody>
