@@ -144,7 +144,7 @@ const TeacherSalary = () => {
                 <p className="text-sm text-muted-foreground py-4">No payment records yet.</p>
               ) : (
                 <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[640px] text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="text-left p-2 font-medium">Month</th>

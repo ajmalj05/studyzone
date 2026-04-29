@@ -215,7 +215,6 @@ export function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileFo
     school?.logoUrl || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "/logo.png");
   const guardianName = receipt.guardianName ?? "—";
   const className = receipt.className ?? "—";
-  const feeTerm = receipt.feeTerm ?? "—";
   const paidDate = receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : "—";
   const particulars = receipt.particulars ?? [];
   const currency = receipt.currencySymbol ?? "AED ";
@@ -287,7 +286,7 @@ export function buildReceiptHtml(receipt: FeeReceiptDto, school: SchoolProfileFo
         </tr>
         <tr>
           <td class="label">Guardian Name</td><td class="value">${esc(guardianName)}</td>
-          <td class="label">Fees Term</td><td class="value">${esc(feeTerm)}</td>
+          <td class="label"></td><td class="value"></td>
         </tr>
         <tr>
           <td class="label">Class</td><td class="value">${esc(className)}</td>

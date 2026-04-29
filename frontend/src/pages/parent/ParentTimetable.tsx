@@ -78,7 +78,7 @@ const ParentTimetable = () => {
             value={studentId}
             onValueChange={setStudentId}
             placeholder="Select child"
-            className="w-[280px] rounded-xl"
+            className="w-full max-w-full sm:w-[280px] rounded-xl"
             options={children.map((c) => ({
               value: c.studentId,
               label: `${c.name}${c.className ? ` (${c.className})` : ""}`,

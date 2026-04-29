@@ -210,12 +210,12 @@ const TeacherTimetable = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3 border-b border-border/50">
-              <div className="flex items-center justify-between gap-4">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-primary" />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base flex items-center gap-2 min-w-0">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
                   Weekly timetable
                 </CardTitle>
-                <Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0" onClick={handleDownload} disabled={downloading || slots.length === 0}>
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto shrink-0" onClick={handleDownload} disabled={downloading || slots.length === 0}>
                   {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {downloading ? "Preparing…" : "Download timetable"}
                 </Button>
@@ -228,8 +228,8 @@ const TeacherTimetable = () => {
                 </p>
               ) : (
                 <div className="overflow-hidden rounded-xl border border-border/50">
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
+                  <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
+                    <table className="w-full min-w-[560px] border-collapse text-sm">
                       <thead>
                         <tr className="bg-muted/40">
                           <th className="border-b border-border/60 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground w-28">

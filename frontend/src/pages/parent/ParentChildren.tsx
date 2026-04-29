@@ -63,17 +63,17 @@ const ParentChildren = () => {
                     {c.className ?? "—"} {c.admissionNumber ? `• ${c.admissionNumber}` : ""}
                   </p>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
+                <CardContent className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                  <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" asChild>
                     <Link to={`/parent/attendance?studentId=${c.studentId}`}><ClipboardCheck className="h-4 w-4 mr-1" /> Attendance</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" asChild>
                     <Link to={`/parent/fees?studentId=${c.studentId}`}><DollarSign className="h-4 w-4 mr-1" /> Fees</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" asChild>
                     <Link to={`/parent/reports?studentId=${c.studentId}`}><FileText className="h-4 w-4 mr-1" /> Results</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl w-full sm:w-auto" asChild>
                     <Link to={`/parent/timetable?studentId=${c.studentId}`}><Calendar className="h-4 w-4 mr-1" /> Timetable</Link>
                   </Button>
                 </CardContent>

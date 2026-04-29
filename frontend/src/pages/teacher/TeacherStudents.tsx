@@ -24,7 +24,7 @@ const TeacherStudents = () => {
           <p className="text-muted-foreground">
             Student roster is organized by class. Open one of your assigned classes to view its roster.
           </p>
-          <Button asChild variant="default" className="rounded-xl">
+          <Button asChild variant="default" className="w-full rounded-xl sm:w-auto">
             <Link to="/teacher/classes">Go to My classes</Link>
           </Button>
         </CardContent>

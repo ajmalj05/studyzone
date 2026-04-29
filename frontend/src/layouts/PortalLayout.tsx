@@ -54,7 +54,9 @@ export function PortalLayout({ children, menuItems, portalName, logoutPath }: Po
             </SheetContent>
           </Sheet>
         )}
-        <main className={`flex-1 w-full min-w-0 bg-muted/25 p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-20" : ""}`}>
+        <main
+          className={`flex-1 w-full min-w-0 max-w-[100vw] overflow-x-hidden bg-muted/25 p-2 sm:p-3 lg:p-4 ml-0 md:ml-64 ${isMobile ? "pb-[calc(5rem+env(safe-area-inset-bottom,0px))]" : ""}`}
+        >
           {children}
         </main>
         {isMobile && <MobileBottomNav items={getPortalBottomNavItems(menuItems)} />}

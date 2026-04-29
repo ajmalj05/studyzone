@@ -186,14 +186,14 @@ const ParentReports = () => {
   return (
     <div className="space-y-5">
       {/* Child selector + download */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="space-y-1.5 w-full sm:w-auto sm:min-w-[200px]">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</label>
           <SearchableSelect
             value={studentId}
             onValueChange={setStudentId}
             placeholder="Select child"
-            className="w-[280px]"
+            className="w-full max-w-full sm:w-[280px]"
             options={children.map((c) => ({
               value: c.studentId,
               label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
@@ -203,7 +203,7 @@ const ParentReports = () => {
         {results.length > 0 && (
           <Button
             variant="outline"
-            className="gap-2 h-9"
+            className="gap-2 h-9 w-full sm:w-auto shrink-0"
             onClick={handleDownload}
             disabled={downloading}
           >
@@ -215,7 +215,7 @@ const ParentReports = () => {
 
       {/* Summary stats strip */}
       {!loading && results.length > 0 && child && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Card className="rounded-[var(--radius)] border border-border/60 shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10">
@@ -272,18 +272,19 @@ const ParentReports = () => {
           const grade = getGrade(obtained, max);
           return (
             <Card key={examId} className="rounded-[var(--radius)] border border-border/60 shadow-sm overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between gap-4 px-5 py-4 border-b border-border/40 bg-muted/20">
-                <div>
-                  <h3 className="font-semibold text-sm text-foreground">{name}</h3>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 px-4 sm:px-5 py-4 border-b border-border/40 bg-muted/20">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-sm text-foreground break-words">{name}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">{rows.length} subject{rows.length !== 1 ? "s" : ""}</p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-left sm:text-right shrink-0">
                   <p className="text-xs text-muted-foreground">Total</p>
                   <p className="text-sm font-bold">{obtained}/{max} &nbsp;<span className={cn("font-bold", gradeColor(grade))}>{grade}</span></p>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-sm">
                   <thead>
                     <tr className="border-b border-border/40 bg-muted/10">
                       <th className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</th>
@@ -323,6 +324,7 @@ const ParentReports = () => {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </CardContent>
             </Card>
           );

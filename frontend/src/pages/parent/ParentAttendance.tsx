@@ -69,19 +69,19 @@ const ParentAttendance = () => {
         <CardHeader>
           <CardTitle className="text-lg">Select child and date range</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
           <SearchableSelect
             value={studentId}
             onValueChange={setStudentId}
             placeholder="Select child"
-            className="w-[220px] rounded-xl"
+            className="w-full max-w-full sm:w-[220px] rounded-xl"
             options={children.map((c) => ({
               value: c.studentId,
               label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
             }))}
           />
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-xl border border-input bg-background px-4 py-2 text-sm" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-xl border border-input bg-background px-4 py-2 text-sm" />
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full min-h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm sm:w-auto" />
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full min-h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm sm:w-auto" />
         </CardContent>
       </Card>
       {studentId && (

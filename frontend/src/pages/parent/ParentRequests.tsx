@@ -227,7 +227,7 @@ const ParentRequests = () => {
             </div>
 
             <Button
-              className="gradient-primary text-primary-foreground rounded-xl gap-2"
+              className="w-full sm:w-auto gradient-primary text-primary-foreground rounded-xl gap-2"
               onClick={handleSubmit}
             >
               <Send className="h-4 w-4" /> Send to Admin

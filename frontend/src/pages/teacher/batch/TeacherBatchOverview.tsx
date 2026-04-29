@@ -44,20 +44,20 @@ export default function TeacherBatchOverview() {
               <p className="text-sm text-muted-foreground">No subject slots found for you in this batch.</p>
             )}
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild className="rounded-xl gap-2">
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
+              <Button asChild className="w-full rounded-xl gap-2 sm:w-auto">
                 <Link to={`${base}/roster`}>
                   <Users className="h-4 w-4" /> Roster
                 </Link>
               </Button>
               {batch.isClassTeacher ? (
-                <Button asChild variant="default" className="rounded-xl gap-2 bg-success text-success-foreground hover:bg-success/90">
+                <Button asChild variant="default" className="w-full rounded-xl gap-2 bg-success text-success-foreground hover:bg-success/90 sm:w-auto">
                   <Link to={`${base}/attendance`}>
                     <ClipboardCheck className="h-4 w-4" /> Mark attendance
                   </Link>
                 </Button>
               ) : null}
-              <Button asChild variant="outline" className="rounded-xl gap-2">
+              <Button asChild variant="outline" className="w-full rounded-xl gap-2 sm:w-auto">
                 <Link to={`/teacher/marks?classId=${encodeURIComponent(batch.classId)}`}>
                   <PenLine className="h-4 w-4" /> Marks & exams
                 </Link>

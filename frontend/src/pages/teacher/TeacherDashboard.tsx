@@ -83,9 +83,9 @@ const TeacherDashboard = () => {
 
   return (
     <div className="space-y-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="gradient-hero rounded-[var(--radius)] p-8 text-primary-foreground">
-          <h2 className="text-lg font-semibold">Welcome back, {d.teacherName ?? "Teacher"}!</h2>
-          <p className="mt-1 text-primary-foreground/80">You have {d.classesTodayCount} class{d.classesTodayCount !== 1 ? "es" : ""} scheduled today</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="gradient-hero rounded-[var(--radius)] p-5 sm:p-8 text-primary-foreground">
+          <h2 className="text-base sm:text-lg font-semibold">Welcome back, {d.teacherName ?? "Teacher"}!</h2>
+          <p className="mt-1 text-sm sm:text-base text-primary-foreground/80">You have {d.classesTodayCount} class{d.classesTodayCount !== 1 ? "es" : ""} scheduled today</p>
         </motion.div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,17 +106,23 @@ const TeacherDashboard = () => {
                     <p className="text-sm text-muted-foreground py-4">No classes scheduled for today.</p>
                   ) : (
                     d.todaySlots.map((c, i) => (
-                      <motion.div key={c.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.1 }} className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-4 card-hover">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary text-primary-foreground text-sm font-bold">
+                      <motion.div
+                        key={c.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + i * 0.1 }}
+                        className="flex flex-col gap-3 rounded-xl bg-muted/50 px-4 py-4 card-hover sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl gradient-primary text-primary-foreground text-xs sm:text-sm font-bold">
                             {c.startTime || "—"}
                           </div>
-                          <div>
-                            <p className="font-medium text-foreground">{c.subject}</p>
-                            <p className="text-xs text-muted-foreground">{c.batchName} {c.room ? `• ${c.room}` : ""}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate">{c.subject}</p>
+                            <p className="text-xs text-muted-foreground truncate">{c.batchName} {c.room ? `• ${c.room}` : ""}</p>
                           </div>
                         </div>
-                        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        <span className="shrink-0 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:self-auto">
                           {formatTime(c.startTime, c.endTime)}
                         </span>
                       </motion.div>

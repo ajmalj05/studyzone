@@ -4,7 +4,7 @@ import { TeacherCurrentBatchProvider, useTeacherCurrentBatch, batchDisplayName }
 import { usePageHeaderDispatch } from "@/context/PageHeaderContext";
 
 const subTabBase =
-  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-colors";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 min-h-10 text-sm font-semibold transition-colors sm:min-h-0 sm:py-2";
 const subInactive = "text-muted-foreground hover:bg-muted/80 hover:text-foreground";
 const subActive = "bg-primary/10 text-primary";
 
@@ -35,7 +35,10 @@ function TeacherBatchNav() {
 
   return (
     <div className="sticky top-0 z-[5] -mx-1 border-b border-border bg-background/95 px-1 pb-0 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <nav className="flex flex-wrap gap-1 py-2" aria-label="Class sections">
+      <nav
+        className="flex flex-nowrap gap-1 overflow-x-auto py-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Class sections"
+      >
         <NavLink to={base} end className={({ isActive }) => `${subTabBase} ${isActive ? subActive : subInactive}`}>
           Overview
         </NavLink>

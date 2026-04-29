@@ -124,16 +124,16 @@ export default function TeacherBatchAttendance() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col items-start justify-end gap-3 sm:flex-row sm:items-center">
-        <span className="rounded-xl border border-input bg-muted/50 px-4 py-2 text-sm font-medium">{displayName}</span>
-        <div className="flex flex-wrap gap-3 sm:ml-auto">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="min-w-0 max-w-full break-words rounded-xl border border-input bg-muted/50 px-4 py-2 text-sm font-medium">{displayName}</span>
+        <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap">
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-xl border border-input bg-background px-4 py-2 text-sm"
+            className="min-h-10 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm sm:w-auto"
           />
-          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowDownload(true)}>
+          <Button variant="outline" className="w-full gap-2 rounded-xl sm:w-auto" onClick={() => setShowDownload(true)}>
             <Download className="h-4 w-4" /> Export
           </Button>
         </div>
@@ -188,7 +188,7 @@ export default function TeacherBatchAttendance() {
                             <td className="px-4 py-3 font-medium text-foreground">{s.admissionNumber || "—"}</td>
                             <td className="px-4 py-3 font-medium text-foreground">{s.name}</td>
                             <td className="px-4 py-3">
-                              <div className="flex gap-1.5">
+                              <div className="flex flex-wrap gap-1.5">
                                 {ATTENDANCE_OPTIONS.map((status) => {
                                   const selected = statusByStudent[s.id] === status;
                                   return (
@@ -216,9 +216,9 @@ export default function TeacherBatchAttendance() {
                   </div>
                 )}
                 {students.length > 0 && (
-                  <div className="mt-6 flex justify-end">
+                  <div className="mt-6 flex flex-col sm:flex-row sm:justify-end">
                     <Button
-                      className="gradient-primary rounded-xl px-8 text-primary-foreground"
+                      className="w-full rounded-xl px-8 gradient-primary text-primary-foreground sm:w-auto"
                       onClick={handleSubmit}
                       disabled={!isEditable || saving}
                     >

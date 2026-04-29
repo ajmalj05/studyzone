@@ -17,12 +17,12 @@ export function TeacherLayout() {
       <PageHeaderProvider>
         <TeacherBatchProvider>
           <PortalLayout menuItems={getTeacherMenu()} portalName="Teacher Portal">
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4">
               <AdminPageHeaderBar />
               <TeacherAcademicsPageHeaderSync />
-              <div className="flex-1 rounded-[var(--radius)] bg-card border border-border/60 shadow-sm overflow-hidden">
+              <div className="flex-1 min-w-0 rounded-[var(--radius)] bg-card border border-border/60 shadow-sm overflow-hidden">
                 {showAcademicsHub ? <TeachingHubTabs /> : null}
-                <div className="p-5">
+                <div className="p-3 sm:p-5 min-w-0 overflow-x-auto">
                   <Outlet />
                 </div>
               </div>

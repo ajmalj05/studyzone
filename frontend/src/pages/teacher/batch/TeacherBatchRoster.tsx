@@ -108,16 +108,16 @@ export default function TeacherBatchRoster() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Batch: <span className="font-medium text-foreground">{batchDisplayName(batch)}</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground min-w-0">
+          Batch: <span className="font-medium text-foreground break-words">{batchDisplayName(batch)}</span>
         </p>
-        <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowDownload(true)}>
+        <Button variant="outline" className="w-full rounded-xl gap-2 sm:w-auto shrink-0" onClick={() => setShowDownload(true)}>
           <Download className="h-4 w-4" /> Export
         </Button>
       </div>
 
-      <div className="relative max-w-md min-w-[200px]">
+      <div className="relative w-full max-w-md min-w-0">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search by name or roll number…"

@@ -80,7 +80,7 @@ function Breadcrumb() {
   const base = portalPrefix ? `/${portalPrefix}/` : "/";
 
   return (
-    <nav className="flex items-center gap-1 flex-wrap">
+    <nav className="flex items-center gap-1 flex-nowrap min-w-0">
       <Link to={`${base}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         Dashboard
       </Link>
@@ -114,9 +114,9 @@ export function AdminPageHeaderBar() {
   const initials = getInitials(user?.name, role);
 
   return (
-    <div className="shrink-0 rounded-lg border border-border/80 bg-card/95 px-3 py-3 shadow-md shadow-black/5 ring-1 ring-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-card/90 dark:ring-white/[0.06] dark:shadow-black/40 sm:px-5 sm:py-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 sm:gap-x-8">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+    <div className="shrink-0 rounded-lg border border-border/80 bg-card/95 px-2.5 py-2.5 shadow-md shadow-black/5 ring-1 ring-black/[0.04] backdrop-blur-md supports-[backdrop-filter]:bg-card/90 dark:ring-white/[0.06] dark:shadow-black/40 sm:px-5 sm:py-3.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-5 sm:gap-y-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
           {mobileMenu?.isMobile && (
             <Button
               variant="ghost"
@@ -128,10 +128,12 @@ export function AdminPageHeaderBar() {
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          <Breadcrumb />
+          <div className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Breadcrumb />
+          </div>
         </div>
 
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-2 sm:gap-x-5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:ml-auto sm:gap-x-5">
           {toolbarEnd}
           {showYearBadge ? <CurrentAcademicYearBadge /> : null}
           <div className="flex items-center gap-3 sm:gap-4">

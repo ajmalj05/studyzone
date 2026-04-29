@@ -51,10 +51,10 @@ const ParentDashboard = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="gradient-hero rounded-[var(--radius)] p-8 text-primary-foreground"
+        className="gradient-hero rounded-[var(--radius)] p-5 sm:p-8 text-primary-foreground"
       >
-        <h2 className="text-lg font-semibold">Welcome, {name}</h2>
-        <p className="mt-1 text-primary-foreground/80">A quick snapshot for your family</p>
+        <h2 className="text-base sm:text-lg font-semibold">Welcome, {name}</h2>
+        <p className="mt-1 text-sm sm:text-base text-primary-foreground/80">A quick snapshot for your family</p>
       </motion.div>
 
       {loading ? (
@@ -70,9 +70,9 @@ const ParentDashboard = () => {
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="rounded-[var(--radius)] shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0">
                 <CardTitle className="text-lg">My Children</CardTitle>
-                <Link to="/parent/children" className="text-sm text-primary hover:underline">View all</Link>
+                <Link to="/parent/children" className="text-sm text-primary hover:underline shrink-0">View all</Link>
               </CardHeader>
               <CardContent>
                 {data?.children?.length ? (
@@ -90,9 +90,9 @@ const ParentDashboard = () => {
               </CardContent>
             </Card>
             <Card className="rounded-[var(--radius)] shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0">
                 <CardTitle className="text-lg">Recent Announcements</CardTitle>
-                <Link to="/parent/announcements" className="text-sm text-primary hover:underline">View all</Link>
+                <Link to="/parent/announcements" className="text-sm text-primary hover:underline shrink-0">View all</Link>
               </CardHeader>
               <CardContent>
                 {data?.recentNotices?.length ? (

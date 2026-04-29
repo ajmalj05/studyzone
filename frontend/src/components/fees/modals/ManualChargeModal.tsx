@@ -27,11 +27,19 @@ export function ManualChargeModal({
   onClose,
   onSave,
 }: ManualChargeModalProps) {
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     description: "",
     amount: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
   });
+
+  const [formData, setFormData] = useState({
+    ...getInitialFormData(),
+  });
+
+  const resetForm = () => {
+    setFormData(getInitialFormData());
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +48,18 @@ export function ManualChargeModal({
       amount: Number(formData.amount),
       date: formData.date,
     });
-    setFormData({
-      description: "",
-      amount: "",
-      date: new Date().toISOString().split('T')[0],
-    });
+    resetForm();
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      resetForm();
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle className="text-base font-medium">Manual charge</DialogTitle>

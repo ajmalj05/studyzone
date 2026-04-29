@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,15 +7,19 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
-import {
-    LayoutDashboard, Users, Calendar, GraduationCap, Clock, MessageSquare, Bell, UserCircle, Send, CheckCircle, XCircle
-} from "lucide-react";
-
-
-// Recreating to avoid importing from undefined in above list
-import { FileText as FileTextIcon } from "lucide-react";
+import { Clock, UserCircle, Send, CheckCircle, XCircle } from "lucide-react";
 
 const requestTypes = ["Leave Request", "Student Issue", "Schedule Change", "Technical Issue", "General Request"];
+
+interface RequestDto {
+    _id: string;
+    requestType: string;
+    subject: string;
+    message: string;
+    status: string;
+    createdAt: string;
+    adminComment?: string;
+}
 
 const statusStyle: Record<string, string> = {
     Pending: "bg-warning/15 text-warning",
@@ -25,7 +29,7 @@ const statusStyle: Record<string, string> = {
 
 const TeacherRequests = () => {
     const { user } = useAuth();
-    const [requests, setRequests] = useState<any[]>([]);
+    const [requests, setRequests] = useState<RequestDto[]>([]);
     const [type, setType] = useState(requestTypes[0]);
     const [subject, setSubject] = useState("");
     const [message, setMessage] = useState("");
@@ -36,20 +40,19 @@ const TeacherRequests = () => {
         [],
     );
 
-    useEffect(() => {
-        if (user?._id) {
-            loadRequests();
-        }
-    }, [user]);
-
-    const loadRequests = async () => {
+    const loadRequests = useCallback(async () => {
+        if (!user?._id) return;
         try {
-            const data = await fetchApi(`/requests?role=teacher&userId=${user?._id}`) as any[];
-            setRequests(data);
-        } catch (error: any) {
+            const data = await fetchApi(`/requests?role=teacher&userId=${user._id}`);
+            setRequests(Array.isArray(data) ? (data as RequestDto[]) : []);
+        } catch {
             toast({ title: "Error", description: "Failed to load requests", variant: "destructive" });
         }
-    };
+    }, [user?._id]);
+
+    useEffect(() => {
+        void loadRequests();
+    }, [loadRequests]);
 
     const handleSubmit = async () => {
         if (!subject.trim() || !message.trim()) {
@@ -74,8 +77,9 @@ const TeacherRequests = () => {
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2500);
             loadRequests();
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to submit request", variant: "destructive" });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Failed to submit request";
+            toast({ title: "Error", description: msg, variant: "destructive" });
         }
     };
 
@@ -109,7 +113,7 @@ const TeacherRequests = () => {
                                 <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} placeholder="Describe your request..." className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm resize-none focus-visible:ring-2 focus-visible:ring-ring outline-none" />
                             </div>
 
-                            <Button className="gradient-primary text-primary-foreground rounded-xl gap-2" onClick={handleSubmit}>
+                            <Button className="w-full sm:w-auto gradient-primary text-primary-foreground rounded-xl gap-2" onClick={handleSubmit}>
                                 <Send className="h-4 w-4" /> Submit Request
                             </Button>
 

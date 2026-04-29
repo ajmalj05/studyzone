@@ -2,7 +2,7 @@ import { NavLink, useLocation, type To } from "react-router-dom";
 import { BookOpen, PenLine, CalendarDays } from "lucide-react";
 
 const tabBase =
-  "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap py-3 px-2 text-sm font-semibold transition-colors md:text-base";
+  "relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap min-h-11 py-2.5 px-3 text-sm font-semibold transition-colors md:text-base md:min-h-0 md:py-3";
 const tabInactive = "text-slate-500 hover:text-slate-700";
 const tabActive = "text-[hsl(194,70%,27%)]";
 

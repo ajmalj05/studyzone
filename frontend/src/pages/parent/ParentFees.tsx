@@ -111,7 +111,7 @@ const ParentFees = () => {
             value={studentId}
             onValueChange={setStudentId}
             placeholder="Select child"
-            className="w-[280px] rounded-xl"
+            className="w-full max-w-full sm:w-[280px] rounded-xl"
             options={children.map((c) => ({
               value: c.studentId,
               label: `${c.name}${c.className ? ` (${c.className})` : ""}`,
@@ -125,7 +125,7 @@ const ParentFees = () => {
             <Card><CardContent className="p-8">Loading...</CardContent></Card>
           ) : ledger ? (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Charges</CardTitle></CardHeader>
                   <CardContent><span className="text-lg font-semibold">AED {ledger.totalCharges.toLocaleString()}</span></CardContent>

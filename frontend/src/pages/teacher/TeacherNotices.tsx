@@ -79,10 +79,10 @@ const TeacherNotices = () => {
               <motion.div key={n.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Card className="rounded-[var(--radius)] shadow-card">
                   <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Bell className="h-4 w-4 text-primary" /> {n.title}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base flex items-start gap-2 break-words">
+                          <Bell className="h-4 w-4 shrink-0 text-primary mt-0.5" /> <span>{n.title}</span>
                         </CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">
                           {new Date(n.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
@@ -91,6 +91,7 @@ const TeacherNotices = () => {
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="shrink-0 self-start sm:self-auto"
                         onClick={() => handlePrint(n)}
                         disabled={printing === n.id}
                       >

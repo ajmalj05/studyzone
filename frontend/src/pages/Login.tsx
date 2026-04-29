@@ -47,15 +47,23 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-3 py-6 sm:px-4 sm:py-10 md:py-16">
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center px-3 py-6 sm:px-4 sm:py-10 md:py-16">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-4xl md:max-w-3xl rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row bg-card"
+        className="w-full max-w-4xl md:max-w-3xl rounded-[20px] shadow-card overflow-hidden flex flex-col md:flex-row bg-card max-h-[min(100dvh-1.5rem,900px)] md:max-h-none"
       >
+        <div className="relative h-28 w-full shrink-0 md:hidden overflow-hidden">
+          <img
+            src={isTeacherView ? mascotImg : logoImg}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+        </div>
         {/* Left Side: Login Form - scales within outer box, no scroll */}
-        <div className="w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center bg-white">
+        <div className="w-full md:w-1/2 min-w-0 flex flex-col p-4 sm:p-6 md:p-6 lg:p-8 justify-center bg-white overflow-y-auto">
           {/* Logo & Title - scale with container, no overflow */}
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8 flex-shrink-0">
             <img src={logoImg} alt="Studyzone" className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 object-contain flex-shrink-0" />

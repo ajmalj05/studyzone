@@ -76,14 +76,15 @@ const ParentAnnouncements = () => {
             >
               <Card className="rounded-[var(--radius)] shadow-card">
                 <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{n.title}</CardTitle>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg break-words">{n.title}</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="shrink-0 self-start sm:self-auto"
                       onClick={() => handlePrint(n)}
                       disabled={printing === n.id}
                     >

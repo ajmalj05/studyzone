@@ -515,11 +515,11 @@ const TeacherExams = () => {
 
       {/* ── Exam Modal ─────────────────────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={(o) => { if (!o) setModalOpen(false); }}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-4xl sm:w-full max-h-[90dvh] p-0 overflow-hidden flex flex-col gap-0 [&>button]:hidden">
           {selectedExam && (
             <>
               {/* Modal header */}
-              <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 border-b border-border/50 shrink-0">
                 <div className="min-w-0">
                   <h2 className="text-base font-bold text-foreground truncate">{selectedExam.name}</h2>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -555,7 +555,7 @@ const TeacherExams = () => {
               </div>
 
               {/* Modal body */}
-              <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6">
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-6 sm:px-6">
                 {loadingExamData ? (
                   <div className="flex items-center justify-center py-16">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -653,7 +653,7 @@ const TeacherExams = () => {
                                   value={selectedSubject}
                                   onValueChange={setSelectedSubject}
                                   placeholder="Select subject"
-                                  className="w-[240px] rounded-xl"
+                                  className="w-full max-w-full sm:w-[240px] rounded-xl"
                                   options={entrySubjects.map((s) => ({ value: s.name, label: s.name }))}
                                 />
                               </div>
@@ -731,16 +731,16 @@ const TeacherExams = () => {
                                   );
                                 })}
                               </div>
-                              <div className="flex items-center justify-between pt-2">
+                              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
                                 <Button
-                                  variant="outline" size="sm" className="rounded-xl gap-1.5 h-9"
+                                  variant="outline" size="sm" className="h-9 w-full gap-1.5 rounded-xl sm:w-auto"
                                   onClick={handleExportPdf}
                                   disabled={exporting || students.length === 0}
                                 >
                                   {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                                   Export PDF
                                 </Button>
-                                <Button className="gradient-primary text-primary-foreground rounded-xl px-8 h-10" onClick={handleSaveMarks} disabled={saving || entrySubjects.length === 0 || !selectedSubject}>
+                                <Button className="h-10 w-full rounded-xl px-8 gradient-primary text-primary-foreground sm:w-auto" onClick={handleSaveMarks} disabled={saving || entrySubjects.length === 0 || !selectedSubject}>
                                   {saving ? "Saving…" : "Save Marks"}
                                 </Button>
                               </div>
@@ -760,7 +760,7 @@ const TeacherExams = () => {
                         </div>
                       ) : (
                         <div className="overflow-x-auto rounded-xl border border-border/60">
-                          <table className="w-full text-sm">
+                          <table className="w-full min-w-[640px] text-sm">
                             <thead>
                               <tr className="border-b bg-muted/40">
                                 {["Subject", "Date", "Start", "End", "Venue", "Max marks"].map((h) => (
