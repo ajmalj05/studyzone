@@ -117,6 +117,16 @@ function esc(s: string): string {
   return r;
 }
 
+function escAttr(s: string): string {
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Auto-save key generator
 const getDraftKey = (id: string | undefined) => `admission-draft-${id || "new"}`;
 const PHOTO_DOCUMENT_PREFIX = "document:";
@@ -193,14 +203,14 @@ function buildPrintDocumentHtml(
 
   const passportPhotoUrlVal = (form.passportPhotoUrl as string) || "";
   const photoBox = passportPhotoUrlVal
-    ? `<div class="print-form-photo-wrap"><img src="${esc(passportPhotoUrlVal)}" alt="Passport" /></div>`
+    ? `<div class="print-form-photo-wrap"><img src="${escAttr(passportPhotoUrlVal)}" alt="Student" /></div>`
     : `<div class="print-form-photo-wrap"></div>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Admission Application Form</title><style>${printCss}</style></head><body>
 <div class="print-form-document">
   <div class="print-form-header">
     <div class="print-form-header-left">
-      <div class="print-form-logo-wrap"><img src="${esc(logoUrl)}" alt="School" class="print-form-logo" /></div>
+      <div class="print-form-logo-wrap"><img src="${escAttr(logoUrl)}" alt="School" class="print-form-logo" /></div>
       <div>
         <h1 class="print-form-school-name">${esc(schoolName)}</h1>
         <p class="print-form-title">ADMISSION APPLICATION FORM</p>
@@ -318,7 +328,9 @@ const validateDocumentsTab = (form: Record<string, unknown>): string[] => {
   const errors: string[] = [];
   const passportPlaceOfIssue = isNonEmptyString(form.passportPlaceOfIssue) ? form.passportPlaceOfIssue : "";
   const residenceVisaPlaceOfIssue = isNonEmptyString(form.residenceVisaPlaceOfIssue) ? form.residenceVisaPlaceOfIssue : "";
+  const passportPhotoUrl = isNonEmptyString(form.passportPhotoUrl) ? form.passportPhotoUrl : "";
 
+  if (!passportPhotoUrl) errors.push("Student photo is required");
   if (passportPlaceOfIssue && !isValidText(passportPlaceOfIssue)) errors.push("Passport place of issue must contain only text");
   if (residenceVisaPlaceOfIssue && !isValidText(residenceVisaPlaceOfIssue)) errors.push("Residence visa place of issue must contain only text");
   return errors;
@@ -895,11 +907,22 @@ export default function ApplicationFormPage() {
     if (printWin) {
       printWin.document.write(html);
       printWin.document.close();
+      const images = Array.from(printWin.document.images);
+      await Promise.race([
+        Promise.all(images.map((img) => img.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            })
+        )),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
       setTimeout(() => {
         printWin.focus();
         printWin.print();
         printWin.onafterprint = () => printWin.close();
-      }, 500);
+      }, 100);
     } else {
       toast({ title: "Print blocked", description: "Allow popups to print.", variant: "destructive" });
     }
@@ -929,10 +952,33 @@ export default function ApplicationFormPage() {
       const data = (await res.json()) as { id?: string; url?: string; Url?: string; message?: string };
       if (!res.ok) throw new Error(data.message ?? "Upload failed");
       const photoUrl = data.url ?? data.Url ?? "";
-      if (data.id) update("passportPhotoUrl", `${PHOTO_DOCUMENT_PREFIX}${data.id}`);
-      else if (photoUrl) update("passportPhotoUrl", photoUrl);
+      const photoReference = data.id ? `${PHOTO_DOCUMENT_PREFIX}${data.id}` : photoUrl;
+      if (photoReference) update("passportPhotoUrl", photoReference);
       if (photoUrl) setStudentPhotoPreviewUrl(photoUrl);
-      toast({ title: "Success", description: "Student photo uploaded." });
+      if (isNew && photoReference) {
+        const created = (await fetchApi("/AdmissionApplications", {
+          method: "POST",
+          body: JSON.stringify({
+            ...buildPayload(),
+            passportPhotoUrl: photoReference,
+          }),
+        })) as { id: string };
+        localStorage.removeItem(getDraftKey(id));
+        navigate(`/admin/admission/application/${created.id}`, { replace: true });
+      } else if (!isNew && id && photoReference) {
+        await fetchApi(`/AdmissionApplications/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            ...buildPayload(),
+            passportPhotoUrl: photoReference,
+            batch: undefined,
+            section: undefined,
+            interviewDate: undefined,
+            interviewNotes: undefined,
+          }),
+        });
+      }
+      toast({ title: "Success", description: "Student photo uploaded and saved." });
     } catch (err) {
       toast({ title: "Upload failed", description: (err as Error).message ?? "Could not upload photo.", variant: "destructive" });
     } finally {
@@ -1532,11 +1578,14 @@ export default function ApplicationFormPage() {
           )}
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => { if (handleFinalSubmit()) handleSave(); }} disabled={saving || uploadingPhoto}>
+            <Save className="h-4 w-4 mr-2" /> {saving ? "Saving..." : "Save Application"}
+          </Button>
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
           {!isNew && (
-            <Button onClick={handleSubmitAndEnroll} disabled={submitting}>
+            <Button onClick={() => { if (handleFinalSubmit()) handleSubmitAndEnroll(); }} disabled={submitting || uploadingPhoto}>
               <UserPlus className="h-4 w-4 mr-2" /> {submitting ? "Submitting..." : "Submit & Create Student"}
             </Button>
           )}
@@ -1622,9 +1671,6 @@ export default function ApplicationFormPage() {
         
         {activeTab === "review" ? (
           <div className="flex gap-2">
-            <Button onClick={() => { if (handleFinalSubmit()) handleSave(); }} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" /> {saving ? "Saving..." : "Save Application"}
-            </Button>
             {!isNew && (
               <Button onClick={() => { if (handleFinalSubmit()) handleSubmitAndEnroll(); }} disabled={submitting}>
                 <UserPlus className="h-4 w-4 mr-2" /> {submitting ? "Submitting..." : "Submit & Create Student"}
