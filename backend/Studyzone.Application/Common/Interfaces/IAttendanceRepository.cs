@@ -12,4 +12,8 @@ public interface IAttendanceRepository
     Task<AttendanceRecord?> GetByTeacherAndDateAsync(Guid teacherUserId, DateTime date, CancellationToken ct = default);
     Task<IReadOnlyList<AttendanceRecord>> GetByTeacherAndDateRangeAsync(Guid teacherUserId, DateTime from, DateTime to, CancellationToken ct = default);
     Task<AttendanceRecord> AddOrUpdateTeacherAsync(AttendanceRecord record, CancellationToken ct = default);
+
+    Task<AttendanceRecord?> GetByStaffAndDateAsync(Guid staffUserId, DateTime date, CancellationToken ct = default);
+    Task<IReadOnlyList<AttendanceRecord>> GetByStaffAndDateRangeAsync(Guid staffUserId, DateTime from, DateTime to, CancellationToken ct = default);
+    Task<AttendanceRecord> AddOrUpdateStaffAsync(AttendanceRecord record, CancellationToken ct = default);
 }

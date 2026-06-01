@@ -464,7 +464,40 @@ export default function Students() {
                       <div className="space-y-1"><Label>Gender</Label><SearchableSelect value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v }))} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }, { value: "Other", label: "Other" }]} /></div>
                       <div className="space-y-1"><Label>Class *</Label><SearchableSelect value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v, batchId: "" }))} placeholder="Class" options={classes.map((c) => ({ value: c.id, label: c.name }))} /></div>
                       <div className="space-y-1"><Label>Batch</Label><SearchableSelect value={form.batchId} onValueChange={(v) => setForm((f) => ({ ...f, batchId: v }))} placeholder="Batch" options={batches.filter((b) => b.classId === form.classId).map((b) => ({ value: b.id, label: b.name }))} /></div>
+                      <div className="space-y-1">
+                        <Label>Fees start month</Label>
+                        <SearchableSelect
+                          value={form.feePaymentStartMonth || "none"}
+                          onValueChange={(v) => setForm((f) => ({ ...f, feePaymentStartMonth: v === "none" ? "" : v }))}
+                          options={[
+                            { value: "none", label: "Not set" },
+                            ...MONTH_NAMES.map((m, idx) => ({ value: String(idx + 1), label: `${idx + 1} - ${m}` })),
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Fees start year</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 2026"
+                          value={form.feePaymentStartYear}
+                          onChange={(e) => setForm((f) => ({ ...f, feePaymentStartYear: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Bus fee (AED)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Optional"
+                          value={form.busFeeAmount}
+                          onChange={(e) => setForm((f) => ({ ...f, busFeeAmount: e.target.value }))}
+                        />
+                      </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Tuition charge generation will start from the selected fees start month/year.
+                    </p>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
                       <Button type="submit">Save</Button>

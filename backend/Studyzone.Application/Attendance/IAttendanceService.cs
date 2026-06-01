@@ -13,4 +13,8 @@ public interface IAttendanceService
     Task SaveBulkTeacherAsync(BulkTeacherAttendanceRequest request, CancellationToken ct = default);
     /// <summary>Save the current teacher's own attendance for a date (teacher portal).</summary>
     Task SaveSelfAttendanceAsync(string teacherUserGuid, DateTime date, string status, CancellationToken ct = default);
+
+    Task<IReadOnlyList<StaffAttendanceItemDto>> GetStaffForDateAsync(DateTime date, CancellationToken ct = default);
+    Task<IReadOnlyList<AttendanceRecordDto>> GetByStaffAsync(string staffUserId, DateTime from, DateTime to, CancellationToken ct = default);
+    Task SaveBulkStaffAsync(BulkStaffAttendanceRequest request, CancellationToken ct = default);
 }

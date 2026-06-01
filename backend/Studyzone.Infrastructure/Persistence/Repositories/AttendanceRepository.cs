@@ -91,4 +91,38 @@ public class AttendanceRepository : IAttendanceRepository
         await _db.SaveChangesAsync(ct);
         return record;
     }
+
+    public async Task<AttendanceRecord?> GetByStaffAndDateAsync(Guid staffUserId, DateTime date, CancellationToken ct = default)
+    {
+        return await _db.AttendanceRecords
+            .Where(x => x.TeacherUserId == staffUserId && x.Date == date.Date && x.RecordType == "Staff")
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AttendanceRecord>> GetByStaffAndDateRangeAsync(Guid staffUserId, DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return await _db.AttendanceRecords.AsNoTracking()
+            .Where(x => x.TeacherUserId == staffUserId && x.RecordType == "Staff" && x.Date >= from.Date && x.Date <= to.Date)
+            .OrderBy(x => x.Date)
+            .ToListAsync(ct);
+    }
+
+    public async Task<AttendanceRecord> AddOrUpdateStaffAsync(AttendanceRecord record, CancellationToken ct = default)
+    {
+        var staffId = record.TeacherUserId ?? Guid.Empty;
+        var existing = await GetByStaffAndDateAsync(staffId, record.Date, ct);
+        if (existing != null)
+        {
+            existing.Status = record.Status;
+            _db.AttendanceRecords.Update(existing);
+            await _db.SaveChangesAsync(ct);
+            return existing;
+        }
+        record.Id = Guid.NewGuid();
+        record.CreatedAt = DateTime.UtcNow;
+        record.RecordType = "Staff";
+        _db.AttendanceRecords.Add(record);
+        await _db.SaveChangesAsync(ct);
+        return record;
+    }
 }

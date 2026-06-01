@@ -38,6 +38,7 @@ const sidebarSections: SidebarSection[] = [
     items: [
       { title: "Students", icon: Users, path: "/admin/students" },
       { title: "Teachers", icon: GraduationCap, path: "/admin/teachers" },
+      { title: "Staffs", icon: Users, path: "/admin/staffs" },
       { title: "Parent Portal", icon: UserCheck, path: "/admin/parents" },
     ],
   },
@@ -63,6 +64,7 @@ const sidebarSections: SidebarSection[] = [
         subItems: [
           { title: "Student Attendance", path: "/admin/history/student-attendance" },
           { title: "Teacher Attendance", path: "/admin/history/teacher-attendance" },
+          { title: "Staff Attendance", path: "/admin/history/staff-attendance" },
         ],
       },
     ],
@@ -143,14 +145,17 @@ export function AppSidebarContent({
               {collapsed && section.label !== "Main" && <div className="pt-2" />}
               {section.items.map((item, index) => {
                 const isTeachers = item.title === "Teachers";
+                const isStaffs = item.title === "Staffs";
                 const isAcademics = item.title === "Academics";
                 const isActive =
                   isTeachers
                     ? location.pathname.startsWith("/admin/teachers")
-                    : isAcademics
-                      ? location.pathname.startsWith("/admin/academics")
-                      : location.pathname === item.path ||
-                        (item.subItems && item.subItems.some((sub) => location.pathname === sub.path));
+                    : isStaffs
+                      ? location.pathname.startsWith("/admin/staffs")
+                      : isAcademics
+                        ? location.pathname.startsWith("/admin/academics")
+                        : location.pathname === item.path ||
+                          (item.subItems && item.subItems.some((sub) => location.pathname === sub.path));
                 const isExpanded = expandedMenu === item.title;
                 return (
                   <div key={item.title}>

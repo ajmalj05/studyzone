@@ -63,3 +63,25 @@ public class TeacherSelfAttendanceRequest
     public DateTime Date { get; set; }
     public string Status { get; set; } = "Present"; // Present, Absent, Late
 }
+
+// Staff attendance
+public class StaffAttendanceItemDto
+{
+    public string StaffUserId { get; set; } = string.Empty;
+    public string StaffName { get; set; } = string.Empty;
+    public string? Subject { get; set; }
+    public string Status { get; set; } = "Present"; // Present, Absent, Late
+}
+
+public class BulkStaffAttendanceRequest
+{
+    public DateTime Date { get; set; }
+    public IReadOnlyList<StaffAttendanceItemRequest> Items { get; set; } = Array.Empty<StaffAttendanceItemRequest>();
+}
+
+public class StaffAttendanceItemRequest
+{
+    public string StaffUserId { get; set; } = string.Empty;
+    public string Status { get; set; } = "Present";
+}
+

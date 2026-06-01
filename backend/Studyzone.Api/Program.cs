@@ -81,43 +81,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
-    await db.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "StudentEnrollments"
-        ADD COLUMN IF NOT EXISTS "BusFeeAmount" numeric NULL;
-        """);
-    await db.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "TimetableSettings"
-            ADD COLUMN IF NOT EXISTS "SchoolStartTime"       text    NOT NULL DEFAULT '08:00',
-            ADD COLUMN IF NOT EXISTS "PeriodDurationMinutes" integer NOT NULL DEFAULT 45,
-            ADD COLUMN IF NOT EXISTS "BreaksJson"            text    NULL;
-        """);
-    await db.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "Status" text NOT NULL DEFAULT 'Approved';
-        ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "ApprovedAt" timestamp with time zone NULL;
-        ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "ApprovedByUserId" uuid NULL;
-        ALTER TABLE "MarksEntries" ADD COLUMN IF NOT EXISTS "RejectionReason" text NULL;
-        CREATE INDEX IF NOT EXISTS "IX_MarksEntries_ExamId_Status" ON "MarksEntries" ("ExamId", "Status");
-        """);
-    await db.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS "ExamScheduleEntries" (
-            "Id"            uuid        NOT NULL PRIMARY KEY,
-            "ExamId"        uuid        NOT NULL,
-            "SubjectName"   text        NOT NULL,
-            "ClassId"       uuid        NULL,
-            "ScheduledDate" timestamp with time zone NOT NULL,
-            "StartTime"     text        NULL,
-            "EndTime"       text        NULL,
-            "Venue"         text        NULL,
-            "CreatedAt"     timestamp with time zone NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS "IX_ExamScheduleEntries_ExamId"
-            ON "ExamScheduleEntries" ("ExamId");
-        CREATE INDEX IF NOT EXISTS "IX_ExamScheduleEntries_ExamId_SubjectName"
-            ON "ExamScheduleEntries" ("ExamId", "SubjectName");
-        """);
-    await db.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "ExamScheduleEntries" ADD COLUMN IF NOT EXISTS "MaxMarks" numeric NULL;
-        """);
+
     var seedAdminUserId = builder.Configuration["Seed:AdminUserId"];
     var seedAdminPassword = builder.Configuration["Seed:AdminPassword"];
     var seedAdminName = builder.Configuration["Seed:AdminName"];

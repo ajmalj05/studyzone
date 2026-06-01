@@ -194,4 +194,56 @@ public class AttendanceService : IAttendanceService
         };
         await _attRepo.AddOrUpdateTeacherAsync(record, ct);
     }
+
+    public async Task<IReadOnlyList<StaffAttendanceItemDto>> GetStaffForDateAsync(DateTime date, CancellationToken ct = default)
+    {
+        var staffs = await _userService.GetAllAsync("staff", ct);
+        var result = new List<StaffAttendanceItemDto>();
+        foreach (var s in staffs.Where(x => x.IsActive))
+        {
+            if (!Guid.TryParse(s.Id, out var sid)) continue;
+            var record = await _attRepo.GetByStaffAndDateAsync(sid, date, ct);
+            result.Add(new StaffAttendanceItemDto
+            {
+                StaffUserId = s.Id,
+                StaffName = s.Name,
+                Subject = null,
+                Status = record?.Status ?? string.Empty
+            });
+        }
+        return result.OrderBy(x => x.StaffName).ToList();
+    }
+
+    public async Task<IReadOnlyList<AttendanceRecordDto>> GetByStaffAsync(string staffUserId, DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(staffUserId, out var sid)) return Array.Empty<AttendanceRecordDto>();
+        var list = await _attRepo.GetByStaffAndDateRangeAsync(sid, from, to, ct);
+        return list.Select(x => new AttendanceRecordDto
+        {
+            Id = x.Id.ToString(),
+            TeacherUserId = x.TeacherUserId?.ToString(),
+            Date = x.Date,
+            PeriodNumber = x.PeriodNumber,
+            Status = x.Status,
+            RecordType = x.RecordType
+        }).ToList();
+    }
+
+    public async Task SaveBulkStaffAsync(BulkStaffAttendanceRequest request, CancellationToken ct = default)
+    {
+        var date = request.Date.Date;
+        foreach (var item in request.Items)
+        {
+            if (!Guid.TryParse(item.StaffUserId, out var sid)) continue;
+            var record = new AttendanceRecord
+            {
+                TeacherUserId = sid,
+                Date = date,
+                PeriodNumber = null,
+                Status = item.Status,
+                RecordType = "Staff"
+            };
+            await _attRepo.AddOrUpdateStaffAsync(record, ct);
+        }
+    }
 }

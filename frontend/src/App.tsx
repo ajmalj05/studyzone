@@ -15,6 +15,12 @@ import Teachers from "./pages/Teachers";
 import StaffAttendance from "./pages/StaffAttendance";
 import TeacherOfferLetter from "./pages/TeacherOfferLetter";
 import TeacherManagement from "./pages/TeacherManagement";
+
+import StaffManagement from "./pages/StaffManagement";
+import Staffs from "./pages/Staffs";
+import ActualStaffAttendance from "./pages/ActualStaffAttendance";
+import StaffAttendanceHistory from "./pages/history/StaffAttendanceHistory";
+import StaffAttendanceDetail from "./pages/history/StaffAttendanceDetail";
 import Fees from "./pages/Fees";
 import StudentLedger from "./pages/StudentLedger";
 import Attendance from "./pages/Attendance";
@@ -119,6 +125,11 @@ const App = () => (
                   <Route path="assign" element={<ClassTeacherAssign />} />
                   <Route path="attendance" element={<StaffAttendance />} />
                 </Route>
+                <Route path="staffs" element={<StaffManagement />}>
+                  <Route index element={<Navigate to="/admin/staffs/list" replace />} />
+                  <Route path="list" element={<Staffs />} />
+                  <Route path="attendance" element={<ActualStaffAttendance />} />
+                </Route>
                 <Route path="payroll" element={<AdminSalary />} />
                 <Route path="salary" element={<Navigate to="payroll" replace />} />
                 <Route path="fees" element={<Fees />} />
@@ -149,6 +160,8 @@ const App = () => (
                 <Route path="history/student-attendance/:studentId" element={<StudentAttendanceDetail />} />
                 <Route path="history/teacher-attendance" element={<TeacherAttendanceHistory />} />
                 <Route path="history/teacher-attendance/:teacherUserId" element={<TeacherAttendanceDetail />} />
+                <Route path="history/staff-attendance" element={<StaffAttendanceHistory />} />
+                <Route path="history/staff-attendance/:staffUserId" element={<StaffAttendanceDetail />} />
                 <Route path="enquiry" element={<Enquiry />} />
                 <Route path="admission" element={<Admission />} />
                 <Route path="admission/application/new" element={<ApplicationFormPage />} />

@@ -107,4 +107,26 @@ public class AttendanceController : ControllerBase
         await _service.SaveSelfAttendanceAsync(teacherUserGuid, request.Date, request.Status, ct);
         return NoContent();
     }
+
+    [HttpGet("staffs")]
+    public async Task<ActionResult<IReadOnlyList<StaffAttendanceItemDto>>> GetStaffForDate([FromQuery] DateTime date, CancellationToken ct)
+    {
+        var list = await _service.GetStaffForDateAsync(date, ct);
+        return Ok(list);
+    }
+
+    [HttpGet("staff/{staffUserId}")]
+    public async Task<ActionResult<IReadOnlyList<AttendanceRecordDto>>> GetByStaff(string staffUserId, [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct)
+    {
+        var list = await _service.GetByStaffAsync(staffUserId, from, to, ct);
+        return Ok(list);
+    }
+
+    [HttpPost("bulk-staff")]
+    [Authorize(Roles = "Admin,admin")]
+    public async Task<IActionResult> SaveBulkStaff([FromBody] BulkStaffAttendanceRequest request, CancellationToken ct)
+    {
+        await _service.SaveBulkStaffAsync(request, ct);
+        return NoContent();
+    }
 }

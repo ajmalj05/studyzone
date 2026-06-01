@@ -45,6 +45,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<TeacherSalary> TeacherSalaries => Set<TeacherSalary>();
     public DbSet<TeacherSalaryPayment> TeacherSalaryPayments => Set<TeacherSalaryPayment>();
     public DbSet<TeacherSalaryPaymentLine> TeacherSalaryPaymentLines => Set<TeacherSalaryPaymentLine>();
+    public DbSet<StaffSalary> StaffSalaries => Set<StaffSalary>();
+    public DbSet<StaffSalaryPayment> StaffSalaryPayments => Set<StaffSalaryPayment>();
+    public DbSet<StaffSalaryPaymentLine> StaffSalaryPaymentLines => Set<StaffSalaryPaymentLine>();
     public DbSet<PortalRequest> PortalRequests => Set<PortalRequest>();
     public DbSet<StudentParent> StudentParents => Set<StudentParent>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -181,6 +184,22 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<TeacherSalaryPaymentLine>(e =>
         {
             e.HasIndex(x => x.TeacherSalaryPaymentId);
+        });
+        modelBuilder.Entity<StaffSalary>(e =>
+        {
+            e.HasIndex(x => x.StaffUserId);
+            e.HasIndex(x => x.EffectiveFrom);
+        });
+        modelBuilder.Entity<StaffSalaryPayment>(e =>
+        {
+            e.HasIndex(x => x.StaffUserId);
+            e.HasIndex(x => new { x.Year, x.Month });
+            e.HasIndex(x => new { x.StaffUserId, x.Year, x.Month }).IsUnique();
+            e.HasMany(x => x.Lines).WithOne(x => x.StaffSalaryPayment).HasForeignKey(x => x.StaffSalaryPaymentId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<StaffSalaryPaymentLine>(e =>
+        {
+            e.HasIndex(x => x.StaffSalaryPaymentId);
         });
         modelBuilder.Entity<PortalRequest>(e =>
         {
