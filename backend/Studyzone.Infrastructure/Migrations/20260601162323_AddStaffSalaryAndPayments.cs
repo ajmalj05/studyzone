@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -29,25 +29,20 @@ namespace Studyzone.Infrastructure.Migrations
                 oldType: "integer",
                 oldDefaultValue: 45);
 
-            migrationBuilder.CreateTable(
-                name: "ExamScheduleEntries",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ExamId = table.Column<Guid>(type: "uuid", nullable: false),
-                    SubjectName = table.Column<string>(type: "text", nullable: false),
-                    ClassId = table.Column<Guid>(type: "uuid", nullable: true),
-                    ScheduledDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    StartTime = table.Column<string>(type: "text", nullable: true),
-                    EndTime = table.Column<string>(type: "text", nullable: true),
-                    Venue = table.Column<string>(type: "text", nullable: true),
-                    MaxMarks = table.Column<decimal>(type: "numeric", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ExamScheduleEntries", x => x.Id);
-                });
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS ""ExamScheduleEntries"" (
+                    ""Id""            uuid        NOT NULL PRIMARY KEY,
+                    ""ExamId""        uuid        NOT NULL,
+                    ""SubjectName""   text        NOT NULL,
+                    ""ClassId""       uuid        NULL,
+                    ""ScheduledDate"" timestamp with time zone NOT NULL,
+                    ""StartTime""     text        NULL,
+                    ""EndTime""       text        NULL,
+                    ""Venue""         text        NULL,
+                    ""MaxMarks""      numeric     NULL,
+                    ""CreatedAt""     timestamp with time zone NOT NULL
+                );
+            ");
 
             migrationBuilder.CreateTable(
                 name: "StaffSalaries",
@@ -110,15 +105,12 @@ namespace Studyzone.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_ExamScheduleEntries_ExamId",
-                table: "ExamScheduleEntries",
-                column: "ExamId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ExamScheduleEntries_ExamId_SubjectName",
-                table: "ExamScheduleEntries",
-                columns: new[] { "ExamId", "SubjectName" });
+            migrationBuilder.Sql(@"
+                CREATE INDEX IF NOT EXISTS ""IX_ExamScheduleEntries_ExamId""
+                    ON ""ExamScheduleEntries"" (""ExamId"");
+                CREATE INDEX IF NOT EXISTS ""IX_ExamScheduleEntries_ExamId_SubjectName""
+                    ON ""ExamScheduleEntries"" (""ExamId"", ""SubjectName"");
+            ");
 
             migrationBuilder.CreateIndex(
                 name: "IX_StaffSalaries_EffectiveFrom",
