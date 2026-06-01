@@ -48,6 +48,21 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        Dropdown: ({ value, onChange, children, ...props }) => {
+          return (
+            <select
+              value={value}
+              onChange={onChange}
+              className={cn(
+                "h-8 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer hover:bg-accent hover:text-accent-foreground",
+                props.className
+              )}
+              {...props}
+            >
+              {children}
+            </select>
+          );
+        }
       }}
       {...props}
     />
