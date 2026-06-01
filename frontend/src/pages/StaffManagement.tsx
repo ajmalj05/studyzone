@@ -1,4 +1,3 @@
-using System; // React component does not need C# using, let's write correct React!
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Users, CalendarCheck } from "lucide-react";
 import { usePageHeaderConfigEffect } from "@/context/PageHeaderContext";
