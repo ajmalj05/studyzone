@@ -119,6 +119,11 @@ function esc(s: string): string {
 
 // Auto-save key generator
 const getDraftKey = (id: string | undefined) => `admission-draft-${id || "new"}`;
+const PHOTO_DOCUMENT_PREFIX = "document:";
+
+function getPhotoDocumentId(value: string): string | null {
+  return value.startsWith(PHOTO_DOCUMENT_PREFIX) ? value.slice(PHOTO_DOCUMENT_PREFIX.length) : null;
+}
 
 const TABS = [
   { id: "student", label: "Student", icon: User, description: "Basic information" },
@@ -363,6 +368,7 @@ export default function ApplicationFormPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidation, setShowValidation] = useState(false);
+  const [studentPhotoPreviewUrl, setStudentPhotoPreviewUrl] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
@@ -627,6 +633,31 @@ export default function ApplicationFormPage() {
     if (match) setForm((f) => ({ ...f, classAppliedClassId: match.id }));
   }, [classes, form.classApplied, form.classAppliedClassId]);
 
+  useEffect(() => {
+    const documentId = getPhotoDocumentId(form.passportPhotoUrl);
+    if (!form.passportPhotoUrl) {
+      setStudentPhotoPreviewUrl("");
+      return;
+    }
+    if (!documentId) {
+      setStudentPhotoPreviewUrl(form.passportPhotoUrl);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = (await fetchApi(`/Documents/${documentId}/url`)) as { url?: string };
+        if (!cancelled) setStudentPhotoPreviewUrl(data.url ?? "");
+      } catch {
+        if (!cancelled) setStudentPhotoPreviewUrl("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.passportPhotoUrl]);
+
   const update = (key: keyof typeof form, value: string | string[] | boolean | SiblingRow[]) => {
     setForm((f) => ({ ...f, [key]: value }));
   };
@@ -856,6 +887,7 @@ export default function ApplicationFormPage() {
     }
     const printForm = {
       ...form,
+      passportPhotoUrl: studentPhotoPreviewUrl || form.passportPhotoUrl,
       classApplied: form.classAppliedClassId ? (classes.find((c) => c.id === form.classAppliedClassId)?.name ?? form.classApplied) : form.classApplied,
     };
     const html = buildPrintDocumentHtml(profile ?? null, printForm as Record<string, unknown>, classes, batches);
@@ -894,11 +926,13 @@ export default function ApplicationFormPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      const data = (await res.json()) as { url?: string; Url?: string; message?: string };
+      const data = (await res.json()) as { id?: string; url?: string; Url?: string; message?: string };
       if (!res.ok) throw new Error(data.message ?? "Upload failed");
       const photoUrl = data.url ?? data.Url ?? "";
-      if (photoUrl) update("passportPhotoUrl", photoUrl);
-      toast({ title: "Success", description: "Passport photo uploaded." });
+      if (data.id) update("passportPhotoUrl", `${PHOTO_DOCUMENT_PREFIX}${data.id}`);
+      else if (photoUrl) update("passportPhotoUrl", photoUrl);
+      if (photoUrl) setStudentPhotoPreviewUrl(photoUrl);
+      toast({ title: "Success", description: "Student photo uploaded." });
     } catch (err) {
       toast({ title: "Upload failed", description: (err as Error).message ?? "Could not upload photo.", variant: "destructive" });
     } finally {
@@ -1008,6 +1042,49 @@ export default function ApplicationFormPage() {
 
   const renderDocumentsTab = () => (
     <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-lg border border-border p-4 sm:flex-row sm:items-center">
+        <div className="h-32 w-28 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+          {studentPhotoPreviewUrl ? (
+            <img src={studentPhotoPreviewUrl} alt="Student" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+              No photo
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <Label htmlFor="studentPhoto">Student Photo</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" disabled={uploadingPhoto} asChild>
+              <label htmlFor="studentPhoto" className="cursor-pointer">
+                {uploadingPhoto ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                {uploadingPhoto ? "Uploading..." : "Upload photo"}
+              </label>
+            </Button>
+            {form.passportPhotoUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  update("passportPhotoUrl", "");
+                  setStudentPhotoPreviewUrl("");
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          <Input
+            id="studentPhoto"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePassportPhotoUpload}
+          />
+          <p className="text-xs text-muted-foreground">JPG or PNG image. The file is uploaded to MinIO when selected.</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Passport No</Label>
@@ -1575,8 +1652,8 @@ export default function ApplicationFormPage() {
             </div>
           </div>
           <div className="print-form-photo-wrap w-[90px] h-[110px] border border-border flex items-center justify-center overflow-hidden bg-muted flex-shrink-0">
-            {form.passportPhotoUrl ? (
-              <img src={form.passportPhotoUrl} alt="Passport" className="w-full h-full object-cover" />
+            {studentPhotoPreviewUrl ? (
+              <img src={studentPhotoPreviewUrl} alt="Student" className="w-full h-full object-cover" />
             ) : null}
           </div>
         </div>
